@@ -17,7 +17,7 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible
 from winBindings import kernel32
 
-from . import top_panel
+from . import convert_window, top_panel
 from .language import LanguageFiles
 
 addonHandler.initTranslation()
@@ -100,6 +100,15 @@ class AppModule(appModuleHandler.AppModule):
                 return
         nextHandler()
 
+    def event_valueChange(self, obj, nextHandler):
+        # Every converter bar changes several times a second; drop them before anything else.
+        if (
+            obj.windowClassName == convert_window.PROGRESS_BAR_CLASS
+            and convert_window.bar_kind(obj.windowHandle) == convert_window.Bar.CONVERTER
+        ):
+            return
+        nextHandler()
+
     def event_appModule_loseFocus(self):
         self._tab_menu_tab = 0
 
@@ -116,6 +125,10 @@ class AppModule(appModuleHandler.AppModule):
 
     def chooseNVDAObjectOverlayClasses(self, obj, clsList):
         if not isinstance(obj, IAccessible):
+            return
+        if obj.windowClassName == convert_window.PROGRESS_BAR_CLASS:
+            if convert_window.bar_kind(obj.windowHandle) == convert_window.Bar.TOTAL:
+                clsList.insert(0, convert_window.TotalProgressBar)
             return
         if obj.windowClassName == top_panel.PAGE_CONTROL_CLASS:
             clsList.insert(0, top_panel.TabLabels)

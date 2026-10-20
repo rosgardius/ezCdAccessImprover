@@ -75,6 +75,18 @@ absolute coordinates, captions in a particular language.
   into the tab, collects dialog text from all its panels: about 250 ms in the main window, with an
   empty result.
 
+## Conversion window
+
+- A top-level `TConvertWnd` window, shown while files are converted and kept open after the end.
+  The application also has `TConvertWnd_Single`, of the same layout but with one converter bar in a
+  `TPanel` right on the form. It did not appear with one converter, one file or a loudness scan, so
+  when it is used is not known.
+- Progress bars are `TProgressBar` windows with a range of 0 to 10000, each updated several times a
+  second. One bar per converter, in a `TGridPanel` child of the form. The total bar is in the summary
+  `TPanel`, inside the `TPanel` that also holds the file list.
+- The labels of the summary panel (Total, Converted, Speed, …) are `TLabel`s without windows,
+  visible only in the display model; the total bar has no MSAA name.
+
 ## Keyboard
 
 - F8 presses Convert or Rip CD, depending on the current tab. The hint text (`Convert [ F8 ]`) is not

@@ -25,6 +25,12 @@ they are unavailable. Convert and Rip CD report their shortcut, F8.
   button of that tab.
 * To press a button without focusing it, move the navigator object to it and press NVDA+Numpad Enter.
 
+### Conversion window
+
+Only the total progress of the conversion is reported, as NVDA's progress bar settings say; the
+progress bars of the individual converters are silent. The total progress bar is named "Total
+progress".
+
 ## Commands
 
 Commands of this add-on are listed in NVDA's Input Gestures dialog, under the
