@@ -46,6 +46,22 @@ absolute coordinates, captions in a particular language.
 - `SetFocus` on the toolbar window (with the calling thread attached to ezcd's input) makes it VCL's
   active control. Tab then moves on to the tab labels (`TPageControl`), Shift+Tab to the last control
   of the tab. The toolbar does nothing on Enter or Space itself.
+- The toolbars are not tab stops. The top panel is last in its tab's tab order, and the page control is
+  first in the form's, so Tab from the last control of a tab goes to the tab labels, and Shift+Tab
+  from the tab labels goes to the last control of the active tab.
+- Up and Down Arrow on a toolbar move focus through the panel's toolbars in tab order, wrapping
+  around (VCL's form dialog-key handling), not in visual order.
+- The MSAA proxy reports the button's position as 1 of 1 (within its own toolbar).
+- Pressing Alt on a focused toolbar fires a focus event for the toolbar again before the system menu
+  item gets focus.
+
+## Tabs of the main window
+
+- The main window's `TPageControl` is a direct child of `TMainform`; each tab is a `TTabSheet` child of
+  it, the active one visible. The Disc Burner tab holds another `TPageControl`.
+- MSAA gives `TTabSheet` the property page role. NVDA treats it as a dialog and, on every focus entry
+  into the tab, collects dialog text from all its panels: about 250 ms in the main window, with an
+  empty result.
 
 ## Keyboard
 

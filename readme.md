@@ -10,11 +10,15 @@ Improves accessibility of EZ CD Audio Converter with NVDA.
 ### Top buttons of the converter and ripper tabs
 
 The large buttons at the top of the Audio Converter and Audio CD Ripper tabs (Convert, Rip CD,
-Settings, View and the others) are read as buttons, including whether they are unavailable. Convert
-and Rip CD report their shortcut, F8.
+Settings, View and the others) are read as buttons of a toolbar, including whether they are
+unavailable. Convert and Rip CD report their shortcut, F8.
 
-* To press a button, move the navigator object to it and press NVDA+Numpad Enter.
-* When a button has focus, Enter and Space press it.
+* The panel is one stop in the Tab order: Tab from the last control of the tab, or Shift+Tab from
+  the tab labels, moves to it. Focus comes to the button that had it last, or to Convert or Rip CD
+  after the application starts.
+* Left and Right Arrow move between the buttons, Home and End to the first and the last one.
+* Enter, Numpad Enter and Space press the focused button.
+* To press a button without focusing it, move the navigator object to it and press NVDA+Numpad Enter.
 
 ## Commands
 
