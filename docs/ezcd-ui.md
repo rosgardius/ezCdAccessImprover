@@ -87,6 +87,27 @@ absolute coordinates, captions in a particular language.
   node's text alone, such as the progress in the conversion window, fires nothing.
 - The tree's own name is not translated: List of files in the main window, Format in the conversion
   window. String `[494]` of the language files is Files.
+- MSAA tells nothing about the selection: the focused node's state is the same whether it is selected or
+  not, and no event comes when only the selection changes.
+- The tree answers `TVM_GETNEXTITEM` (`TVGN_ROOT`, `NEXT`, `PARENT`, `CHILD`, `FIRSTVISIBLE`,
+  `NEXTVISIBLE`, `PREVIOUSVISIBLE`, `LASTVISIBLE`, `CARET`) with node pointers, and `TVM_GETITEMW` with
+  `TVIS_SELECTED` and `TVIS_FOCUSED` for a node pointer. It does not check the pointer: a stale one may
+  crash ezcd.
+- `accSelect` on the tree's client object works with the node's position among all nodes in the tree's
+  order (each node followed by its children) as the child id, 0 being the first node:
+  `SELFLAG_TAKEFOCUS` moves the focus without changing the selection, `SELFLAG_ADDSELECTION` and
+  `SELFLAG_REMOVESELECTION` change one node, `SELFLAG_TAKESELECTION` selects only the node. The
+  metadata fields follow these changes.
+- In the main window's list a folder added to the list is a node with the files as its children.
+  Selecting the folder's node alone selects no files: the metadata fields stay disabled.
+- Keys of the main window's list: Up, Down, Home, End, Page Up and Page Down select only the node they
+  move to, with Shift they extend the selection, with Control they scroll without moving the focus.
+  Control+A selects all nodes. Space and Control+Space do nothing.
+- Right Arrow on a file opens the cell editor (`TVTEdit`, a child window of the tree) in the next
+  column. Once a column other than the file name has been focused this way, the tree opens the editor
+  in that column whenever its focus moves, except on the plain arrow keys, Home, End, Page Up and Page
+  Down: with Shift, by `accSelect`. Escape in the editor closes it but keeps the column; Escape posted
+  to the editor does the same.
 
 ## Conversion window
 

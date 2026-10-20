@@ -10,6 +10,7 @@ from ctypes.wintypes import DWORD
 import addonHandler
 import api
 import appModuleHandler
+import braille
 import eventHandler
 import inputCore
 import oleacc
@@ -45,6 +46,7 @@ class AppModule(appModuleHandler.AppModule):
         self._tab_kept = False
         self._conversion_status = convert_window.ConversionStatus()
         self.converter_steps = converters.StepAnnouncer()
+        self.closed_editor = file_lists.ClosedEditor()
         inputCore.decide_executeGesture.register(self._note_gesture)
 
     def terminate(self):
@@ -75,17 +77,22 @@ class AppModule(appModuleHandler.AppModule):
 
     def _note_gesture(self, gesture) -> bool:
         # Called in NVDA's keyboard hook thread for every gesture, in any application.
-        self._tab_pressed = (
-            isinstance(gesture, KeyboardInputGesture)
-            and gesture.vkCode == winUser.VK_TAB
-            and not gesture.modifiers
-        )
+        is_key = isinstance(gesture, KeyboardInputGesture)
+        self._tab_pressed = is_key and gesture.vkCode == winUser.VK_TAB and not gesture.modifiers
+        if is_key:
+            self.closed_editor.note_key(gesture)
         return True
 
     def event_gainFocus(self, obj, nextHandler):
         previous, self._focus_window = self._focus_window, obj.windowHandle
         tab_pressed, self._tab_pressed = self._tab_pressed, False
         self._tab_kept = False
+        if self.closed_editor.is_left_focus(obj):
+            braille.handler.handleGainFocus(obj)
+            return
+        if self.closed_editor.is_unasked(obj):
+            self.closed_editor.close(obj.windowHandle)
+            return
         if self._tab_menu_tab and obj.windowClassName != _MENU_CLASS:
             # Whichever tab was chosen, VCL puts focus on the tab's first control.
             panel = top_panel.panel_after_tab_menu(self._tab_menu_tab, obj.processHandle, self.language)
@@ -173,7 +180,10 @@ class AppModule(appModuleHandler.AppModule):
             return
         if obj.windowClassName == file_lists.TREE_CLASS and obj.IAccessibleChildID == 0:
             if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINEITEM:
-                clsList.insert(0, file_lists.FileListItem)
+                if file_lists.is_conversion_list(obj.windowHandle):
+                    clsList.insert(0, file_lists.FileListItem)
+                else:
+                    clsList.insert(0, file_lists.MainFileListItem)
             elif obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINE and file_lists.is_conversion_list(
                 obj.windowHandle
             ):

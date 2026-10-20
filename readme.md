@@ -51,6 +51,18 @@ all its columns, and the first arrow key after entering a list reports the file 
 file of a list has focus, focus stays on the list itself. The list of the conversion window is named
 Files, in the language of the application.
 
+In the list of files of the main window, files are selected as in other Windows lists, and a file
+that is not selected is reported as "not selected":
+
+* Up and Down Arrow, Home, End, Page Up and Page Down move to a file and select only it; with Shift
+  they extend the selection.
+* Control with Up or Down Arrow, Home or End moves to a file without changing the selection.
+* Control+Space selects or unselects the file, Space selects only it. On the row of a folder, both act
+  on the folder together with all its files.
+* Control+A selects all files, Escape unselects all.
+
+These commands report the new state of the file and are silent when they change nothing.
+
 ## Commands
 
 Commands of this add-on are listed in NVDA's Input Gestures dialog, under the

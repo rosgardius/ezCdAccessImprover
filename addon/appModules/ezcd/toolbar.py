@@ -5,15 +5,13 @@
 """Cross-process access to the buttons of a VCL TToolBar (a comctl32 toolbar)."""
 
 import ctypes
-from collections.abc import Iterator
-from contextlib import contextmanager
 from ctypes.wintypes import BOOL, HWND, RECT
 from dataclasses import dataclass
 
-import watchdog
-import winKernel
 import winUser
 from winBindings import kernel32, user32
+
+from . import remote
 
 TB_GETBUTTON = 0x417
 TB_BUTTONCOUNT = 0x418
@@ -25,10 +23,7 @@ WM_LBUTTONDOWN = 0x201
 WM_LBUTTONUP = 0x202
 MK_LBUTTON = 0x1
 
-# Messages go from NVDA's main thread: a hung ezcd must not freeze NVDA.
-_TIMEOUT_MS = 500
-_BUFFER_SIZE = 1024
-_MAX_TEXT_LENGTH = _BUFFER_SIZE // 2 - 1
+_MAX_TEXT_LENGTH = remote.BUFFER_SIZE // 2 - 1
 
 # Not in winBindings; a private library object keeps these declarations away from ctypes.windll.
 _is_hung_app_window = ctypes.WinDLL("user32").IsHungAppWindow
@@ -64,49 +59,27 @@ class ToolButton:
         return bool(self.state & TBSTATE_HIDDEN)
 
 
-def _send(hwnd: int, msg: int, wparam: int = 0, lparam: int = 0) -> int:
-    res = watchdog.cancellableSendMessage(
-        hwnd, msg, wparam, lparam, flags=winUser.SMTO_ABORTIFHUNG, timeout=_TIMEOUT_MS
-    )
-    return ctypes.c_ssize_t(res).value
-
-
-@contextmanager
-def _remote_buffer(process_handle: int) -> Iterator[int]:
-    address = winKernel.virtualAllocEx(
-        process_handle, None, _BUFFER_SIZE, winKernel.MEM_COMMIT, winKernel.PAGE_READWRITE
-    )
-    try:
-        yield address
-    finally:
-        winKernel.virtualFreeEx(process_handle, address, 0, winKernel.MEM_RELEASE)
-
-
-def _read(process_handle: int, address: int, target: ctypes.Array | ctypes.Structure) -> None:
-    if not winKernel.readProcessMemory(
-        process_handle, address, ctypes.byref(target), ctypes.sizeof(target), None
-    ):
-        raise ctypes.WinError()
-
-
 def button_count(hwnd: int) -> int:
-    return max(_send(hwnd, TB_BUTTONCOUNT), 0)
+    return max(remote.send(hwnd, TB_BUTTONCOUNT), 0)
 
 
 def read_buttons(hwnd: int, process_handle: int) -> list[ToolButton]:
     """Reads all buttons of the toolbar. Raises ``OSError`` if ezcd's memory is not accessible."""
     buttons = []
-    with _remote_buffer(process_handle) as address:
+    with remote.buffer(process_handle) as address:
         for index in range(button_count(hwnd)):
-            if not _send(hwnd, TB_GETBUTTON, index, address):
+            if not remote.send(hwnd, TB_GETBUTTON, index, address):
                 continue
             head = _ButtonHead()
-            _read(process_handle, address, head)
+            remote.read(process_handle, address, head)
             text = ""
-            length = _send(hwnd, TB_GETBUTTONTEXTW, head.idCommand, 0)
-            if 0 < length <= _MAX_TEXT_LENGTH and _send(hwnd, TB_GETBUTTONTEXTW, head.idCommand, address) > 0:
+            length = remote.send(hwnd, TB_GETBUTTONTEXTW, head.idCommand, 0)
+            if (
+                0 < length <= _MAX_TEXT_LENGTH
+                and remote.send(hwnd, TB_GETBUTTONTEXTW, head.idCommand, address) > 0
+            ):
                 buffer = ctypes.create_unicode_buffer(length + 1)
-                _read(process_handle, address, buffer)
+                remote.read(process_handle, address, buffer)
                 text = buffer.value
             buttons.append(ToolButton(index, head.iBitmap, head.idCommand, head.fsState, text))
     return buttons
@@ -115,10 +88,10 @@ def read_buttons(hwnd: int, process_handle: int) -> list[ToolButton]:
 def item_rect(hwnd: int, process_handle: int, index: int) -> RECT | None:
     """The button's rectangle in the toolbar's client coordinates."""
     rect = RECT()
-    with _remote_buffer(process_handle) as address:
-        if not _send(hwnd, TB_GETITEMRECT, index, address):
+    with remote.buffer(process_handle) as address:
+        if not remote.send(hwnd, TB_GETITEMRECT, index, address):
             return None
-        _read(process_handle, address, rect)
+        remote.read(process_handle, address, rect)
     return rect
 
 
