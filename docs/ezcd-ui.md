@@ -13,35 +13,40 @@ Not usable to recognise a control: window handles, `GWL_ID` (equal to the handle
 window text of toolbars (a copied design-time caption such as `ToolBar9`, repeated across toolbars),
 absolute coordinates, captions in a particular language.
 
-## Top panel of the converter and ripper tabs
+## Top panels of the main window's tabs
 
 - The panel is a `TPanel` that is a direct child of the tab's `TTabSheet`. Each large button on it
-  is a `TToolBar` window holding one `TToolButton`.
+  is a `TToolBar` window holding one `TToolButton`, except Erase Disc, Burn Disc Image and Save to ISO
+  of the Disc Burner tab, which share one toolbar.
 - `TToolBar` is a superclassed comctl32 toolbar: `TB_*` messages work, and the MSAA toolbar proxy
-  exposes the button as child id 1 of the window (role button, name = caption, state always 0,
+  exposes button *i* as child id *i* + 1 of the window (role button, name = caption, state always 0,
   not focusable). The MSAA location of the button is scaled wrongly at DPI above 100%.
-- `TB_GETBUTTON` `iBitmap` equals `ImageIndex` of the `TToolButton`. Images on the top panels
-  (unique within each panel, but not across panels):
+- `TB_GETBUTTON` `iBitmap` equals `ImageIndex` of the `TToolButton`. Images on the top panels, from
+  left to right (repeated across panels and, on the Disc Burner panel, within it: its Settings comes
+  from another image list):
 
-  | Converter | Image | Ripper | Image |
-  |---|---|---|---|
-  | Audio Converter ▼ | 0 | CD Ripper ▼ | 1 |
-  | **Convert** | **1** | **Rip CD** | **0** |
-  | Metadata ▼ | 4 | Disc ▼ | 3 |
-  | Rename files | 6 | Metadata ▼ | 4 |
-  | Save metadata | 7 | AutoRip | 5 |
-  | Settings | 2 | Settings | 2 |
-  | View | 15 | View | 15 |
-  | Help | 19 | Help | 19 |
+  | Converter | Image | Ripper | Image | Burner | Image |
+  |---|---|---|---|---|---|
+  | Audio Converter ▼ | 0 | CD Ripper ▼ | 1 | Disc Burner ▼ | 2 |
+  | Metadata ▼ | 4 | Disc ▼ | 3 | Erase Disc | 8 |
+  | Rename files | 6 | Metadata ▼ | 4 | Burn Disc Image | 9 |
+  | Save metadata | 7 | AutoRip | 5 | Save to ISO | 11 |
+  | **Convert** | **1** | **Rip CD** | **0** | **Burn Disc** | **13** |
+  | Settings | 2 | Settings | 2 | Settings | 2 |
+  | View | 15 | View | 15 | View | 15 |
+  | Help | 19 | Help | 19 | Help | 19 |
 
 - The main button of a tab is recognised by its image together with its caption, which must equal
   the string in one of the language files: Convert is image 1 with string `[232]` or `[406]`, Rip CD
-  is image 0 with string `[176]`. No translation of these strings has a `▼`, so the menu buttons
-  with the same images never match.
-- The Disc Burner tab has no such main button; it has a three-button toolbar and repeated image numbers on its top panel.
+  is image 0 with string `[176]`, Burn Disc is image 13 with string `[392]`. No translation of these
+  strings has a `▼`, so the menu buttons with the same images never match.
+- The first button of each panel opens a menu of the three tabs. Choosing a tab there, the current one
+  too, puts focus on the tab's first control (the list of files or tracks, the burner's inner tab labels).
+  The ripper and burner tabs open without a disc drive.
+- Hidden buttons have `TBSTATE_HIDDEN` in `fsState` (Save to ISO on the Disc Burner panel, without a disc).
 - Disabled buttons lack `TBSTATE_ENABLED` in `fsState`.
 - The buttons marked ▼ in the caption, and View and Help, open a menu (`DropdownMenu`): converter
-  images 0, 4, 15, 19, ripper images 1, 3, 4, 15, 19. Nothing in the toolbar or MSAA tells them
+  images 0, 4, 15, 19, ripper images 1, 3, 4, 15, 19, burner images 2 (the first of them), 15, 19. Nothing in the toolbar or MSAA tells them
   from other buttons: `fsStyle` is `TBSTYLE_AUTOSIZE` on all of them, without `TBSTYLE_DROPDOWN`.
   The menu opens on the mouse press, in a modal menu loop; the posted click opens it all the same,
   and Escape returns focus to the toolbar.
@@ -56,9 +61,11 @@ absolute coordinates, captions in a particular language.
   from the tab labels goes to the last control of the active tab.
 - Up and Down Arrow on a toolbar move focus through the panel's toolbars in tab order, wrapping
   around (VCL's form dialog-key handling), not in visual order.
-- The MSAA proxy reports the button's position as 1 of 1 (within its own toolbar).
+- The MSAA proxy reports the button's position within its own toolbar (1 of 1 for most of them).
 - Pressing Alt on a focused toolbar fires a focus event for the toolbar again before the system menu
   item gets focus.
+- When a toolbar window gets focus, the proxy fires focus for the window and then for its first
+  button: VCL keeps no current button within a toolbar.
 
 ## Tabs of the main window
 
@@ -71,7 +78,8 @@ absolute coordinates, captions in a particular language.
 ## Keyboard
 
 - F8 presses Convert or Rip CD, depending on the current tab. The hint text (`Convert [ F8 ]`) is not
-  translated.
+  translated. Burn Disc has no such hint; without a disc drive neither F8 nor Burn Disc does anything
+  noticeable, so whether F8 presses it is not known.
 - Shift+F10 opens the registration key dialog.
 
 ## Language files

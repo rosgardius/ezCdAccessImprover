@@ -20,6 +20,7 @@ TB_BUTTONCOUNT = 0x418
 TB_GETITEMRECT = 0x41D
 TB_GETBUTTONTEXTW = 0x44B
 TBSTATE_ENABLED = 0x04
+TBSTATE_HIDDEN = 0x08
 WM_LBUTTONDOWN = 0x201
 WM_LBUTTONUP = 0x202
 MK_LBUTTON = 0x1
@@ -57,6 +58,10 @@ class ToolButton:
     @property
     def enabled(self) -> bool:
         return bool(self.state & TBSTATE_ENABLED)
+
+    @property
+    def hidden(self) -> bool:
+        return bool(self.state & TBSTATE_HIDDEN)
 
 
 def _send(hwnd: int, msg: int, wparam: int = 0, lparam: int = 0) -> int:

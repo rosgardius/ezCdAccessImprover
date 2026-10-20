@@ -17,12 +17,13 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible
 from winBindings import kernel32
 
-from . import toolbar, top_panel
+from . import top_panel
 from .language import LanguageFiles
 
 addonHandler.initTranslation()
 
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+_MENU_CLASS = "#32768"
 _MAX_PATH_LENGTH = 32767
 
 
@@ -33,9 +34,10 @@ class AppModule(appModuleHandler.AppModule):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.language = LanguageFiles(self._executable_path())
-        self.remembered_buttons: dict[int, int] = {}
-        """The image of the last focused button of each top panel, by ``TopPanel.key``."""
+        self.remembered_buttons: dict[int, tuple[int, int]] = {}
+        """``PanelButton.key`` of the last focused button of each top panel, by ``TopPanel.key``."""
         self._focus_window = 0
+        self._tab_menu_tab = 0
         self._tab_pressed = False
         self._tab_kept = False
         inputCore.decide_executeGesture.register(self._note_gesture)
@@ -61,6 +63,10 @@ class AppModule(appModuleHandler.AppModule):
         log.debugWarning(f"appPath unavailable, ezcd path from a limited process handle: {buffer.value}")
         return buffer.value
 
+    def tab_menu_opened(self, tab: int):
+        """The menu that switches the main window's tab is opening on the tab's top panel."""
+        self._tab_menu_tab = tab
+
     def _note_gesture(self, gesture) -> bool:
         # Called in NVDA's keyboard hook thread for every gesture, in any application.
         self._tab_pressed = (
@@ -74,18 +80,38 @@ class AppModule(appModuleHandler.AppModule):
         previous, self._focus_window = self._focus_window, obj.windowHandle
         tab_pressed, self._tab_pressed = self._tab_pressed, False
         self._tab_kept = False
+        if self._tab_menu_tab and obj.windowClassName != _MENU_CLASS:
+            # Whichever tab was chosen, VCL puts focus on the tab's first control.
+            panel = top_panel.panel_after_tab_menu(self._tab_menu_tab, obj.processHandle, self.language)
+            self._tab_menu_tab = 0
+            if (
+                panel is not None
+                and top_panel.is_beside_panel(panel, obj.windowHandle)
+                and top_panel.focus_button(self, panel, panel.buttons[0])
+            ):
+                return
         # VCL skips the top panel on Tab; stop at it instead of the tab labels.
         if tab_pressed and previous and obj.windowClassName == top_panel.PAGE_CONTROL_CLASS:
             panel = top_panel.panel_left_by_tab(obj.windowHandle, previous, obj.processHandle, self.language)
-            if panel is not None and toolbar.set_focus(panel.entry(self.remembered_buttons)):
+            if panel is not None and top_panel.focus_button(
+                self, panel, panel.entry(self.remembered_buttons)
+            ):
                 self._tab_kept = True
                 return
         nextHandler()
+
+    def event_appModule_loseFocus(self):
+        self._tab_menu_tab = 0
 
     def event_focusEntered(self, obj, nextHandler):
         # Focus stayed in the tab: the tab labels in between were not announced.
         if self._tab_kept and obj.windowClassName == top_panel.TAB_CLASS:
             return
+        # Focus is about to leave the tab's first control for its top panel: the control is not announced.
+        if self._tab_menu_tab:
+            panel = top_panel.panel_after_tab_menu(self._tab_menu_tab, obj.processHandle, self.language)
+            if panel is not None and top_panel.is_beside_panel(panel, obj.windowHandle):
+                return
         nextHandler()
 
     def chooseNVDAObjectOverlayClasses(self, obj, clsList):
@@ -110,9 +136,13 @@ class AppModule(appModuleHandler.AppModule):
             return
         if obj.IAccessibleChildID == 0:
             clsList.insert(0, top_panel.TopPanelToolbarWindow)
-        elif panel.main == obj.windowHandle:
+            return
+        button = panel.find(obj.windowHandle, obj.IAccessibleChildID - 1)
+        if button is None:
+            return
+        if button == panel.main and panel.main_shortcut:
             clsList.insert(0, top_panel.MainButton)
-        elif panel.has_menu(obj.windowHandle):
+        elif panel.has_menu(button):
             clsList.insert(0, top_panel.MenuButton)
         else:
             clsList.insert(0, top_panel.TopPanelButton)
