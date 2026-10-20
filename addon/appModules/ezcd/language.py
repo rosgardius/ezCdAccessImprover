@@ -52,3 +52,10 @@ class LanguageFiles:
     def texts(self, *numbers: int) -> set[str]:
         """All translations of the given strings."""
         return {strings[n] for strings in self._load() for n in numbers if strings.get(n)}
+
+    def text_in_language_of(self, number: int, shown_number: int, shown_text: str) -> str | None:
+        """The string in the language whose string ``shown_number`` is the text ezcd shows."""
+        for strings in self._load():
+            if strings.get(shown_number) == shown_text and strings.get(number):
+                return strings[number]
+        return None

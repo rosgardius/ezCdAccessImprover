@@ -44,6 +44,13 @@ is reported unchanged. While converting, the application may take a moment to an
 navigation, the "-" and "+" buttons of the application are the Decrease and Increase buttons on either
 side of the spin box; NVDA+Numpad Enter presses them.
 
+### Lists of files
+
+In the lists of files of the main window and of the conversion window, each file is read once, with
+all its columns, and the first arrow key after entering a list reports the file it moves to. When no
+file of a list has focus, focus stays on the list itself. The list of the conversion window is named
+Files, in the language of the application.
+
 ## Commands
 
 Commands of this add-on are listed in NVDA's Input Gestures dialog, under the

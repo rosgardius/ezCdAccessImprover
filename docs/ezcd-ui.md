@@ -75,9 +75,23 @@ absolute coordinates, captions in a particular language.
   into the tab, collects dialog text from all its panels: about 250 ms in the main window, with an
   empty result.
 
+## Lists of files
+
+- The lists of files and tracks are `TVirtualStringTree` windows (VirtualTrees) with their own MSAA
+  implementation: the tree and its focused node, nothing else. Without a focused node the item has no
+  name, also while the list has files.
+- The name of the item is the text of all visible columns, `value; header: value; …` in column order;
+  its description repeats the name without the first column.
+- When the focused node changes, the tree fires name change, value change, state change, selection and
+  focus, all on (tree window, `OBJID_CLIENT`, 0). The focus event comes last. A change of the focused
+  node's text alone, such as the progress in the conversion window, fires nothing.
+- The tree's own name is not translated: List of files in the main window, Format in the conversion
+  window. String `[494]` of the language files is Files.
+
 ## Conversion window
 
 - A top-level `TConvertWnd` window, shown while files are converted and kept open after the end.
+  Its caption is string `[476]` (Converting files).
   The application also has `TConvertWnd_Single`, of the same layout but with one converter bar in a
   `TPanel` right on the form. It did not appear with one converter, one file or a loudness scan, so
   when it is used is not known.

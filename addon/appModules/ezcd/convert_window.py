@@ -70,9 +70,13 @@ class State(enum.Enum):
     FINISHED = enum.auto()
 
 
+def is_conversion_window(window: int) -> bool:
+    return winUser.getClassName(window) in _WINDOW_CLASSES
+
+
 def bar_kind(hwnd: int) -> Bar | None:
     """Which bar of the conversion window a progress bar window is, ``None`` if it is in another window."""
-    if winUser.getClassName(winUser.getAncestor(hwnd, winUser.GA_ROOT)) not in _WINDOW_CLASSES:
+    if not is_conversion_window(winUser.getAncestor(hwnd, winUser.GA_ROOT)):
         return None
     # The total bar is in the summary panel, inside the panel with the file list. A converter bar is in
     # the grid panel, or, in the window for one converter, in a panel right on the form.
@@ -87,7 +91,7 @@ def bar_kind(hwnd: int) -> Bar | None:
 
 def summary_panel(window: int) -> int | None:
     """The summary panel of a conversion window, the parent of the total bar."""
-    if winUser.getClassName(window) not in _WINDOW_CLASSES:
+    if not is_conversion_window(window):
         return None
     for outer in child_windows(window, _PANEL_CLASS):
         for panel in child_windows(outer, _PANEL_CLASS):

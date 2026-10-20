@@ -10,6 +10,7 @@ from ctypes.wintypes import DWORD
 import addonHandler
 import api
 import appModuleHandler
+import eventHandler
 import inputCore
 import oleacc
 import winKernel
@@ -19,7 +20,7 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from winBindings import kernel32
 
-from . import convert_window, converters, top_panel
+from . import convert_window, converters, file_lists, top_panel
 from .language import LanguageFiles
 
 addonHandler.initTranslation()
@@ -105,6 +106,20 @@ class AppModule(appModuleHandler.AppModule):
                 return
         nextHandler()
 
+    def event_nameChange(self, obj, nextHandler):
+        if obj.windowClassName == file_lists.TREE_CLASS:
+            focus = api.getFocusObject()
+            if file_lists.is_list_focus_event(obj, focus):
+                # The focus event that follows would be dropped as a duplicate of the item without a name.
+                item = file_lists.focused_file(obj.windowHandle)
+                if item is not None:
+                    eventHandler.queueEvent("gainFocus", item)
+                return
+            if obj is not focus and file_lists.is_focused_file_event(obj, focus):
+                eventHandler.executeEvent("nameChange", focus)
+                return
+        nextHandler()
+
     def event_valueChange(self, obj, nextHandler):
         if obj.windowClassName == convert_window.PROGRESS_BAR_CLASS:
             kind = convert_window.bar_kind(obj.windowHandle)
@@ -155,6 +170,14 @@ class AppModule(appModuleHandler.AppModule):
                     clsList.insert(0, converters.ConvertersSpinWindow)
                 else:
                     clsList.insert(0, converters.ConvertersSpinBox)
+            return
+        if obj.windowClassName == file_lists.TREE_CLASS and obj.IAccessibleChildID == 0:
+            if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINEITEM:
+                clsList.insert(0, file_lists.FileListItem)
+            elif obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINE and file_lists.is_conversion_list(
+                obj.windowHandle
+            ):
+                clsList.insert(0, file_lists.ConversionFileList)
             return
         if obj.windowClassName == top_panel.PAGE_CONTROL_CLASS:
             clsList.insert(0, top_panel.TabLabels)
