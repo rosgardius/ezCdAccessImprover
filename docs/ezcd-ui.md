@@ -86,6 +86,17 @@ absolute coordinates, captions in a particular language.
   `TPanel`, inside the `TPanel` that also holds the file list.
 - The labels of the summary panel (Total, Converted, Speed, …) are `TLabel`s without windows,
   visible only in the display model; the total bar has no MSAA name.
+- The summary panel is a `TPanel` holding the total bar. Its labels keep their design-time positions
+  scaled by the window's DPI / 96, while the bar and the percentage right of it stretch with the window.
+  In design units, the bar is at top 16 with the percentage right of it; below are three rows (tops 37,
+  53, 69) of label and value pairs, labels at left 0, 264, 528 and values at 128, 384, 648:
+  Converted, Elapsed, Threads; Errors, Remaining, CPU; Skipped, Speed, Average CPU.
+- When a value changes, ezcd fills the background of the whole panel and draws only the changed labels
+  again. NVDA's display model clears the whole filled rectangle regardless of clipping, so it holds only
+  the last changed values. `RedrawWindow` with `RDW_INVALIDATE | RDW_UPDATENOW` on the panel makes ezcd
+  draw all of them; it took 4–80 ms during a conversion.
+- While paused, the Pause button reads Resume (language string `[145]`). After the end, Pause is
+  disabled and Cancel reads Close.
 
 ## Keyboard
 

@@ -8,13 +8,14 @@ import ctypes
 from ctypes.wintypes import DWORD
 
 import addonHandler
+import api
 import appModuleHandler
 import inputCore
 import winKernel
 import winUser
 from keyboardHandler import KeyboardInputGesture
 from logHandler import log
-from NVDAObjects.IAccessible import IAccessible
+from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from winBindings import kernel32
 
 from . import convert_window, top_panel
@@ -40,6 +41,7 @@ class AppModule(appModuleHandler.AppModule):
         self._tab_menu_tab = 0
         self._tab_pressed = False
         self._tab_kept = False
+        self._conversion_status = convert_window.ConversionStatus()
         inputCore.decide_executeGesture.register(self._note_gesture)
 
     def terminate(self):
@@ -101,13 +103,27 @@ class AppModule(appModuleHandler.AppModule):
         nextHandler()
 
     def event_valueChange(self, obj, nextHandler):
-        # Every converter bar changes several times a second; drop them before anything else.
-        if (
-            obj.windowClassName == convert_window.PROGRESS_BAR_CLASS
-            and convert_window.bar_kind(obj.windowHandle) == convert_window.Bar.CONVERTER
-        ):
-            return
+        if obj.windowClassName == convert_window.PROGRESS_BAR_CLASS:
+            kind = convert_window.bar_kind(obj.windowHandle)
+            # Every converter bar changes several times a second; drop them before anything else.
+            if kind == convert_window.Bar.CONVERTER:
+                return
+            if kind == convert_window.Bar.TOTAL:
+                self._conversion_status.sample_speed(obj.windowHandle, self.helperLocalBindingHandle)
         nextHandler()
+
+    def _get_statusBar(self):
+        window = winUser.getAncestor(api.getForegroundObject().windowHandle, winUser.GA_ROOT)
+        panel = convert_window.summary_panel(window)
+        if panel is None:
+            raise NotImplementedError
+        return getNVDAObjectFromEvent(panel, winUser.OBJID_CLIENT, 0)
+
+    def getStatusBarText(self, obj):
+        window = winUser.getAncestor(obj.windowHandle, winUser.GA_ROOT)
+        if obj.windowHandle != convert_window.summary_panel(window):
+            raise NotImplementedError
+        return self._conversion_status.text(window, self.helperLocalBindingHandle, self.language)
 
     def event_appModule_loseFocus(self):
         self._tab_menu_tab = 0

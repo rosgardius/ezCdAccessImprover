@@ -31,6 +31,13 @@ Only the total progress of the conversion is reported, as NVDA's progress bar se
 progress bars of the individual converters are silent. The total progress bar is named "Total
 progress".
 
+NVDA+End (NVDA+Shift+End in the laptop layout), NVDA's command that reads the status bar, reports the
+state of the conversion: the total percentage, the number of converted files, the remaining time and
+the speed, averaged over the last 5 seconds while the window is in the foreground. Errors and skipped
+files are reported when there are any. A paused conversion starts with "Paused" and has no speed; a
+finished one starts with "Finished" and gives the elapsed time instead of the remaining one. As
+elsewhere, pressing the command twice spells the text and three times copies it to the clipboard.
+
 ## Commands
 
 Commands of this add-on are listed in NVDA's Input Gestures dialog, under the

@@ -20,13 +20,13 @@ from winBindings import user32
 
 from . import toolbar
 from .language import LanguageFiles
+from .windows import child_windows
 
 TOOLBAR_CLASS = "TToolBar"
 PAGE_CONTROL_CLASS = "TPageControl"
 TAB_CLASS = "TTabSheet"
 PANEL_CLASS = "TPanel"
 _MAIN_WINDOW_CLASS = "TMainform"
-_GW_CHILD = 5
 
 # The tab's main action, recognised by the ImageIndex of its button and its caption in the language file,
 # and whether F8 presses it.
@@ -85,16 +85,6 @@ class TopPanel:
         return next((b for b in buttons if b.key == key), buttons[0] if buttons else None)
 
 
-def _child_windows(hwnd: int, class_name: str) -> list[int]:
-    children = []
-    child = winUser.getWindow(hwnd, _GW_CHILD)
-    while child:
-        if winUser.getClassName(child) == class_name:
-            children.append(child)
-        child = winUser.getWindow(child, winUser.GW_HWNDNEXT)
-    return children
-
-
 def _parent(hwnd: int) -> int:
     return winUser.getAncestor(hwnd, winUser.GA_PARENT)
 
@@ -120,7 +110,7 @@ def _main_shortcut(button: toolbar.ToolButton, language: LanguageFiles) -> bool 
 def _read_panel(panel: int, process_handle: int, language: LanguageFiles) -> TopPanel | None:
     shown = []
     try:
-        for hwnd in _child_windows(panel, TOOLBAR_CLASS):
+        for hwnd in child_windows(panel, TOOLBAR_CLASS):
             if winUser.isWindowVisible(hwnd):
                 left = _left(hwnd)
                 shown += [
@@ -160,7 +150,7 @@ def panel_of(hwnd: int, process_handle: int, language: LanguageFiles) -> TopPane
 
 
 def panel_of_tab(tab: int, process_handle: int, language: LanguageFiles) -> TopPanel | None:
-    for panel in _child_windows(tab, PANEL_CLASS):
+    for panel in child_windows(tab, PANEL_CLASS):
         found = _read_panel(panel, process_handle, language)
         if found is not None:
             return found
@@ -172,9 +162,7 @@ def is_main_window_tab(hwnd: int) -> bool:
 
 
 def active_tab(page_control: int) -> int | None:
-    return next(
-        (tab for tab in _child_windows(page_control, TAB_CLASS) if winUser.isWindowVisible(tab)), None
-    )
+    return next((tab for tab in child_windows(page_control, TAB_CLASS) if winUser.isWindowVisible(tab)), None)
 
 
 def panel_left_by_tab(
