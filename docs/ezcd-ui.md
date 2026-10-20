@@ -98,6 +98,20 @@ absolute coordinates, captions in a particular language.
 - While paused, the Pause button reads Resume (language string `[145]`). After the end, Pause is
   disabled and Cancel reads Close.
 
+### Number of converters
+
+- The only `TEdit` of `TConvertWnd` (none in `TConvertWnd_Single`), in a `TPanel` under the file list.
+  It is read-only and in the tab order after the file list. Its text must be read with `WM_GETTEXT`: the
+  window text Windows keeps for it is not updated. The edit has no MSAA name.
+- The "-" and "+" buttons are `TSpeedButton`s without windows, 23 × 23 design units, 3 units left and
+  right of the edit, level with its top, scaled by the window's DPI / 96. Their DFM `Left` does not hold
+  at runtime: the localized caption left of them is longer. The caption is a `TLabel`, visible only
+  in the display model.
+- A `WM_LBUTTONDOWN`/`WM_LBUTTONUP` pair to the panel at the centre of a button presses it, posted or
+  sent; a sent pair returns once the number has changed. The number goes down to 1 and up to at least 37.
+- While converting, ezcd's window thread answers messages 5–360 ms late, and stops answering for up to
+  seconds while it starts or stops converters. Paused or finished, it answers in a few milliseconds.
+
 ## Keyboard
 
 - F8 presses Convert or Rip CD, depending on the current tab. The hint text (`Convert [ F8 ]`) is not

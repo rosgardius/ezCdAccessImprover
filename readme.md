@@ -38,6 +38,12 @@ files are reported when there are any. A paused conversion starts with "Paused" 
 finished one starts with "Finished" and gives the elapsed time instead of the remaining one. As
 elsewhere, pressing the command twice spells the text and three times copies it to the clipboard.
 
+The number of converters is a spin box, named by the caption next to it. Up and Down Arrow add and
+remove a converter and report the new number, also while the conversion runs; at the limit the number
+is reported unchanged. While converting, the application may take a moment to answer. In object
+navigation, the "-" and "+" buttons of the application are the Decrease and Increase buttons on either
+side of the spin box; NVDA+Numpad Enter presses them.
+
 ## Commands
 
 Commands of this add-on are listed in NVDA's Input Gestures dialog, under the

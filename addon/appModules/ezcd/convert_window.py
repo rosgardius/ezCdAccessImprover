@@ -109,7 +109,7 @@ def state(window: int, language: LanguageFiles) -> State:
     return State.RUNNING
 
 
-def _logical_rect(hwnd: int, reference: int) -> RECT:
+def logical_rect(hwnd: int, reference: int) -> RECT:
     rect = RECT()
     user32.GetWindowRect(hwnd, ctypes.byref(rect))
     rect.left, rect.top = windowUtils.physicalToLogicalPoint(reference, rect.left, rect.top)
@@ -119,6 +119,22 @@ def _logical_rect(hwnd: int, reference: int) -> RECT:
 
 def _nearest(value: float, anchors: tuple[int, ...]) -> int:
     return min(anchors, key=lambda anchor: abs(anchor - value))
+
+
+def display_texts(window: int, area: RECT, binding_handle) -> list[tuple[int, int, str]]:
+    """The texts the display model has for the window within the area, with the left and top of each."""
+    text, rects = displayModel.getWindowTextInRect(
+        binding_handle, window, area.left, area.top, area.right, area.bottom, 8, 32, True, False
+    )
+    texts = []
+    offset = 0
+    for item in XMLFormatting.XMLTextParser().parse(f"<control>{text}</control>"):
+        if not isinstance(item, str):
+            continue
+        start, offset = offset, offset + textUtils.WideStringOffsetConverter(item).encodedStringLength
+        if item.strip() and start < len(rects):
+            texts.append((rects[start].left, rects[start].top, item.strip()))
+    return texts
 
 
 @dataclass(frozen=True)
@@ -136,7 +152,7 @@ class Summary:
         return self.cells.get((row, value), "")
 
 
-def _redraw(panel: int) -> bool:
+def redraw(panel: int) -> bool:
     """Has ezcd paint the whole panel; ``False`` if it did not in time.
 
     ezcd fills the panel's background on every change and draws only the changed labels again, and the
@@ -158,31 +174,22 @@ def read_summary(panel: int, binding_handle) -> Summary | None:
     bars = child_windows(panel, PROGRESS_BAR_CLASS)
     if not bars or not binding_handle:
         return None
-    area = _logical_rect(panel, panel)
-    bar = _logical_rect(bars[0], panel)
+    area = logical_rect(panel, panel)
+    bar = logical_rect(bars[0], panel)
     # The labels stay where the form designer put them, scaled with the form; the bar and the percentage
     # stretch with the window.
     scale = (user32.GetDpiForWindow(panel) or _DEFAULT_DPI) / _DEFAULT_DPI
-    text, rects = displayModel.getWindowTextInRect(
-        binding_handle, panel, area.left, area.top, area.right, area.bottom, 8, 32, True, False
-    )
-    if not text:
+    found = display_texts(panel, area, binding_handle)
+    if not found:
         return None
     pieces: dict[tuple[int, int], list[tuple[int, str]]] = collections.defaultdict(list)
     percent = []
-    offset = 0
-    for item in XMLFormatting.XMLTextParser().parse(f"<control>{text}</control>"):
-        if not isinstance(item, str):
-            continue
-        start, offset = offset, offset + textUtils.WideStringOffsetConverter(item).encodedStringLength
-        if not item.strip() or start >= len(rects):
-            continue
-        left = rects[start].left
-        row = _nearest((rects[start].top - area.top) / scale, _ROWS)
+    for left, top, text in found:
+        row = _nearest((top - area.top) / scale, _ROWS)
         if row == _BAR_ROW and left >= bar.right:
-            percent.append((left, item.strip()))
+            percent.append((left, text))
         elif row > _BAR_ROW:
-            pieces[row, _nearest((left - area.left) / scale, _COLUMNS)].append((left, item.strip()))
+            pieces[row, _nearest((left - area.left) / scale, _COLUMNS)].append((left, text))
     cells = {cell: " ".join(t for _x, t in sorted(texts)) for cell, texts in pieces.items()}
     return Summary(" ".join(t for _x, t in sorted(percent)), cells)
 
@@ -270,7 +277,7 @@ class ConversionStatus:
             last_panel, last_time, last_text = self._last
             if last_panel == panel and time.monotonic() - last_time < _STATUS_REUSE:
                 return last_text
-        if not _redraw(panel):
+        if not redraw(panel):
             log.debugWarning("The summary panel of the conversion window was not redrawn in time")
         summary = read_summary(panel, binding_handle)
         if summary is None:

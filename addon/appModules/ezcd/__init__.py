@@ -11,6 +11,7 @@ import addonHandler
 import api
 import appModuleHandler
 import inputCore
+import oleacc
 import winKernel
 import winUser
 from keyboardHandler import KeyboardInputGesture
@@ -18,7 +19,7 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from winBindings import kernel32
 
-from . import convert_window, top_panel
+from . import convert_window, converters, top_panel
 from .language import LanguageFiles
 
 addonHandler.initTranslation()
@@ -42,10 +43,12 @@ class AppModule(appModuleHandler.AppModule):
         self._tab_pressed = False
         self._tab_kept = False
         self._conversion_status = convert_window.ConversionStatus()
+        self.converter_steps = converters.StepAnnouncer()
         inputCore.decide_executeGesture.register(self._note_gesture)
 
     def terminate(self):
         inputCore.decide_executeGesture.unregister(self._note_gesture)
+        self.converter_steps.terminate()
         super().terminate()
 
     def _executable_path(self) -> str | None:
@@ -145,6 +148,13 @@ class AppModule(appModuleHandler.AppModule):
         if obj.windowClassName == convert_window.PROGRESS_BAR_CLASS:
             if convert_window.bar_kind(obj.windowHandle) == convert_window.Bar.TOTAL:
                 clsList.insert(0, convert_window.TotalProgressBar)
+            return
+        if obj.windowClassName == converters.EDIT_CLASS:
+            if obj.IAccessibleChildID == 0 and converters.is_converters_edit(obj.windowHandle):
+                if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_WINDOW:
+                    clsList.insert(0, converters.ConvertersSpinWindow)
+                else:
+                    clsList.insert(0, converters.ConvertersSpinBox)
             return
         if obj.windowClassName == top_panel.PAGE_CONTROL_CLASS:
             clsList.insert(0, top_panel.TabLabels)
