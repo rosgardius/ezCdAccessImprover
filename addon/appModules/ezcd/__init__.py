@@ -112,5 +112,7 @@ class AppModule(appModuleHandler.AppModule):
             clsList.insert(0, top_panel.TopPanelToolbarWindow)
         elif panel.main == obj.windowHandle:
             clsList.insert(0, top_panel.MainButton)
+        elif panel.has_menu(obj.windowHandle):
+            clsList.insert(0, top_panel.MenuButton)
         else:
             clsList.insert(0, top_panel.TopPanelButton)

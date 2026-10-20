@@ -40,6 +40,11 @@ absolute coordinates, captions in a particular language.
   with the same images never match.
 - The Disc Burner tab has no such main button; it has a three-button toolbar and repeated image numbers on its top panel.
 - Disabled buttons lack `TBSTATE_ENABLED` in `fsState`.
+- The buttons marked ▼ in the caption, and View and Help, open a menu (`DropdownMenu`): converter
+  images 0, 4, 15, 19, ripper images 1, 3, 4, 15, 19. Nothing in the toolbar or MSAA tells them
+  from other buttons: `fsStyle` is `TBSTYLE_AUTOSIZE` on all of them, without `TBSTYLE_DROPDOWN`.
+  The menu opens on the mouse press, in a modal menu loop; the posted click opens it all the same,
+  and Escape returns focus to the toolbar.
 - Pressing: a posted `WM_LBUTTONDOWN`/`WM_LBUTTONUP` pair at the centre of `TB_GETITEMRECT`, in the
   toolbar's client coordinates, presses the button (no DPI conversion needed). The proxy's
   `accDoDefaultAction` and `WM_COMMAND` to the parent do nothing.

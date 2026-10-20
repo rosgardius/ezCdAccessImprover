@@ -4,6 +4,7 @@
 
 """The top panel of the converter and ripper tabs: a row of single-button toolbars."""
 
+import contextlib
 import ctypes
 from ctypes.wintypes import RECT
 from dataclasses import dataclass
@@ -30,6 +31,12 @@ _MAIN_BUTTONS = (
     (1, (232, 406)),  # Audio Converter: "Convert"
     (0, (176,)),  # Audio CD Ripper: "Rip CD"
 )
+# Images of the buttons that open a menu, by ``TopPanel.key``.
+_MENU_BUTTONS = {
+    1: frozenset((0, 4, 15, 19)),  # Audio Converter ▼, Metadata ▼, View, Help
+    0: frozenset((1, 3, 4, 15, 19)),  # CD Ripper ▼, Disc ▼, Metadata ▼, View, Help
+}
+_MENU_MARK = "▼"
 
 
 @dataclass(frozen=True)
@@ -43,6 +50,9 @@ class TopPanel:
     def key(self) -> int:
         """Tells the converter's panel from the ripper's: the image of the main button."""
         return self.buttons[self.main].image
+
+    def has_menu(self, hwnd: int) -> bool:
+        return self.buttons[hwnd].image in _MENU_BUTTONS.get(self.key, ())
 
     def entry(self, remembered: dict[int, int]) -> int:
         """The toolbar to enter the panel at: the remembered button while it is shown, else the main one."""
@@ -264,6 +274,24 @@ class MainButton(TopPanelButton):
 
     def _get_keyboardShortcut(self):
         return "F8"
+
+
+class MenuButton(TopPanelButton):
+    """A button that opens a menu: on the press of the mouse, so a posted click opens it too."""
+
+    def _get_role(self):
+        return controlTypes.Role.MENUBUTTON
+
+    def _get_name(self):
+        # The role tells about the menu; the caption marks it with a trailing triangle.
+        name = super().name
+        return name.replace(_MENU_MARK, "").strip() if name else name
+
+    @script(gesture="kb:downArrow")
+    def script_open_menu(self, gesture):
+        # Unlike Enter, the arrow is not sent on if the click fails: VCL would move focus to another toolbar.
+        with contextlib.suppress(NotImplementedError):
+            self.doAction()
 
 
 class TabLabels(IAccessible):

@@ -18,6 +18,9 @@ unavailable. Convert and Rip CD report their shortcut, F8.
   after the application starts.
 * Left and Right Arrow move between the buttons, Home and End to the first and the last one.
 * Enter, Numpad Enter and Space press the focused button.
+* The buttons that open a menu (Audio Converter, CD Ripper, Disc, Metadata, View and Help) are
+  reported as menu buttons. Enter, Space or Down Arrow opens the menu; Escape closes it and returns
+  to the button.
 * To press a button without focusing it, move the navigator object to it and press NVDA+Numpad Enter.
 
 ## Commands
