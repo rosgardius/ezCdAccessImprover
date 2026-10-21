@@ -21,7 +21,7 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from winBindings import kernel32
 
-from . import convert_window, converters, file_lists, top_panel
+from . import cells, convert_window, converters, file_lists, top_panel
 from .language import LanguageFiles
 
 addonHandler.initTranslation()
@@ -47,6 +47,7 @@ class AppModule(appModuleHandler.AppModule):
         self._conversion_status = convert_window.ConversionStatus()
         self.converter_steps = converters.StepAnnouncer()
         self.closed_editor = file_lists.ClosedEditor()
+        self.cells = cells.CellTable(self.language)
         inputCore.decide_executeGesture.register(self._note_gesture)
 
     def terminate(self):
@@ -81,9 +82,12 @@ class AppModule(appModuleHandler.AppModule):
         self._tab_pressed = is_key and gesture.vkCode == winUser.VK_TAB and not gesture.modifiers
         if is_key:
             self.closed_editor.note_key(gesture)
+            self.cells.note_key(gesture.vkCode)
         return True
 
     def event_gainFocus(self, obj, nextHandler):
+        if isinstance(obj, cells.CellEditor) and obj.is_closed:
+            return
         previous, self._focus_window = self._focus_window, obj.windowHandle
         tab_pressed, self._tab_pressed = self._tab_pressed, False
         self._tab_kept = False
@@ -92,6 +96,8 @@ class AppModule(appModuleHandler.AppModule):
             return
         if self.closed_editor.is_unasked(obj):
             self.closed_editor.close(obj.windowHandle)
+            return
+        if self.cells.handle_focus(obj, self.helperLocalBindingHandle):
             return
         if self._tab_menu_tab and obj.windowClassName != _MENU_CLASS:
             # Whichever tab was chosen, VCL puts focus on the tab's first control.
@@ -153,7 +159,14 @@ class AppModule(appModuleHandler.AppModule):
     def event_appModule_loseFocus(self):
         self._tab_menu_tab = 0
 
+    def event_foreground(self, obj, nextHandler):
+        if self.cells.is_coming_back(obj):
+            return
+        nextHandler()
+
     def event_focusEntered(self, obj, nextHandler):
+        if self.cells.is_coming_back(obj):
+            return
         # Focus stayed in the tab: the tab labels in between were not announced.
         if self._tab_kept and obj.windowClassName == top_panel.TAB_CLASS:
             return
@@ -178,6 +191,10 @@ class AppModule(appModuleHandler.AppModule):
                 else:
                     clsList.insert(0, converters.ConvertersSpinBox)
             return
+        if obj.windowClassName == file_lists.EDITOR_CLASS:
+            if cells.is_main_list_editor(obj.windowHandle):
+                clsList.insert(0, cells.CellEditor)
+            return
         if obj.windowClassName == file_lists.TREE_CLASS and obj.IAccessibleChildID == 0:
             if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINEITEM:
                 if file_lists.is_conversion_list(obj.windowHandle):
@@ -188,6 +205,13 @@ class AppModule(appModuleHandler.AppModule):
                 obj.windowHandle
             ):
                 clsList.insert(0, file_lists.ConversionFileList)
+            elif not file_lists.is_conversion_list(obj.windowHandle):
+                # The list itself, or a file as ezcd shows it while busy.
+                clsList.insert(0, cells.BetweenEditors)
+            return
+        if obj.windowClassName == top_panel.MAIN_WINDOW_CLASS:
+            if obj.IAccessibleChildID == 0:
+                clsList.insert(0, cells.BetweenEditors)
             return
         if obj.windowClassName == top_panel.PAGE_CONTROL_CLASS:
             clsList.insert(0, top_panel.TabLabels)

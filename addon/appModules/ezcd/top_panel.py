@@ -26,7 +26,7 @@ TOOLBAR_CLASS = "TToolBar"
 PAGE_CONTROL_CLASS = "TPageControl"
 TAB_CLASS = "TTabSheet"
 PANEL_CLASS = "TPanel"
-_MAIN_WINDOW_CLASS = "TMainform"
+MAIN_WINDOW_CLASS = "TMainform"
 
 # The tab's main action, recognised by the ImageIndex of its button and its caption in the language file,
 # and whether F8 presses it.
@@ -158,7 +158,7 @@ def panel_of_tab(tab: int, process_handle: int, language: LanguageFiles) -> TopP
 
 
 def is_main_window_tab(hwnd: int) -> bool:
-    return winUser.getClassName(_parent(_parent(hwnd))) == _MAIN_WINDOW_CLASS
+    return winUser.getClassName(_parent(_parent(hwnd))) == MAIN_WINDOW_CLASS
 
 
 def active_tab(page_control: int) -> int | None:

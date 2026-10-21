@@ -63,6 +63,50 @@ that is not selected is reported as "not selected":
 
 These commands report the new state of the file and are silent when they change nothing.
 
+The metadata of the files can be edited right in the list of files of the main window, as in a table
+whose columns are Track artist, Title, Album and the others:
+
+* F2 opens the field of the focused file in the column it was last open in and reports the column and
+  the value. The whole value is selected, so typing replaces it.
+* Tab and Shift+Tab move to the next and the previous column that can be edited, keeping what was
+  typed, and report the column and the value. Columns that cannot be edited in the list, such as the
+  file name, Rating or the file's properties, are skipped. At the first and the last column, the column
+  and the value are reported again. Held down, they report only the column they stop at.
+* Alt+Home and Alt+End move to the first and the last column that can be edited, the last being the
+  one before Lyrics, and report it. With many columns this takes about a second; any key stops it.
+* Up and Down Arrow move to the same column of the previous and the next file and report the file name
+  and the value. As in the application, they wrap around at the first and the last file. Held down,
+  they report only the file they stop at.
+* Tab or Shift+Tab to the Lyrics column opens the application's Lyrics dialog. When the dialog closes,
+  focus returns to the field of the column it was opened from.
+* Enter keeps the change and returns to the list, Escape discards it. F2 then opens the same column
+  again.
+* On a file, Left and Right Arrow do nothing; the application would open the field of another column.
+* NVDA+Tab, NVDA's command that reports the focus, says which column the field is in, the file name
+  (if NVDA reports object descriptions) and the value.
+
+The application has its own keys for the field, which are reported the same way: Alt+Left and
+Alt+Right Arrow move to the previous and the next column that can be edited, and Alt+Up and Alt+Down
+Arrow to the previous and the next file. Unlike Tab, Alt+Left and Alt+Right go round within the file:
+from the last column to the first one and back, so you do not hear where the row ends. They also pass
+the Lyrics column by without opening its dialog. Use Tab and Shift+Tab to go through the columns of
+a file one by one and know when you have reached its first or last column, or to open the lyrics; use
+Alt+Left from the first column to get to the last one at once, or Alt+Home and Alt+End to get to either
+end from anywhere in the row.
+
+Moving the field takes the application a moment, and this cannot be made faster: for every move it
+closes the field, keeping what was typed, and opens a new one in the next cell. You may notice it:
+
+* Up and Down Arrow, and Alt with the arrow keys, take about a fifth of a second for each file. Held
+  down, Up and Down Arrow move fewer files than the key repeats, as the application skips the repeats
+  that come while it is still moving; Alt+Up and Alt+Down keep moving for a moment after the key is
+  released.
+* Tab and Shift+Tab take a little longer when they pass columns that cannot be edited or when the list
+  has to scroll sideways.
+* Alt+Home and Alt+End take up to about a second with many columns shown. The application has no
+  command to go to the first or the last column, so the field is moved there column by column.
+* The Lyrics dialog takes a moment to open, and NVDA is silent meanwhile.
+
 ## Commands
 
 Commands of this add-on are listed in NVDA's Input Gestures dialog, under the

@@ -80,8 +80,8 @@ absolute coordinates, captions in a particular language.
 - The lists of files and tracks are `TVirtualStringTree` windows (VirtualTrees) with their own MSAA
   implementation: the tree and its focused node, nothing else. Without a focused node the item has no
   name, also while the list has files.
-- The name of the item is the text of all visible columns, `value; header: value; …` in column order;
-  its description repeats the name without the first column.
+- The name of the item is the text of the visible columns that have text, `value; header: value; …` in
+  column order; its description repeats the name without the first column, the file name.
 - When the focused node changes, the tree fires name change, value change, state change, selection and
   focus, all on (tree window, `OBJID_CLIENT`, 0). The focus event comes last. A change of the focused
   node's text alone, such as the progress in the conversion window, fires nothing.
@@ -103,11 +103,54 @@ absolute coordinates, captions in a particular language.
 - Keys of the main window's list: Up, Down, Home, End, Page Up and Page Down select only the node they
   move to, with Shift they extend the selection, with Control they scroll without moving the focus.
   Control+A selects all nodes. Space and Control+Space do nothing.
-- Right Arrow on a file opens the cell editor (`TVTEdit`, a child window of the tree) in the next
-  column. Once a column other than the file name has been focused this way, the tree opens the editor
-  in that column whenever its focus moves, except on the plain arrow keys, Home, End, Page Up and Page
-  Down: with Shift, by `accSelect`. Escape in the editor closes it but keeps the column; Escape posted
-  to the editor does the same.
+- `TVM_GETITEMW` with `TVIF_TEXT` gives an empty text.
+
+### Cell editing in the main window's list
+
+- The cell editor is a `TVTEdit` child window of the tree (`ES_MULTILINE`), created anew for each
+  cell and spanning it. Its text is read with `WM_GETTEXT`; when it opens, the whole text is selected.
+  While it is open, the tree still fires focus for its focused node.
+- The tree keeps a focused column and does not tell which one it is. Left and Right Arrow on a file
+  move it to the neighbouring column, only while no editor is open, and open the editor in it if the
+  column can be edited. A key press sent with `SendMessageTimeout` returns once the editor exists and
+  has the focus (25–35 ms); without an editor, in 1–5 ms. At the end of the row the key does nothing.
+  Once a column other than the file name has been focused, the tree also opens the editor in it when
+  its focus moves with Shift and the arrow keys, Home, End, Page Up and Page Down, or by `accSelect`.
+- F2 opens the editor in the focused column; if that column cannot be edited, in the column edited
+  last, leaving the focused one where it is.
+- In the editor: Enter keeps the text and closes it; Escape discards the text and closes it, the
+  focused column stays (Escape posted to the editor does the same); Up and Down Arrow keep the text and
+  open the editor in the same column of the previous or next file, wrapping around at the ends; Tab and
+  Shift+Tab do the same as Down and Up.
+- Also in the editor (ezcd's own navigation, since 9.5.1): Alt+Left and Alt+Right keep the text and
+  move the editor to the previous or next column that can be edited, passing Lyrics by and going round
+  within the file (from the last column to the first one and back); Alt+Up and Alt+Down move to the
+  previous or next file. Alt+Home and Alt+End do nothing. ezcd checks the real state of Alt: a
+  `WM_SYSKEYDOWN` sent or posted to the editor or the tree does nothing. With Alt marked down in the
+  shared key state the key works, but asynchronously: the editor closes, focus goes to the main form,
+  and the next editor opens about 25 ms after the key returns.
+- Not editable in the list: the file name, Rating, Compilation and the Info columns (Length, Format,
+  Bit rate, …).
+- The Lyrics column (caption `[474]`) opens the modal `TLyricsEditor` dialog in the tree's handling of
+  the key that focuses the column, so a key sent to the tree does not return while the dialog is open.
+  While the Lyrics column is focused, moving to another file opens the dialog too. After the dialog
+  closes, the focused column is the one before it or still the Lyrics column, depending on how it was
+  closed. With all columns shown, Lyrics is the last metadata column; the Info and EBU R 128 |
+  ReplayGain columns follow.
+- A key that moves the focused column while that column is scrolled partly out of view only scrolls
+  it back into view and opens the editor in it again. `WM_HSCROLL` with `SB_LINELEFT`/`SB_LINERIGHT`
+  scrolls by 20 pixels, taking up to 20 ms each.
+- An editor's window is destroyed when it closes; its handle is soon given to a new editor.
+- Moving the editor to another file takes ezcd about 130 ms. On keys held down, focus goes for a moment
+  to the main form or to the tree, with the tree's object of any role, between one editor and the next;
+  keys that come in between are lost on Up and Down Arrow. Alt+Up and Alt+Down are all handled, the
+  editor arriving up to a few seconds after the last key.
+- The column header is painted in the tree's non-client area and has no window. The display model has
+  each caption a few pixels right of its column's left edge; a caption at the edge of the view is cut
+  off. The tree has a standard horizontal scroll bar: `GetScrollInfo` works from another process, its
+  position is in the same units as the display model's coordinates, and `WM_HSCROLL` with
+  `SB_PAGELEFT`/`SB_PAGERIGHT` scrolls without moving the focus. After a scroll the header is in the
+  display model once the frame is painted again (`RedrawWindow` with `RDW_FRAME`).
 
 ## Conversion window
 

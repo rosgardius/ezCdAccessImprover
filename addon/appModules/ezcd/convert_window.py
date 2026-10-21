@@ -44,6 +44,7 @@ _COLUMNS = (0, 128, 264, 384, 528, 648)
 _SPEED_INTERVAL = 0.5
 _SPEED_PERIOD = 5.0
 _REDRAW_TIMEOUT = 0.3
+_RDW_FRAME = 0x0400
 _STATUS_REUSE = 0.5
 _NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
 
@@ -156,20 +157,21 @@ class Summary:
         return self.cells.get((row, value), "")
 
 
-def redraw(panel: int) -> bool:
-    """Has ezcd paint the whole panel; ``False`` if it did not in time.
+def redraw(window: int, frame: bool = False) -> bool:
+    """Has ezcd paint the window, with its non-client area if ``frame``; ``False`` if it did not in time.
 
-    ezcd fills the panel's background on every change and draws only the changed labels again, and the
-    fill clears the display model in the whole panel.
+    ezcd fills the summary panel's background on every change and draws only the changed labels again,
+    and the fill clears the display model in the whole panel.
     """
     done = threading.Event()
+    flags = winUser.RDW_INVALIDATE | winUser.RDW_UPDATENOW | (_RDW_FRAME if frame else 0)
 
     def redraw():
-        user32.RedrawWindow(panel, None, None, winUser.RDW_INVALIDATE | winUser.RDW_UPDATENOW)
+        user32.RedrawWindow(window, None, None, flags)
         done.set()
 
     # A window of another thread is painted synchronously: a hung ezcd must not stop NVDA.
-    threading.Thread(target=redraw, name="ezcdSummaryRedraw", daemon=True).start()
+    threading.Thread(target=redraw, name="ezcdRedraw", daemon=True).start()
     return done.wait(_REDRAW_TIMEOUT)
 
 

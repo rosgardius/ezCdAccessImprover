@@ -50,11 +50,8 @@ TVIF_HANDLE = 0x10
 TVIS_SELECTED = 0x2
 _SELECT_ALL_POLL_MS = 50
 _SELECT_ALL_POLLS = 10
-_WM_KEYDOWN = 0x100
-_WM_KEYUP = 0x101
 _CLOSED_EDITOR_EVENTS_SECONDS = 1.0
-# Keys that open the cell editor on purpose.
-_EDITOR_KEYS = (winUser.VK_LEFT, winUser.VK_RIGHT, winUser.VK_F2)
+_COLUMN_SEPARATOR = "; "
 
 
 class _TreeItem(ctypes.Structure):
@@ -210,8 +207,13 @@ class ClosedEditor:
     def note_key(self, gesture: KeyboardInputGesture):
         # Called in NVDA's keyboard hook thread.
         focus = winUser.getGUIThreadInfo(0).hwndFocus
-        self._key_in_tree = bool(focus) and winUser.getClassName(focus) == TREE_CLASS
-        self._key_opens_editor = gesture.vkCode in _EDITOR_KEYS and not gesture.modifiers
+        # A key held in the editor repeats while the add-on moves it, with the tree focused in between.
+        self._key_in_tree = (
+            bool(focus)
+            and winUser.getClassName(focus) == TREE_CLASS
+            and api.getFocusObject().windowClassName != EDITOR_CLASS
+        )
+        self._key_opens_editor = gesture.vkCode == winUser.VK_F2 and not gesture.modifiers
         self._key_time = time.monotonic()
 
     def is_unasked(self, obj) -> bool:
@@ -226,8 +228,7 @@ class ClosedEditor:
 
     def close(self, editor: int):
         # The editor cancels on Escape; nothing was typed into it.
-        winUser.PostMessage(editor, _WM_KEYDOWN, winUser.VK_ESCAPE, 0)
-        winUser.PostMessage(editor, _WM_KEYUP, winUser.VK_ESCAPE, 0)
+        remote.post_press(editor, winUser.VK_ESCAPE)
         self._editor = editor
         self._until = time.monotonic() + _CLOSED_EDITOR_EVENTS_SECONDS
 
@@ -258,6 +259,21 @@ def focused_file(hwnd: int) -> IAccessible | None:
     return obj
 
 
+def focused_file_name(hwnd: int) -> str:
+    """The name of the tree's focused file; empty if no file has focus."""
+    item = focused_file(hwnd)
+    if item is None:
+        return ""
+    try:
+        others = item.IAccessibleObject.accDescription(item.IAccessibleChildID) or ""
+    except COMError:
+        others = ""
+    # The description is the name without its first column, the file name.
+    if others and item.name.endswith(others):
+        return item.name[: -len(others)].removesuffix(_COLUMN_SEPARATOR)
+    return item.name
+
+
 class FileListItem(IAccessible):
     def _get_focusRedirect(self):
         # Without a focused file, the tree reports an item without a name.
@@ -278,6 +294,13 @@ class FileListItem(IAccessible):
 
 class MainFileListItem(FileListItem):
     """A file of the main window's list, where several files can be selected."""
+
+    def _get_shouldAllowIAccessibleFocusEvent(self):
+        # The tree reports focus for its focused file also while its cell editor or a dialog has it.
+        return (
+            winUser.getGUIThreadInfo(self.windowThreadID).hwndFocus == self.windowHandle
+            and super().shouldAllowIAccessibleFocusEvent
+        )
 
     def _focused_node_selected(self) -> tuple[int, bool | None]:
         node = next_node(self.windowHandle, TVGN_CARET)
@@ -341,6 +364,20 @@ class MainFileListItem(FileListItem):
             editor = cell_editor(self.windowHandle)
             if editor:
                 self.appModule.closed_editor.close(editor)
+
+    @script(gestures=["kb:leftArrow", "kb:rightArrow"])
+    def script_keep_column(self, gesture):
+        # On a file the tree would move its focused column and open the cell editor there; F2 opens it.
+        node = next_node(self.windowHandle, TVGN_CARET)
+        if self._is_editing() or (node and next_node(self.windowHandle, TVGN_CHILD, node)):
+            gesture.send()
+
+    @script(gesture="kb:f2")
+    def script_edit_cell(self, gesture):
+        if self._is_editing():
+            gesture.send()
+            return
+        self.appModule.cells.open_editor(self.windowHandle, self.appModule.helperLocalBindingHandle)
 
     @script(gesture="kb:control+upArrow")
     def script_previous_file(self, gesture):
