@@ -48,8 +48,9 @@ side of the spin box; NVDA+Numpad Enter presses them.
 
 In the lists of files of the main window and of the conversion window, each file is read once, with
 all its columns, and the first arrow key after entering a list reports the file it moves to. When no
-file of a list has focus, focus stays on the list itself. The list of the conversion window is named
-Files, in the language of the application.
+file of a list has focus, focus stays on the list itself. The lists of files of the main window and of
+the conversion window are named Files, in the language of the application. The lists of tracks of the
+CD Ripper and Disc Burner tabs are named by their tab page alone, instead of by internal English names.
 
 In the list of files of the main window, files are selected as in other Windows lists, and a file
 that is not selected is reported as "not selected":

@@ -206,6 +206,8 @@ class AppModule(appModuleHandler.AppModule):
             ):
                 clsList.insert(0, file_lists.ConversionFileList)
             elif not file_lists.is_conversion_list(obj.windowHandle):
+                if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINE:
+                    clsList.insert(0, file_lists.MainWindowList)
                 # The list itself, or a file as ezcd shows it while busy.
                 clsList.insert(0, cells.BetweenEditors)
             return

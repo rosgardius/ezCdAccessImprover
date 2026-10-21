@@ -33,6 +33,8 @@ TREE_CLASS = "TVirtualStringTree"
 EDITOR_CLASS = "TVTEdit"
 _FILES_STRING = 494
 _CONVERTING_STRING = 476
+_CONVERTER_PAGE_STRING = 9
+_PAGE_CLASS = "TTabSheet"
 
 TVM_GETNEXTITEM = 0x110A
 TVM_GETITEMW = 0x113E
@@ -77,6 +79,13 @@ class _TreeItem(ctypes.Structure):
 
 def is_conversion_list(hwnd: int) -> bool:
     return convert_window.is_conversion_window(winUser.getAncestor(hwnd, winUser.GA_ROOT))
+
+
+def _page(hwnd: int) -> int:
+    """The tab page the window is on; 0 if none."""
+    while hwnd and winUser.getClassName(hwnd) != _PAGE_CLASS:
+        hwnd = winUser.getAncestor(hwnd, winUser.GA_PARENT)
+    return hwnd
 
 
 def _is_client_event_with_focus(obj, focus, role: controlTypes.Role) -> bool:
@@ -473,6 +482,19 @@ class MainFileListItem(FileListItem):
             self._report_selection(was_selected)
             return
         core.callLater(_SELECT_ALL_POLL_MS, self._report_when_selected, was_selected, polls - 1)
+
+
+class MainWindowList(IAccessible):
+    """A list on a tab of the main window, named by ezcd in English or by its class name."""
+
+    def _get_name(self):
+        # Of the lists, only the converter's has a name among ezcd's strings; the tab page names the others.
+        return (
+            self.appModule.language.text_in_language_of(
+                _FILES_STRING, _CONVERTER_PAGE_STRING, winUser.getWindowText(_page(self.windowHandle))
+            )
+            or ""
+        )
 
 
 class ConversionFileList(IAccessible):

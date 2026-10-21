@@ -85,8 +85,10 @@ absolute coordinates, captions in a particular language.
 - When the focused node changes, the tree fires name change, value change, state change, selection and
   focus, all on (tree window, `OBJID_CLIENT`, 0). The focus event comes last. A change of the focused
   node's text alone, such as the progress in the conversion window, fires nothing.
-- The tree's own name is not translated: List of files in the main window, Format in the conversion
-  window. String `[494]` of the language files is Files.
+- The tree's own name is not translated: List of files on the converter tab, List of tracks on the CD
+  Ripper tab, its class name CDW_VirtualStringTree on the Audio CD page of the Disc Burner tab, Format in
+  the conversion window. String `[494]` of the language files is Files. The converter's tab page is a
+  `TTabSheet` captioned with string `[9]` (Convert audio files).
 - MSAA tells nothing about the selection: the focused node's state is the same whether it is selected or
   not, and no event comes when only the selection changes.
 - The tree answers `TVM_GETNEXTITEM` (`TVGN_ROOT`, `NEXT`, `PARENT`, `CHILD`, `FIRSTVISIBLE`,
