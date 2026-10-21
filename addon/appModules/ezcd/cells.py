@@ -86,7 +86,7 @@ class Column:
 
 def is_main_list_editor(hwnd: int) -> bool:
     tree = winUser.getAncestor(hwnd, winUser.GA_PARENT)
-    return winUser.getClassName(tree) == file_lists.TREE_CLASS and not file_lists.is_conversion_list(tree)
+    return winUser.getClassName(tree) == file_lists.TREE_CLASS and file_lists.is_main_window_list(tree)
 
 
 def _scroll_info(tree: int) -> _ScrollInfo | None:
@@ -278,7 +278,7 @@ class CellTable:
             return False
         is_list = obj.windowClassName == file_lists.TREE_CLASS and (
             obj.windowHandle == back.tree
-            or (not back.tree and not file_lists.is_conversion_list(obj.windowHandle))
+            or (not back.tree and file_lists.is_main_window_list(obj.windowHandle))
         )
         if not is_list:
             if obj.windowHandle != root:

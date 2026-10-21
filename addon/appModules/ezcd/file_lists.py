@@ -8,6 +8,7 @@ The tree also answers some TreeView messages; a node handle there is VirtualTree
 """
 
 import ctypes
+import re
 import time
 from collections.abc import Callable, Iterator
 
@@ -27,7 +28,7 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from scriptHandler import script
 
-from . import convert_window, remote
+from . import convert_window, remote, top_panel
 
 TREE_CLASS = "TVirtualStringTree"
 EDITOR_CLASS = "TVTEdit"
@@ -54,9 +55,11 @@ _SELECT_ALL_POLL_MS = 50
 _SELECT_ALL_POLLS = 10
 _CLOSED_EDITOR_EVENTS_SECONDS = 1.0
 _COLUMN_SEPARATOR = "; "
+# Such as VirtualStringTree1 or CDW_VirtualStringTree.
+_COMPONENT_NAME = re.compile(r"\w*VirtualStringTree\d*")
 
 
-class _TreeItem(ctypes.Structure):
+class _TvItem(ctypes.Structure):
     # TVITEMEXW; ezcd and NVDA are both 64-bit.
     _fields_ = (
         ("mask", ctypes.c_uint),
@@ -79,6 +82,11 @@ class _TreeItem(ctypes.Structure):
 
 def is_conversion_list(hwnd: int) -> bool:
     return convert_window.is_conversion_window(winUser.getAncestor(hwnd, winUser.GA_ROOT))
+
+
+def is_main_window_list(hwnd: int) -> bool:
+    """A list on a tab of the main window; the add-on leaves the trees of dialogs to NVDA."""
+    return winUser.getClassName(winUser.getAncestor(hwnd, winUser.GA_ROOT)) == top_panel.MAIN_WINDOW_CLASS
 
 
 def _page(hwnd: int) -> int:
@@ -132,7 +140,7 @@ def _walk(hwnd: int) -> Iterator[int]:
 
 def _node_selected(hwnd: int, process_handle: int, address: int, node: int) -> bool | None:
     # The tree does not check the node: it must come from next_node just before.
-    item = _TreeItem(mask=TVIF_HANDLE | TVIF_STATE, hItem=node, stateMask=TVIS_SELECTED)
+    item = _TvItem(mask=TVIF_HANDLE | TVIF_STATE, hItem=node, stateMask=TVIS_SELECTED)
     remote.write(process_handle, address, item)
     if not remote.send(hwnd, TVM_GETITEMW, 0, address):
         return None
@@ -220,6 +228,7 @@ class ClosedEditor:
         self._key_in_tree = (
             bool(focus)
             and winUser.getClassName(focus) == TREE_CLASS
+            and is_main_window_list(focus)
             and api.getFocusObject().windowClassName != EDITOR_CLASS
         )
         self._key_opens_editor = gesture.vkCode == winUser.VK_F2 and not gesture.modifiers
@@ -227,9 +236,11 @@ class ClosedEditor:
 
     def is_unasked(self, obj) -> bool:
         """Whether the focus event is of an editor the tree opened on a key not meant to open it."""
+        tree = winUser.getAncestor(obj.windowHandle, winUser.GA_PARENT)
         return (
             obj.windowClassName == EDITOR_CLASS
-            and winUser.getClassName(winUser.getAncestor(obj.windowHandle, winUser.GA_PARENT)) == TREE_CLASS
+            and winUser.getClassName(tree) == TREE_CLASS
+            and is_main_window_list(tree)
             and self._key_in_tree
             and not self._key_opens_editor
             and time.monotonic() - self._key_time < _CLOSED_EDITOR_EVENTS_SECONDS
@@ -283,9 +294,11 @@ def focused_file_name(hwnd: int) -> str:
     return item.name
 
 
-class FileListItem(IAccessible):
+class TreeItem(IAccessible):
+    """The focused node of a ``TVirtualStringTree``, the only node its MSAA implementation shows."""
+
     def _get_focusRedirect(self):
-        # Without a focused file, the tree reports an item without a name.
+        # Without a focused node, the tree reports an item without a name.
         if self.name:
             return None
         parent = self.parent
@@ -301,7 +314,7 @@ class FileListItem(IAccessible):
         return description
 
 
-class MainFileListItem(FileListItem):
+class MainFileListItem(TreeItem):
     """A file of the main window's list, where several files can be selected."""
 
     def _get_shouldAllowIAccessibleFocusEvent(self):
@@ -506,3 +519,11 @@ class ConversionFileList(IAccessible):
             _FILES_STRING, _CONVERTING_STRING, winUser.getWindowText(window)
         )
         return name or super()._get_name()
+
+
+class DialogList(IAccessible):
+    """A ``TVirtualStringTree`` of a dialog, which ezcd names by its component name unless given a name."""
+
+    def _get_name(self):
+        name = super()._get_name()
+        return "" if name and _COMPONENT_NAME.fullmatch(name) else name

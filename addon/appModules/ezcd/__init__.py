@@ -211,20 +211,21 @@ class AppModule(appModuleHandler.AppModule):
                 clsList.insert(0, cells.CellEditor)
             return
         if obj.windowClassName == file_lists.TREE_CLASS and obj.IAccessibleChildID == 0:
-            if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINEITEM:
-                if file_lists.is_conversion_list(obj.windowHandle):
-                    clsList.insert(0, file_lists.FileListItem)
-                else:
+            if file_lists.is_main_window_list(obj.windowHandle):
+                if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINEITEM:
                     clsList.insert(0, file_lists.MainFileListItem)
-            elif obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINE and file_lists.is_conversion_list(
-                obj.windowHandle
-            ):
-                clsList.insert(0, file_lists.ConversionFileList)
-            elif not file_lists.is_conversion_list(obj.windowHandle):
-                if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINE:
-                    clsList.insert(0, file_lists.MainWindowList)
-                # The list itself, or a file as ezcd shows it while busy.
-                clsList.insert(0, cells.BetweenEditors)
+                else:
+                    if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINE:
+                        clsList.insert(0, file_lists.MainWindowList)
+                    # The list itself, or a file as ezcd shows it while busy.
+                    clsList.insert(0, cells.BetweenEditors)
+            elif obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINEITEM:
+                clsList.insert(0, file_lists.TreeItem)
+            elif obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINE:
+                if file_lists.is_conversion_list(obj.windowHandle):
+                    clsList.insert(0, file_lists.ConversionFileList)
+                else:
+                    clsList.insert(0, file_lists.DialogList)
             return
         if obj.windowClassName == top_panel.MAIN_WINDOW_CLASS:
             if obj.IAccessibleChildID == 0:

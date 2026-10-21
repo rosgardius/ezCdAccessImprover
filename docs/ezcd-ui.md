@@ -93,6 +93,11 @@ absolute coordinates, captions in a particular language.
   Ripper tab, its class name CDW_VirtualStringTree on the Audio CD page of the Disc Burner tab, Format in
   the conversion window. String `[494]` of the language files is Files. The converter's tab page is a
   `TTabSheet` captioned with string `[9]` (Convert audio files).
+- Dialogs (metadata editor, Edit profiles, Settings, …) use the same tree for their lists. Unless ezcd
+  gives it a name (Path in the overwrite prompt), its MSAA name is the component name, such as
+  VirtualStringTree1.
+- The tree may fire the name change of its focused node on another object than the one NVDA has as the
+  focus, so NVDA says nothing for the first moves after the list gets focus.
 - MSAA tells nothing about the selection: the focused node's state is the same whether it is selected or
   not, and no event comes when only the selection changes.
 - The tree answers `TVM_GETNEXTITEM` (`TVGN_ROOT`, `NEXT`, `PARENT`, `CHILD`, `FIRSTVISIBLE`,
