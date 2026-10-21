@@ -116,6 +116,16 @@ captions on the screen, in the language of the application. The fields right of 
 numbers are named by the application's own words for the totals, such as Total Tracks. The cover art,
 reached with object navigation, is named Cover Art and has its size and format as the description.
 
+### Names of fields in all windows
+
+Fields, lists, combo boxes and sliders that the application leaves without a name, in the main window
+and in its dialogs (Settings, Options, DSP and the others), are named by their captions on the screen,
+in the language of the application: the text left of the field, or the check box left of or above it,
+or the text above it. A field next to a slider has the slider's name. A unit right of the field is
+added after a comma, as in "Threshold, dB FS [ -80 ... -20 ]". A caption that is a single character,
+as in the replacements of characters not allowed in file names, is read by NVDA's name for it, such as
+"colon". A field without any caption on the screen stays without a name.
+
 ## Commands
 
 Commands of this add-on are listed in NVDA's Input Gestures dialog, under the

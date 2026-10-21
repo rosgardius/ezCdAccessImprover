@@ -28,7 +28,7 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from scriptHandler import script
 
-from . import convert_window, remote, top_panel
+from . import captions, convert_window, remote, top_panel
 
 TREE_CLASS = "TVirtualStringTree"
 EDITOR_CLASS = "TVTEdit"
@@ -521,9 +521,9 @@ class ConversionFileList(IAccessible):
         return name or super()._get_name()
 
 
-class DialogList(IAccessible):
+class DialogList(captions.Captioned):
     """A ``TVirtualStringTree`` of a dialog, which ezcd names by its component name unless given a name."""
 
-    def _get_name(self):
-        name = super()._get_name()
-        return "" if name and _COMPONENT_NAME.fullmatch(name) else name
+    def _own_name(self) -> str:
+        name = super()._own_name()
+        return "" if _COMPONENT_NAME.fullmatch(name) else name

@@ -185,6 +185,24 @@ absolute coordinates, captions in a particular language.
   on the Audio CD page of the tab's own page control, captioned by labels without windows left of them.
 - With the fields disabled (no file selected, no disc in the ripper), the captions are still drawn.
 
+## Captions in all windows
+
+- No `TLabel` of the application has `FocusControl`, so MSAA gives no field, list, combo box or
+  slider a name from its caption. The labels have no windows; their text is in the display model of
+  the control's parent, together with the captions of `TSpeedButton`s, such as the "-" and "+" of a
+  counter.
+- A setting is laid out on one line: a caption, a check box or a radio button, then the control,
+  then a unit (`s`, `dB FS`, `seconds`). Text between two windows on a line lies next to the window
+  it belongs to. A field showing a slider's value lies right next to the slider (3–4 pixels), and so
+  does a second combo box of one setting; separate settings on a line are tens of pixels apart.
+- Some controls are captioned only by a check box above them: the fade and silence sliders of the DSP
+  dialog, the sound file in General settings, the file name pattern on the Audio Converter tab.
+- The scales of sliders are numbers drawn as labels above and below them (`-30 … -6`, `0 … 10`).
+- The Filename preview dialog has a one-line explanation of the template syntax above its list of
+  templates, longer than any caption.
+- The fields replacing characters on the File name settings page are captioned only by the character
+  (`/ : * ? " < > |`), which NVDA does not say at its default punctuation level for most of them.
+
 ## Conversion window
 
 - A top-level `TConvertWnd` window, shown while files are converted and kept open after the end.

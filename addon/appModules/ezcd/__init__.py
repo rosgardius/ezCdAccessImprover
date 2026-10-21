@@ -21,7 +21,7 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from winBindings import kernel32
 
-from . import cells, convert_window, converters, file_lists, metadata, top_panel
+from . import captions, cells, convert_window, converters, file_lists, metadata, top_panel
 from .language import LanguageFiles
 
 addonHandler.initTranslation()
@@ -194,13 +194,17 @@ class AppModule(appModuleHandler.AppModule):
             else:
                 clsList.insert(0, converters.ConvertersSpinBox)
             return
-        if obj.windowClassName in metadata.FIELD_CLASSES:
-            if (
-                obj.IAccessibleChildID == 0
-                and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW
-                and metadata.is_metadata_field(obj.windowHandle)
-            ):
-                clsList.insert(0, metadata.MetadataField)
+        if (
+            obj.windowClassName in metadata.FIELD_CLASSES
+            and obj.IAccessibleChildID == 0
+            and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW
+            and metadata.is_metadata_field(obj.windowHandle)
+        ):
+            clsList.insert(0, metadata.MetadataField)
+            return
+        if obj.windowClassName in captions.CLASSES:
+            if obj.IAccessibleChildID == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW:
+                clsList.insert(0, captions.Captioned)
             return
         if obj.windowClassName == metadata.COVER_CLASS:
             if obj.IAccessibleChildID == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW:
