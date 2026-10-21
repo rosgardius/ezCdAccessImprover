@@ -53,6 +53,18 @@ class LanguageFiles:
         """All translations of the given strings."""
         return {strings[n] for strings in self._load() for n in numbers if strings.get(n)}
 
+    def strings_showing(self, numbers: tuple[int, ...], shown_texts: set[str]) -> dict[int, str] | None:
+        """The strings of the language that has the most of the given strings among the texts ezcd shows.
+
+        Languages share many short strings, such as Number in Russian and Bulgarian.
+        """
+        best, best_count = None, 0
+        for strings in self._load():
+            count = sum(1 for n in numbers if strings.get(n) in shown_texts)
+            if count > best_count:
+                best, best_count = strings, count
+        return best
+
     def text_in_language_of(self, number: int, shown_number: int, shown_text: str) -> str | None:
         """The string in the language whose string ``shown_number`` is the text ezcd shows."""
         for strings in self._load():

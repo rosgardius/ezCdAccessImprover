@@ -21,7 +21,7 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from winBindings import kernel32
 
-from . import cells, convert_window, converters, file_lists, top_panel
+from . import cells, convert_window, converters, file_lists, metadata, top_panel
 from .language import LanguageFiles
 
 addonHandler.initTranslation()
@@ -184,12 +184,27 @@ class AppModule(appModuleHandler.AppModule):
             if convert_window.bar_kind(obj.windowHandle) == convert_window.Bar.TOTAL:
                 clsList.insert(0, convert_window.TotalProgressBar)
             return
-        if obj.windowClassName == converters.EDIT_CLASS:
-            if obj.IAccessibleChildID == 0 and converters.is_converters_edit(obj.windowHandle):
-                if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_WINDOW:
-                    clsList.insert(0, converters.ConvertersSpinWindow)
-                else:
-                    clsList.insert(0, converters.ConvertersSpinBox)
+        if (
+            obj.windowClassName == converters.EDIT_CLASS
+            and obj.IAccessibleChildID == 0
+            and converters.is_converters_edit(obj.windowHandle)
+        ):
+            if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_WINDOW:
+                clsList.insert(0, converters.ConvertersSpinWindow)
+            else:
+                clsList.insert(0, converters.ConvertersSpinBox)
+            return
+        if obj.windowClassName in metadata.FIELD_CLASSES:
+            if (
+                obj.IAccessibleChildID == 0
+                and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW
+                and metadata.is_metadata_field(obj.windowHandle)
+            ):
+                clsList.insert(0, metadata.MetadataField)
+            return
+        if obj.windowClassName == metadata.COVER_CLASS:
+            if obj.IAccessibleChildID == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW:
+                clsList.insert(0, metadata.CoverArt)
             return
         if obj.windowClassName == file_lists.EDITOR_CLASS:
             if cells.is_main_list_editor(obj.windowHandle):

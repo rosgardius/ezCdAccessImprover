@@ -108,6 +108,14 @@ closes the field, keeping what was typed, and opens a new one in the next cell. 
   command to go to the first or the last column, so the field is moved there column by column.
 * The Lyrics dialog takes a moment to open, and NVDA is silent meanwhile.
 
+### Metadata fields
+
+The metadata fields below the list of files (Album artist, Title, Compilation and the others), the same
+fields of the Audio CD Ripper tab, and the CD-Text fields of the Disc Burner tab are named by their
+captions on the screen, in the language of the application. The fields right of the track and disc
+numbers are named by the application's own words for the totals, such as Total Tracks. The cover art,
+reached with object navigation, is named Cover Art and has its size and format as the description.
+
 ## Commands
 
 Commands of this add-on are listed in NVDA's Input Gestures dialog, under the

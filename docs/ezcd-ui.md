@@ -154,6 +154,28 @@ absolute coordinates, captions in a particular language.
   `SB_PAGELEFT`/`SB_PAGERIGHT` scrolls without moving the focus. After a scroll the header is in the
   display model once the frame is painted again (`RedrawWindow` with `RDW_FRAME`).
 
+## Metadata fields
+
+- The metadata panel below the list of files on the Audio Converter tab, and the same panel on the
+  Audio CD Ripper tab, is a `TPanel` holding `TEdit` fields, a `TMemo` for the comment, a `TCheckBox`
+  for Compilation and the cover art, a `TDropPanel`. No other form has a `TDropPanel`.
+- The fields have no MSAA names. Their captions are `TLabel`s without windows, left of each field,
+  visible only in the display model of the panel. The layout depends on which fields are chosen in the
+  application's settings: the fields not shown stay in the panel as hidden windows, among the shown
+  ones, and the design-time positions do not hold.
+- The total right of the track number and of the disc number is captioned only by a "/" label between
+  the two fields.
+- The captions are strings `[588]`–`[603]`, `[608]`, `[609]`, `[900]`–`[906]` and `[934]`–`[936]`
+  with a colon, Number being `[590]` and Disc number `[598]`. Short captions are the same in several
+  languages: Number in Russian, Bulgarian and Ukrainian, in English and Estonian. Strings `[801]` and
+  `[503]` are the totals as placeholders of the file name pattern (`<Total Tracks>`, `<Total Discs>`).
+- The `TDropPanel`'s window text is the localized Cover Art (string `[349]`); MSAA gives it no name.
+  It is not a tab stop. Under it, a label without a window shows the format, size and file size of
+  the cover (`JPEG | 250x250 | 49.95 kB`), and nothing without a cover.
+- The CD-Text fields of the Disc Burner tab are two `TEdit`s in a `TPanel` under the list of tracks,
+  on the Audio CD page of the tab's own page control, captioned by labels without windows left of them.
+- With the fields disabled (no file selected, no disc in the ripper), the captions are still drawn.
+
 ## Conversion window
 
 - A top-level `TConvertWnd` window, shown while files are converted and kept open after the end.
