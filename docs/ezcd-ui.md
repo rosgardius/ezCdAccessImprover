@@ -203,6 +203,14 @@ absolute coordinates, captions in a particular language.
 - The fields replacing characters on the File name settings page are captioned only by the character
   (`/ : * ? " < > |`), which NVDA does not say at its default punctuation level for most of them.
 
+## List boxes and list views
+
+- When a `TListBox`, `TCheckListBox` or `TListView` gets focus, it fires focus on the list (child 0)
+  and 1–10 ms later on its focused item. NVDA takes the first event for the focused item already, so
+  without the add-on the item is said twice.
+- Without a selection, the first arrow key in a `TCheckListBox` (metadata services in the settings)
+  selects the focused item and fires focus on it again.
+
 ## Conversion window
 
 - A top-level `TConvertWnd` window, shown while files are converted and kept open after the end.

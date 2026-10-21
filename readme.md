@@ -126,6 +126,11 @@ added after a comma, as in "Threshold, dB FS [ -80 ... -20 ]". A caption that is
 as in the replacements of characters not allowed in file names, is read by NVDA's name for it, such as
 "colon". A field without any caption on the screen stays without a name.
 
+### Lists in dialogs
+
+When a list such as the template history in Filename preview, the metadata services in Settings or the
+cover art in the metadata editor gets focus, its item is read once, not twice.
+
 ## Commands
 
 Commands of this add-on are listed in NVDA's Input Gestures dialog, under the

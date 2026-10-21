@@ -21,7 +21,7 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from winBindings import kernel32
 
-from . import captions, cells, convert_window, converters, file_lists, metadata, top_panel
+from . import captions, cells, convert_window, converters, file_lists, list_items, metadata, top_panel
 from .language import LanguageFiles
 
 addonHandler.initTranslation()
@@ -205,6 +205,8 @@ class AppModule(appModuleHandler.AppModule):
         if obj.windowClassName in captions.CLASSES:
             if obj.IAccessibleChildID == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW:
                 clsList.insert(0, captions.Captioned)
+            elif obj.IAccessibleChildID > 0 and obj.windowClassName in list_items.CLASSES:
+                clsList.insert(0, list_items.ListItem)
             return
         if obj.windowClassName == metadata.COVER_CLASS:
             if obj.IAccessibleChildID == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW:
