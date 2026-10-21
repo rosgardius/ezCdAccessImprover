@@ -31,15 +31,19 @@ absolute coordinates, captions in a particular language.
   | Metadata ▼ | 4 | Disc ▼ | 3 | Erase Disc | 8 |
   | Rename files | 6 | Metadata ▼ | 4 | Burn Disc Image | 9 |
   | Save metadata | 7 | AutoRip | 5 | Save to ISO | 11 |
-  | **Convert** | **1** | **Rip CD** | **0** | **Burn Disc** | **13** |
+  | **Convert** | **1** | **Rip CD** | **0** | **Burn Disc** | **13, 14** |
   | Settings | 2 | Settings | 2 | Settings | 2 |
   | View | 15 | View | 15 | View | 15 |
   | Help | 19 | Help | 19 | Help | 19 |
 
 - The main button of a tab is recognised by its image together with its caption, which must equal
   the string in one of the language files: Convert is image 1 with string `[232]` or `[406]`, Rip CD
-  is image 0 with string `[176]`, Burn Disc is image 13 with string `[392]`. No translation of these
-  strings has a `▼`, so the menu buttons with the same images never match.
+  is image 0 with string `[176]`, Burn Disc is image 13 or 14 with string `[239]`, `[391]` or `[392]`.
+  No translation of these strings has a `▼`, so the menu buttons with the same images never match.
+- Burn Disc changes with the page of the Disc Burner tab: on Audio CD it is image 13 captioned Burn CD
+  (`[239]`), on MP3 Disc and Data disc image 14 captioned Burn disc (`[392]`). After the language is
+  switched in the running application, the caption is `[392]` until the page changes. In Russian,
+  `[239]` and `[392]` are the same. Burn DVD (`[391]`) was not seen without a DVD drive.
 - The first button of each panel opens a menu of the three tabs. Choosing a tab there, the current one
   too, puts focus on the tab's first control (the list of files or tracks, the burner's inner tab labels).
   The ripper and burner tabs open without a disc drive.

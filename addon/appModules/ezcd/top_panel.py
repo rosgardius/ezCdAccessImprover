@@ -31,10 +31,12 @@ MAIN_WINDOW_CLASS = "TMainform"
 # The tab's main action, recognised by the ImageIndex of its button and its caption in the language file,
 # and whether F8 presses it.
 _MAIN_BUTTONS = (
-    (1, (232, 406), True),  # Audio Converter: "Convert"
-    (0, (176,), True),  # Audio CD Ripper: "Rip CD"
-    (13, (392,), False),  # Disc Burner: "Burn disc"
+    ((1,), (232, 406), True),  # Audio Converter: "Convert"
+    ((0,), (176,), True),  # Audio CD Ripper: "Rip CD"
+    ((13, 14), (239, 391, 392), False),  # Disc Burner: "Burn CD", "Burn DVD", "Burn disc"
 )
+# The Disc Burner's main button has image 13 on the Audio CD page and 14 on the others; one button for keys.
+_SAME_IMAGES = {14: 13}
 # Buttons that open a menu, by ``TopPanel.key``.
 _MENU_BUTTONS = {
     1: frozenset(((0, 0), (4, 0), (15, 0), (19, 0))),  # Audio Converter ▼, Metadata ▼, View, Help
@@ -65,7 +67,7 @@ class TopPanel:
     @property
     def key(self) -> int:
         """Tells the panels apart: the image of the main button."""
-        return self.main.button.image
+        return _image_key(self.main.button.image)
 
     def find(self, hwnd: int, index: int) -> PanelButton | None:
         return next((b for b in self.buttons if b.toolbar == hwnd and b.button.index == index), None)
@@ -85,6 +87,10 @@ class TopPanel:
         return next((b for b in buttons if b.key == key), buttons[0] if buttons else None)
 
 
+def _image_key(image: int) -> int:
+    return _SAME_IMAGES.get(image, image)
+
+
 def _parent(hwnd: int) -> int:
     return winUser.getAncestor(hwnd, winUser.GA_PARENT)
 
@@ -100,8 +106,8 @@ def _main_shortcut(button: toolbar.ToolButton, language: LanguageFiles) -> bool 
     return next(
         (
             shortcut
-            for image, numbers, shortcut in _MAIN_BUTTONS
-            if button.image == image and button.text.strip() in language.texts(*numbers)
+            for images, numbers, shortcut in _MAIN_BUTTONS
+            if button.image in images and button.text.strip() in language.texts(*numbers)
         ),
         None,
     )
@@ -124,8 +130,9 @@ def _read_panel(panel: int, process_handle: int, language: LanguageFiles) -> Top
     buttons = []
     seen: dict[int, int] = {}
     for _left_edge, _index, hwnd, button in sorted(shown, key=lambda item: item[:2]):
-        buttons.append(PanelButton(hwnd, button, (button.image, seen.get(button.image, 0))))
-        seen[button.image] = seen.get(button.image, 0) + 1
+        image = _image_key(button.image)
+        buttons.append(PanelButton(hwnd, button, (image, seen.get(image, 0))))
+        seen[image] = seen.get(image, 0) + 1
     for candidate in buttons:
         # The main action has a toolbar of its own.
         if sum(b.toolbar == candidate.toolbar for b in buttons) != 1:
