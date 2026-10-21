@@ -19,7 +19,6 @@ import displayModel
 import textUtils
 import winUser
 import XMLFormatting
-from NVDAObjects.IAccessible import IAccessible
 from speech.speech import getCurrentLanguage
 
 from . import convert_window
@@ -114,7 +113,7 @@ def joined(texts: list[Text]) -> str:
     return " ".join(t.text for t in texts)
 
 
-def _choice_caption(hwnd: int) -> str:
+def choice_caption(hwnd: int) -> str:
     if not hwnd or winUser.getClassName(hwnd) not in CHOICE_CLASSES:
         return ""
     return re.sub("&(.)", r"\1", winUser.getWindowText(hwnd))
@@ -233,6 +232,28 @@ class Layout:
         """All texts that may caption the control: left of it, above it and right of it."""
         return self.left_texts()[0] + self.above_texts()[0] + self.right_texts()
 
+    def row_text(self) -> str:
+        """The nearest text left of the control on the top line of its row, over windows in between."""
+        texts = [
+            t for t in self.texts if t.right <= self.rect.left and self._on_line(t) and _is_caption(t.text)
+        ]
+        line = _line(texts)
+        return line[-1].text if line else ""
+
+    def row_windows(self) -> list[int]:
+        """The windows left of the control on its line, from left to right."""
+        left = [
+            s for s, other in self.siblings.items() if other.right <= self.rect.left and self._beside(other)
+        ]
+        return sorted(left, key=lambda s: self.siblings[s].left)
+
+    def right_window(self) -> int:
+        """The nearest window right of the control on its line, 0 if none."""
+        right = [
+            s for s, other in self.siblings.items() if self.rect.left < other.left and self._beside(other)
+        ]
+        return min(right, key=lambda s: self.siblings[s].left, default=0)
+
 
 def _spoken(caption: str) -> str:
     """The caption, with a caption of symbols alone, as ``/``, given by the names of the symbols.
@@ -248,14 +269,14 @@ def _spoken(caption: str) -> str:
 def _caption(layout: Layout, unit: bool = True) -> str:
     text, neighbour = layout.left(nearer=True)
     if not text and neighbour:
-        text = _choice_caption(neighbour)
+        text = choice_caption(neighbour)
         if not text and winUser.getClassName(neighbour) in CLASSES and layout.adjoins(neighbour):
             # A field showing the value of the slider left of it, or a second list of one setting.
             text = _caption(Layout(neighbour, None, texts=layout.texts), unit=False)
     if not text:
         text, neighbour = layout.above()
         if not text:
-            text = _choice_caption(neighbour)
+            text = choice_caption(neighbour)
     text = _spoken(text.rstrip(" :") or text.strip())
     return _UNIT_SEPARATOR.join(part for part in (text, layout.right() if unit else "") if part)
 
@@ -269,20 +290,3 @@ def caption(control: int, binding_handle) -> str:
         # The display model has only what was drawn since the parent last filled its background.
         name = _caption(Layout(control, binding_handle, repaint=True))
     return name
-
-
-class Captioned(IAccessible):
-    """A control without an MSAA name, named by the caption ezcd draws beside it."""
-
-    _screen_name: str | None = None
-
-    def _own_name(self) -> str:
-        return super()._get_name() or ""
-
-    def _get_name(self):
-        name = self._own_name()
-        if name:
-            return name
-        if self._screen_name is None:
-            self._screen_name = caption(self.windowHandle, self.appModule.helperLocalBindingHandle)
-        return self._screen_name

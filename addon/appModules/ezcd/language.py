@@ -27,6 +27,7 @@ class LanguageFiles:
     def __init__(self, app_path: str | None):
         self._app_path = app_path
         self._files: list[dict[int, str]] | None = None
+        self._values: list[set[str]] | None = None
 
     def _load(self) -> list[dict[int, str]]:
         if self._files is None:
@@ -61,6 +62,17 @@ class LanguageFiles:
         best, best_count = None, 0
         for strings in self._load():
             count = sum(1 for n in numbers if strings.get(n) in shown_texts)
+            if count > best_count:
+                best, best_count = strings, count
+        return best
+
+    def strings_of(self, shown_texts: set[str]) -> dict[int, str] | None:
+        """The strings of the language that has the most of the texts ezcd shows among its strings."""
+        if self._values is None:
+            self._values = [set(strings.values()) for strings in self._load()]
+        best, best_count = None, 0
+        for strings, values in zip(self._load(), self._values, strict=True):
+            count = len(shown_texts & values)
             if count > best_count:
                 best, best_count = strings, count
         return best

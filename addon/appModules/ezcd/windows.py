@@ -4,6 +4,8 @@
 
 """Walking ezcd's window tree."""
 
+from collections.abc import Iterator
+
 import winUser
 
 _GW_CHILD = 5
@@ -18,3 +20,10 @@ def child_windows(hwnd: int, class_name: str | None = None) -> list[int]:
             children.append(child)
         child = winUser.getWindow(child, winUser.GW_HWNDNEXT)
     return children
+
+
+def descendants(hwnd: int) -> Iterator[int]:
+    """All windows inside the window, each followed by its own."""
+    for child in child_windows(hwnd):
+        yield child
+        yield from descendants(child)

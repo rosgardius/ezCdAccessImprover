@@ -124,7 +124,28 @@ in the language of the application: the text left of the field, or the check box
 or the text above it. A field next to a slider has the slider's name. A unit right of the field is
 added after a comma, as in "Threshold, dB FS [ -80 ... -20 ]". A caption that is a single character,
 as in the replacements of characters not allowed in file names, is read by NVDA's name for it, such as
-"colon". A field without any caption on the screen stays without a name.
+"colon".
+
+A field or list without any caption on the screen is named by the application's own word for it, in
+its language, where it has one: Profile in Edit profiles; Files, Metadata, Name, Value and Cover Art in
+the metadata editor; the file name template and the preview in Filename preview; Tracklist in the
+results of Search for CD metadata. Otherwise it gets a name of this add-on: Categories for the pages of
+Settings, Templates for the template history, Picture type in the metadata editor, Release code and
+Results in the manual search of metadata. Fields not named in either way stay without a name.
+
+### Buttons
+
+Buttons that show only an image are named: Browse next to the output folder and next to the sound file
+in Settings, Filename preview next to the file name template, Move up and Move down in Edit profiles.
+The tag button in Filename preview that inserts a space is named by NVDA's word for the space. The
+check box without a caption in DSP is named by the mode chosen right of it, such as Gain.
+
+Buttons and check boxes whose caption repeats in the window get the caption of their row after a
+comma: "Search, Barcode" in the manual search of metadata, "Keep aspect ratio, Resize embedded Cover
+Art" in Options, "Add, Name" and "Delete, 6 metadata fields" in the metadata editor, and the Cancel
+button of each service with what the service is doing while metadata is downloaded. The buttons of
+Options that show the size of the cover art are named the same way: "500x500, Resize embedded Cover
+Art".
 
 ### Lists in dialogs
 

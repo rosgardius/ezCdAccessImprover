@@ -30,6 +30,7 @@ from . import (
     file_lists,
     list_items,
     metadata,
+    names,
     top_panel,
 )
 from .language import LanguageFiles
@@ -219,9 +220,13 @@ class AppModule(appModuleHandler.AppModule):
         ):
             clsList.insert(0, metadata.MetadataField)
             return
+        if obj.windowClassName in names.BUTTON_CLASSES:
+            if obj.IAccessibleChildID == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW:
+                clsList.insert(0, names.CaptionedButton)
+            return
         if obj.windowClassName in captions.CLASSES:
             if obj.IAccessibleChildID == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW:
-                clsList.insert(0, captions.Captioned)
+                clsList.insert(0, names.Captioned)
             elif obj.IAccessibleChildID > 0 and obj.windowClassName in list_items.CLASSES:
                 clsList.insert(0, list_items.ListItem)
             return

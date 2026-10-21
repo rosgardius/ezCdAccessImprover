@@ -203,6 +203,52 @@ absolute coordinates, captions in a particular language.
 - The fields replacing characters on the File name settings page are captioned only by the character
   (`/ : * ? " < > |`), which NVDA does not say at its default punctuation level for most of them.
 
+## Controls without captions
+
+- Buttons that show only an image are `TButton` windows without text, right next to the control they
+  serve: Browse after the output folder (`TEdit`) and Filename preview after the file name template
+  (`TComboBox`) on the output panels of the Audio Converter and Audio CD Ripper tabs; Browse after the
+  sound file (`TEdit`) on the General page of Settings; Move up and Move down (strings `[241]`,
+  `[242]`) one above the other right of the list in Edit profiles. They have no hint; the language
+  files have Filename preview (`[266]`) but no Browse.
+- The tag buttons of Filename preview are `TButton`s outside the tab order; the one inserting a space
+  has a space as its caption.
+- The check box of DSP that switches the effect on has no caption; it lies left of the combo box
+  choosing the effect (Gain, Loudness normalization, …), overlapping it by a few pixels.
+- No caption on screen at all: the tree of pages in Settings (`TTreeView`), the list of profiles in
+  Edit profiles, the file name template (`TEdit`), the template history (`TListBox`) and the preview
+  (`TListView`) in Filename preview, and in the metadata editor (`TTMetadata`) the list of files, the
+  list of fields, the combo box naming a field to add, the value of a field (`TMemo`), the combo box
+  of picture types and the list of pictures (`TListView`). In the metadata editor the list of files is
+  in a panel of the form, the list of fields in a panel inside a panel; the combo box of field names
+  can be typed in (it has an `Edit` child), that of picture types cannot. The language files have
+  Profile `[582]`, Filenames `[180]`, Filename preview `[266]`, Files `[494]`, Metadata `[101]`, Name
+  `[834]`, Value `[835]`, Cover Art `[349]`, Tracklist `[137]`.
+- The manual search of metadata (`TMBManual`, one window for GD3, MusicBrainz, Discogs and Deezer) has
+  no caption for its list of results. Its panel is too short at higher DPI: the last row (Release
+  Code, a `TEdit` and a Search button) lies below the panel's edge, over the list, and its caption is
+  not drawn. For GD3 the Barcode row and the last Search are hidden, but the Release Code field stays
+  visible and in the tab order.
+- The results of Search for CD metadata (`TFC_GetMetadata`) are a tree of tracks without a caption;
+  Escape does not close the window, only Cancel or its close box.
+
+### Repeated captions
+
+- Several buttons or check boxes of one window share a caption: three Search in the manual search of
+  metadata (`TMBManual`), Add and Delete for fields and for pictures in the metadata editor, Keep
+  aspect ratio for embedded and external cover art in Options, and Cancel for the whole download and
+  for each service in Download metadata (`TGetMetadataForm`). What tells them apart is on their row:
+  the caption of the field before them (Artist, Barcode), the check box starting the row (Resize
+  embedded Cover Art), the count left of them (6 metadata fields), or the status of the service
+  (Querying MusicBrainz) while it is queried; the name of the service has no label of its own.
+- The cover art size buttons of Options are split buttons captioned with the size (`500x500`); the
+  check box at the start of their row tells which size it is.
+- The hidden tab pages of the main window keep their windows with the visible style: their buttons
+  repeat the captions of the active tab's (Options », DSP »), and only `IsWindowVisible` tells them
+  apart.
+- ezcd's current language is not in the registry while it runs (see Language files below); the
+  language of a window shows in its captions, which are strings of one language file.
+
 ## Dialogs
 
 - Each dialog is a top-level window of its own form class (`TAboutForm`, `TConverterOptions`,
