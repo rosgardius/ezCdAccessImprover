@@ -40,7 +40,7 @@ CLASSES = frozenset(
         "TJamShellList",
     )
 )
-_CHOICE_CLASSES = ("TCheckBox", "TRadioButton")
+CHOICE_CLASSES = ("TCheckBox", "TRadioButton")
 # The arrows of a spin box, right of its edit.
 _SPIN_CLASS = "TUpDown"
 # Texts on one line differ in top by a few pixels at most.
@@ -51,7 +51,8 @@ _MAX_CAPTION_LENGTH = 80
 # Further apart, two windows are not parts of one setting.
 _ADJACENT = 10
 # The - and + of a counter, buttons without windows drawn by the parent.
-_BUTTON_TEXTS = frozenset(("-", "+"))
+BUTTON_TEXTS = frozenset(("-", "+"))
+SLIDER_CLASSES = frozenset(("TTrackBar", "TMyTrackBar"))
 _UNIT_SEPARATOR = ", "
 
 
@@ -65,14 +66,25 @@ class Text:
 
 
 def _is_caption(text: str) -> bool:
-    return text not in _BUTTON_TEXTS and not _SCALE.fullmatch(text)
+    return text not in BUTTON_TEXTS and not _SCALE.fullmatch(text)
 
 
 def _overlap(start: int, end: int, other_start: int, other_end: int) -> bool:
     return start < other_end and other_start < end
 
 
-def _read_texts(window: int, binding_handle) -> list[Text]:
+def is_scale(text: Text, slider) -> bool:
+    """Whether the text is a number of the slider's scale: over or under it, nearer than its height."""
+    height = slider.bottom - slider.top
+    return (
+        bool(_SCALE.fullmatch(text.text))
+        and _overlap(text.left, text.right, slider.left, slider.right)
+        and slider.top - height <= text.top
+        and text.bottom <= slider.bottom + height
+    )
+
+
+def read_texts(window: int, binding_handle) -> list[Text]:
     """The pieces of text the display model has for the window itself, not its child windows."""
     area = convert_window.logical_rect(window, window)
     text, rects = displayModel.getWindowTextInRect(
@@ -90,17 +102,20 @@ def _read_texts(window: int, binding_handle) -> list[Text]:
     return texts
 
 
-def _first_line(texts: list[Text], last: bool = False) -> str:
+def _line(texts: list[Text], last: bool = False) -> list[Text]:
     """The texts of the top line, or of the bottom one if ``last``, from left to right."""
     if not texts:
-        return ""
+        return []
     top = max(t.top for t in texts) if last else min(t.top for t in texts)
-    line = sorted((t for t in texts if abs(t.top - top) < _LINE_TOLERANCE), key=lambda t: t.left)
-    return " ".join(t.text for t in line)
+    return sorted((t for t in texts if abs(t.top - top) < _LINE_TOLERANCE), key=lambda t: t.left)
+
+
+def joined(texts: list[Text]) -> str:
+    return " ".join(t.text for t in texts)
 
 
 def _choice_caption(hwnd: int) -> str:
-    if not hwnd or winUser.getClassName(hwnd) not in _CHOICE_CLASSES:
+    if not hwnd or winUser.getClassName(hwnd) not in CHOICE_CLASSES:
         return ""
     return re.sub("&(.)", r"\1", winUser.getWindowText(hwnd))
 
@@ -123,7 +138,7 @@ class Layout:
         if texts is None:
             if repaint:
                 convert_window.redraw(self.parent)
-            texts = _read_texts(self.parent, binding_handle)
+            texts = read_texts(self.parent, binding_handle)
         self.texts = texts
 
     def _on_line(self, text: Text) -> bool:
@@ -133,6 +148,10 @@ class Layout:
         return _overlap(other.top, other.bottom, self.rect.top, self.rect.bottom)
 
     def left(self, nearer: bool = False) -> tuple[str, int]:
+        texts, neighbour = self.left_texts(nearer)
+        return joined(texts), neighbour
+
+    def left_texts(self, nearer: bool = False) -> tuple[list[Text], int]:
         """The text left of the control up to the nearest window on its left, and that window, 0 if none.
 
         Beside a multi-line control, only the text on its first line. With ``nearer``, only the text
@@ -151,13 +170,17 @@ class Layout:
             and _is_caption(t.text)
             and not (nearer and neighbour and t.left - edge < rect.left - t.right)
         ]
-        return _first_line(texts), neighbour
+        return _line(texts), neighbour
 
     def adjoins(self, neighbour: int) -> bool:
         """Whether the window on the left is right next to the control, as a field is to its slider."""
         return self.rect.left - self.siblings[neighbour].right < _ADJACENT
 
     def above(self) -> tuple[str, int]:
+        texts, neighbour = self.above_texts()
+        return joined(texts), neighbour
+
+    def above_texts(self) -> tuple[list[Text], int]:
         """The bottom line of text over the control up to the nearest window above it, and that window."""
         rect = self.rect
         edge, neighbour = self.bounds.top, 0
@@ -172,13 +195,16 @@ class Layout:
             and _overlap(t.left, t.right, rect.left, rect.right)
             and _is_caption(t.text)
         ]
-        line = _first_line(texts, last=True)
-        if len(line) > _MAX_CAPTION_LENGTH:
+        line = _line(texts, last=True)
+        if len(joined(line)) > _MAX_CAPTION_LENGTH:
             # An explanation over the control, such as the syntax of file name templates.
-            return "", 0
+            return [], 0
         return line, neighbour
 
     def right(self) -> str:
+        return joined(self.right_texts())
+
+    def right_texts(self) -> list[Text]:
         """The text right of the control nearer to it than to the next window on the line."""
         rect = self.rect
         start = rect.right
@@ -201,7 +227,11 @@ class Layout:
             and self._on_line(t)
             and _is_caption(t.text)
         ]
-        return _first_line(texts)
+        return _line(texts)
+
+    def caption_texts(self) -> list[Text]:
+        """All texts that may caption the control: left of it, above it and right of it."""
+        return self.left_texts()[0] + self.above_texts()[0] + self.right_texts()
 
 
 def _spoken(caption: str) -> str:

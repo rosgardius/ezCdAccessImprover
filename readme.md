@@ -131,6 +131,14 @@ as in the replacements of characters not allowed in file names, is read by NVDA'
 When a list such as the template history in Filename preview, the metadata services in Settings or the
 cover art in the metadata editor gets focus, its item is read once, not twice.
 
+### Text of dialogs
+
+The windows of the application other than the main window and the conversion window are reported as
+dialogs. When one opens, NVDA reads its text from the screen, as in other Windows dialogs: in About,
+the version, the home page and the copyright; in Encoder information, the encoder and its module.
+NVDA+B reads it again. Captions of fields, headings of sections, the numbers of slider scales and a
+line repeating the title are not part of the text, so Settings, Options, DSP and Edit profiles open with their name alone.
+
 ## Commands
 
 Commands of this add-on are listed in NVDA's Input Gestures dialog, under the

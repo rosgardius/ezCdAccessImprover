@@ -21,7 +21,17 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from winBindings import kernel32
 
-from . import captions, cells, convert_window, converters, file_lists, list_items, metadata, top_panel
+from . import (
+    captions,
+    cells,
+    convert_window,
+    converters,
+    dialogs,
+    file_lists,
+    list_items,
+    metadata,
+    top_panel,
+)
 from .language import LanguageFiles
 
 addonHandler.initTranslation()
@@ -179,6 +189,13 @@ class AppModule(appModuleHandler.AppModule):
 
     def chooseNVDAObjectOverlayClasses(self, obj, clsList):
         if not isinstance(obj, IAccessible):
+            return
+        if (
+            obj.IAccessibleChildID == 0
+            and obj.IAccessibleRole == oleacc.ROLE_SYSTEM_CLIENT
+            and dialogs.is_dialog(obj.windowHandle)
+        ):
+            clsList.insert(0, dialogs.EzcdDialog)
             return
         if obj.windowClassName == convert_window.PROGRESS_BAR_CLASS:
             if convert_window.bar_kind(obj.windowHandle) == convert_window.Bar.TOTAL:

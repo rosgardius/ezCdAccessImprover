@@ -203,6 +203,27 @@ absolute coordinates, captions in a particular language.
 - The fields replacing characters on the File name settings page are captioned only by the character
   (`/ : * ? " < > |`), which NVDA does not say at its default punctuation level for most of them.
 
+## Dialogs
+
+- Each dialog is a top-level window of its own form class (`TAboutForm`, `TConverterOptions`,
+  `TDSPForm`, …), owned by the main window. MSAA gives the form the client role (a pane for NVDA), not
+  the dialog role, so NVDA collects no dialog text for it.
+- The text of a dialog is in `TLabel`s without windows, in the display model of their parent: the form,
+  a `TPanel`, `TCard` or `TGroupBox`. They are drawn before the dialog's first focus event: the display
+  model has them when NVDA announces the dialog.
+- The pages of Settings are forms (`TSettings2GeneralForm`, …) embedded as child windows in a `TPanel`
+  of `TSettings2Form`.
+- The section headings of Options (Files, Metadata, …) are labels above the first check box of the
+  section, with a `TBevel` line right of them.
+- In Encoder information, version and date values have the form of scale numbers (`13.2.1.1`,
+  `24.09.2026`); the scales of sliders lie over or under the slider, within its height.
+- The window shown while file names are checked before a conversion (Checking filenames...) has a label
+  repeating its caption, with a space before the dots.
+- About is the last item of the Help menu (on every top panel); Escape closes it.
+- Encoder information opens with a `TPngSpeedButton` without a window right of the format and extension
+  combo boxes of the Audio Converter tab's output panel, at 292, 46 (24 × 24) in the panel as in the
+  form's DFM; a posted click at its centre opens it. It has only an OK button and does not close on Escape.
+
 ## List boxes and list views
 
 - When a `TListBox`, `TCheckListBox` or `TListView` gets focus, it fires focus on the list (child 0)
