@@ -5,9 +5,9 @@
 """The file explorer on the Audio Converter and Disc Burner tabs.
 
 Above the explorer, each toolbar is a Tab stop right before the control right of it on the screen: the
-navigation before the breadcrumb bar, the view of the list before the filter of file types. While the
-explorer is hidden, a row of toolbars takes its place (View Explorer, Add files, ...): one Tab stop right
-before the control below it.
+navigation before the breadcrumb bar, the view of the list before the filter of file types, or at the end
+of the tab while ezcd hides the filter (``tab_end``). While the explorer is hidden, a row of toolbars
+takes its place (View Explorer, Add files, ...): one Tab stop right before the control below it.
 
 The breadcrumb bar is the path of the folder, edited in a field that ezcd shows on a click into the bar.
 """
@@ -88,7 +88,7 @@ def is_hidden_explorer_row(panel: int) -> bool:
     )
 
 
-def _stop_toolbars(hwnd: int) -> tuple[list[int], bool]:
+def stop_toolbars(hwnd: int) -> tuple[list[int], bool]:
     """The toolbars of the stop the toolbar is on, and whether they are the row of the hidden explorer."""
     if winUser.getClassName(hwnd) != "TToolBar" or not winUser.isWindowVisible(hwnd):
         return [], False
@@ -102,7 +102,7 @@ def _stop_toolbars(hwnd: int) -> tuple[list[int], bool]:
 
 def stop_of(hwnd: int, process_handle: int, language: LanguageFiles) -> ExplorerToolbar | None:
     """The explorer toolbar or the row of the hidden explorer, if the window is a toolbar of either."""
-    toolbars, row = _stop_toolbars(hwnd)
+    toolbars, row = stop_toolbars(hwnd)
     tab = main_tab(hwnd) if toolbars else 0
     buttons = toolbar_stops.read_buttons(toolbars, process_handle) if tab else ()
     return ExplorerToolbar(buttons, winUser.getWindowText(tab), row) if buttons else None
@@ -194,8 +194,17 @@ class ExplorerButton(toolbar_stops.ButtonBeforeControl):
         return button is not None and button.image == _VIEW_EXPLORER
 
     def _get_role(self):
-        # The proxy reports the button pressed while the explorer is shown.
         return controlTypes.Role.TOGGLEBUTTON if self._is_toggle() else super().role
+
+    def _get_states(self):
+        states = super()._get_states()
+        if self._is_toggle():
+            # Pressed while the explorer is shown: ezcd does not always press the button again when the
+            # button in the explorer's place shows it.
+            states.discard(controlTypes.State.PRESSED)
+            if panels.is_explorer_bar(parent(self.windowHandle)):
+                states.add(controlTypes.State.PRESSED)
+        return states
 
     def doAction(self, index=None):
         if not index and self._is_toggle():

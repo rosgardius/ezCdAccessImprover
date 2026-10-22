@@ -32,7 +32,9 @@ Tab order, each right before the control right of it on the screen: the navigati
 path bar, the view toolbar before the filter of file types. Their buttons are named by the
 application's own hints, in its language: View Explorer, Add files, Add folder, Go to Computer, Go to
 Music, back and forward in history, Go up, and View. View, alone in its toolbar, is read as a menu button
-without the toolbar. View Explorer is a toggle button, pressed while the explorer is shown.
+without the toolbar. View Explorer is a toggle button, pressed while the explorer is shown. Where the
+application hides the filter of file types, as on the MP3 disc and Data disc pages of the Disc Burner tab,
+the view toolbar is a stop at the end of the tab instead, right before the top buttons.
 
 While the explorer is hidden, its place is taken by one toolbar: View Explorer, Add files, Add folder and,
 on the Audio Converter tab, Select all, Remove all and Create M3U playlist. It is a stop in the Tab order
@@ -57,11 +59,28 @@ current folder is reported. Up and Down Arrow in the field go through the addres
 File Explorer, as in the application itself, replacing the typed path; Escape brings back the current
 folder.
 
+### Pages of the Disc Burner tab
+
+The Disc Burner tab has three pages, Audio CD, MP3 disc and Data disc, which the application switches
+only with buttons for the mouse. The stop in the Tab order right before the list of files is read as
+the tab of the current page, such as "MP3 disc, tab, 2 of 3".
+
+* On that tab, Left and Right Arrow show the previous and the next page, Home and End the first and the
+  last one.
+* Control+Tab and Control+Shift+Tab anywhere on the Disc Burner tab show the next and the previous
+  page, going round. From the list of files or another control of a page, focus goes to the list of the
+  new page; elsewhere it stays where it is and the new page is reported.
+
+The application takes a moment to show a page. Tab or Shift+Tab pressed on the page tab meanwhile waits
+until the new page is reported.
+
 ### Toolbar of the drive's tray
 
 The toolbar at the end of the drive and speed row of the Audio CD Ripper and Disc Burner tabs is a
 stop in the Tab order right after the speed: before the list of tracks of the Audio CD Ripper tab and
-before Options of the Disc Burner tab. Its buttons are named by the application's own hints: Open tray,
+before Options of the Disc Burner tab. On the MP3 disc and Data disc pages, which have no Options, it is
+a stop at the end of the tab, right before the top buttons (after the view toolbar if that is there too).
+Its buttons are named by the application's own hints: Open tray,
 Close tray and, on the Audio CD Ripper tab, Drive settings. On the Disc Burner tab, with Open tray
 alone, it is read as a button without the toolbar. Without a disc drive the buttons are unavailable.
 Arrows, Home, End, Enter and Space work as in the toolbars of the file explorer.

@@ -282,12 +282,16 @@ class ButtonBeforeControl(ToolbarButton):
     """
 
     next_control: Callable[[int], int]
-    """The control after the stop of the toolbar window, 0 if none."""
+    """The control after the stop of the toolbar window, 0 if none: the stop is at the end of its tab."""
 
     @script(gesture="kb:tab")
     def script_next_control(self, gesture):
         neighbour = self.next_control(self.windowHandle)
-        if not neighbour or not toolbar.set_focus(neighbour):
+        if neighbour:
+            moved = toolbar.set_focus(neighbour)
+        else:
+            moved = self.appModule.leave_tab_end(self.windowHandle, True, self.processHandle)
+        if not moved:
             gesture.send()
 
     @script(gesture="kb:shift+tab")
@@ -296,6 +300,8 @@ class ButtonBeforeControl(ToolbarButton):
         neighbour = self.next_control(self.windowHandle)
         if neighbour:
             self.appModule.pass_focus(neighbour)
+        elif self.appModule.leave_tab_end(self.windowHandle, False, self.processHandle):
+            return
         gesture.send()
 
 

@@ -21,10 +21,12 @@ import winUser
 from keyboardHandler import KeyboardInputGesture
 from logHandler import log
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
+from scriptHandler import script
 from speech.speech import speakMessage
 from winBindings import kernel32
 
 from . import (
+    burner_pages,
     captions,
     cells,
     convert_window,
@@ -35,6 +37,7 @@ from . import (
     list_items,
     metadata,
     names,
+    tab_end,
     toolbar,
     toolbar_stops,
     top_panel,
@@ -79,6 +82,7 @@ class AppModule(appModuleHandler.AppModule):
         reported."""
         self._conversion_status = convert_window.ConversionStatus()
         self.converter_steps = converters.StepAnnouncer()
+        self.page_switcher = burner_pages.PageSwitcher(self.language, self._note_gesture)
         self.closed_editor = file_lists.ClosedEditor()
         self.cells = cells.CellTable(self.language)
         inputCore.decide_executeGesture.register(self._note_gesture)
@@ -86,6 +90,7 @@ class AppModule(appModuleHandler.AppModule):
     def terminate(self):
         inputCore.decide_executeGesture.unregister(self._note_gesture)
         self.converter_steps.terminate()
+        self.page_switcher.terminate()
         super().terminate()
 
     def _executable_path(self) -> str | None:
@@ -131,12 +136,32 @@ class AppModule(appModuleHandler.AppModule):
             and time.monotonic() - self._focus_return_at < _RETURN_FOCUS_TIMEOUT
         )
 
+    def leave_tab_end(self, toolbar_hwnd: int, forward: bool, process_handle: int) -> bool:
+        """Moves focus from a toolbar stop at the end of its tab to the next or previous stop there, and
+        after the last one to the tab labels, on the way to the top panel; ``False`` if it did not move.
+
+        Before the first stop, focus passes by the tab labels for the key that follows: VCL goes from there
+        to the tab's last control.
+        """
+        target = tab_end.neighbour(toolbar_hwnd, forward)
+        if not target:
+            return False
+        if winUser.getClassName(target) == "TToolBar":
+            return self._enter_stop(
+                explorer.stop_of(target, process_handle, self.language)
+                or tray.stop_of(target, process_handle, self.language)
+            )
+        if forward:
+            return toolbar.set_focus(target)
+        self.pass_focus(target)
+        return False
+
     def explorer_toggled(self, toolbar_hwnd: int):
         """View Explorer is being pressed on the toolbar: ezcd will hide it and show the other one."""
         self._explorer_toggle = toolbar_hwnd
         self._toggle_pressed_at = time.monotonic()
 
-    def _toolbar_passed(self, window: int, previous: int, tab_key: int) -> int:
+    def _toolbar_passed(self, window: int, previous: int, tab_key: int, process_handle: int) -> int:
         """The toolbar of the explorer or the tray that Tab or Shift+Tab passed by, once for the focus and
         its ancestors."""
         if not tab_key:
@@ -144,8 +169,10 @@ class AppModule(appModuleHandler.AppModule):
         key = (window, previous, tab_key)
         if self._passed_toolbar[0] != key:
             forward = tab_key == 1
-            passed = explorer.toolbar_passed(window, previous, forward) or tray.toolbar_passed(
-                window, previous, forward
+            passed = (
+                explorer.toolbar_passed(window, previous, forward)
+                or tray.toolbar_passed(window, previous, forward)
+                or tab_end.toolbar_passed(window, previous, forward, process_handle, self.language)
             )
             self._passed_toolbar = (key, passed)
         return self._passed_toolbar[1]
@@ -210,6 +237,14 @@ class AppModule(appModuleHandler.AppModule):
                 and toolbar_stops.focus_button(self, panel, panel.buttons[0])
             ):
                 return
+        # VCL skips the toolbars of the explorer and the tray; stop at the one Tab or Shift+Tab passed by.
+        # Those at the end of the tab come before its top panel.
+        passed = self._toolbar_passed(obj.windowHandle, previous, tab_key, obj.processHandle)
+        if passed and self._enter_stop(
+            explorer.stop_of(passed, obj.processHandle, self.language)
+            or tray.stop_of(passed, obj.processHandle, self.language)
+        ):
+            return
         # VCL skips the top panel on Tab; stop at it instead of the tab labels.
         if (
             tab_key == 1
@@ -218,13 +253,6 @@ class AppModule(appModuleHandler.AppModule):
             and self._enter_stop(
                 top_panel.panel_left_by_tab(obj.windowHandle, previous, obj.processHandle, self.language)
             )
-        ):
-            return
-        # VCL skips the toolbars of the explorer and the tray; stop at the one Tab or Shift+Tab passed by.
-        passed = self._toolbar_passed(obj.windowHandle, previous, tab_key)
-        if passed and self._enter_stop(
-            explorer.stop_of(passed, obj.processHandle, self.language)
-            or tray.stop_of(passed, obj.processHandle, self.language)
         ):
             return
         nextHandler()
@@ -286,6 +314,24 @@ class AppModule(appModuleHandler.AppModule):
             return
         nextHandler()
 
+    def _step_burner_page(self, gesture, step: int):
+        """Shows the page of the Disc Burner tab next to the active one, going round, if focus is in that
+        tab."""
+        tab = top_panel.main_tab(api.getFocusObject().windowHandle)
+        pages = burner_pages.pages_in_tab(tab) if tab else 0
+        if not pages:
+            gesture.send()
+            return
+        self.page_switcher.move(pages, lambda current: (current + step) % burner_pages.PAGE_COUNT)
+
+    @script(gesture="kb:control+tab")
+    def script_next_burner_page(self, gesture):
+        self._step_burner_page(gesture, 1)
+
+    @script(gesture="kb:control+shift+tab")
+    def script_previous_burner_page(self, gesture):
+        self._step_burner_page(gesture, -1)
+
     def _get_statusBar(self):
         panel = convert_window.summary_panel(root(api.getForegroundObject().windowHandle))
         if panel is None:
@@ -318,7 +364,7 @@ class AppModule(appModuleHandler.AppModule):
         if (
             (focus and focus in (self._passing, self._quiet_toggle))
             or self._returns_focus(focus)
-            or self._toolbar_passed(focus, self._focus_window, self._tab_key)
+            or self._toolbar_passed(focus, self._focus_window, self._tab_key, obj.processHandle)
         ):
             return
         # Focus is about to leave the tab's first control for its top panel: the control is not announced.
@@ -374,7 +420,10 @@ class AppModule(appModuleHandler.AppModule):
             if child_id == 0:
                 clsList.insert(0, cells.BetweenEditors)
         elif window_class == "TPageControl":
-            clsList.insert(0, top_panel.TabLabels)
+            if not burner_pages.is_pages(hwnd):
+                clsList.insert(0, top_panel.TabLabels)
+            elif client:
+                clsList.insert(0, burner_pages.BurnerPages)
         elif window_class == "TTabSheet":
             if top_panel.is_main_window_tab(hwnd):
                 clsList.insert(0, top_panel.MainWindowTab)

@@ -13,8 +13,10 @@ _ENTRY = re.compile(r"^\[(\d+)\][ \t]*\n(.*)$", re.MULTILINE)
 
 
 def _parse(path: str) -> dict[int, str]:
+    """The strings of the file; an empty one is left out, as it would match any window without text."""
     with open(path, encoding="utf-16") as file:
-        return {int(number): text.strip() for number, text in _ENTRY.findall(file.read())}
+        entries = _ENTRY.findall(file.read())
+    return {int(number): text.strip() for number, text in entries if text.strip()}
 
 
 class LanguageFiles:

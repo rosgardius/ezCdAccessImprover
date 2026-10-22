@@ -24,10 +24,11 @@ from .windows import child_windows, parent
 _MAIN_BUTTONS = (
     ((1,), (232, 406), True),  # Audio Converter: "Convert"
     ((0,), (176,), True),  # Audio CD Ripper: "Rip CD"
-    ((13, 14), (239, 391, 392), False),  # Disc Burner: "Burn CD", "Burn DVD", "Burn disc"
+    ((13, 14, 10), (239, 391, 392), False),  # Disc Burner: "Burn CD", "Burn DVD", "Burn disc"
 )
-# The Disc Burner's main button has image 13 on the Audio CD page and 14 on the others; one button for keys.
-_SAME_IMAGES = {14: 13}
+# The Disc Burner's main button has image 13 on the Audio CD page, 14 on MP3 disc and 10 on Data disc; one
+# button for keys.
+_SAME_IMAGES = {14: 13, 10: 13}
 # Buttons that open a menu, by ``TopPanel.key``.
 _MENU_BUTTONS = {
     1: frozenset(((0, 0), (4, 0), (15, 0), (19, 0))),  # Audio Converter ▼, Metadata ▼, View, Help

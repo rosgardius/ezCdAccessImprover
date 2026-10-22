@@ -65,6 +65,8 @@ The app module is a few thousand lines. These rules keep it from growing copies 
   window is (`COVER_CLASS = "TDropPanel"`); never two names for one class.
 - **NVDA's Win32 bindings first**: constants and functions from `winUser`, `winBindings` and
   `windowUtils`. Own constants and `ctypes.WinDLL` declarations only for what they lack.
+- **ezcd's memory through an NVDAObject's `processHandle`.** The app module's own `processHandle` has
+  no access to the memory of the process: a buffer made with it fails (`remote.buffer` raises `OSError`).
 - **Errors are handled where the resource is.** A function that reads ezcd's memory or waits for ezcd
   catches `OSError` or the timeout itself, logs with `log.debugWarning` and returns an empty result;
   its callers do not repeat the `try`.

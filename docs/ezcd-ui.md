@@ -31,19 +31,19 @@ absolute coordinates, captions in a particular language.
   | Metadata ▼ | 4 | Disc ▼ | 3 | Erase Disc | 8 |
   | Rename files | 6 | Metadata ▼ | 4 | Burn Disc Image | 9 |
   | Save metadata | 7 | AutoRip | 5 | Save to ISO | 11 |
-  | **Convert** | **1** | **Rip CD** | **0** | **Burn Disc** | **13, 14** |
+  | **Convert** | **1** | **Rip CD** | **0** | **Burn Disc** | **10, 13, 14** |
   | Settings | 2 | Settings | 2 | Settings | 2 |
   | View | 15 | View | 15 | View | 15 |
   | Help | 19 | Help | 19 | Help | 19 |
 
 - The main button of a tab is recognised by its image together with its caption, which must equal
   the string in one of the language files: Convert is image 1 with string `[232]` or `[406]`, Rip CD
-  is image 0 with string `[176]`, Burn Disc is image 13 or 14 with string `[239]`, `[391]` or `[392]`.
+  is image 0 with string `[176]`, Burn Disc is image 10, 13 or 14 with string `[239]`, `[391]` or `[392]`.
   No translation of these strings has a `▼`, so the menu buttons with the same images never match.
 - Burn Disc changes with the page of the Disc Burner tab: on Audio CD it is image 13 captioned Burn CD
-  (`[239]`), on MP3 Disc and Data disc image 14 captioned Burn disc (`[392]`). After the language is
-  switched in the running application, the caption is `[392]` until the page changes. In Russian,
-  `[239]` and `[392]` are the same. Burn DVD (`[391]`) was not seen without a DVD drive.
+  (`[239]`), on MP3 Disc image 14 and on Data disc image 10, both captioned Burn disc (`[392]`). After
+  the language is switched in the running application, the caption is `[392]` until the page changes.
+  In Russian, `[239]` and `[392]` are the same. Burn DVD (`[391]`) was not seen without a DVD drive.
 - The first button of each panel opens a menu of the three tabs. Choosing a tab there, the current one
   too, puts focus on the tab's first control (the list of files or tracks, the burner's inner tab labels).
   The ripper and burner tabs open without a disc drive.
@@ -87,7 +87,9 @@ absolute coordinates, captions in a particular language.
   Burner tab has no Add files and Add folder. Their hints are strings `[704]`, `[327]`, `[328]`, `[489]`,
   `[490]`, `[701]`, `[702]`, `[703]`. Separators have `TBSTYLE_SEP` and their width as `iBitmap`.
 - View Explorer shows and hides the explorer; while it is shown, the button has `TBSTATE_PRESSED`, and
-  the MSAA proxy reports it pressed.
+  the MSAA proxy reports it pressed. On the Disc Burner tab, once the explorer was shown again with View
+  Explorer in its place, the button above it is no longer pressed (`fsState` 0x4); which of the two is
+  shown tells the state.
 - The view's toolbar has one button (image 4), without hint, with `TBSTYLE_DROPDOWN` on a toolbar with
   `TBSTYLE_EX_DRAWDDARROWS`. A click on its body does nothing; a posted click on the arrow, the right
   end of `TB_GETITEMRECT`, opens the menu List `[227]`, Details `[228]`, Icons `[339]`, Large icons
@@ -144,6 +146,9 @@ absolute coordinates, captions in a particular language.
 - The toolbar is not a tab stop, and Tab skips the disabled combo boxes: Tab goes from the tab labels
   to the list of tracks on the Audio CD Ripper tab, and from the breadcrumb bar to Options on the Disc
   Burner tab.
+- On the MP3 disc and Data disc pages of the Disc Burner tab, Options (`Опции (1) »`, the button right of
+  the tray) and the filter of file types are hidden. The filter stays hidden on Audio CD afterwards, until
+  the explorer is hidden and shown again. Tab then goes from the breadcrumb bar to the tab labels.
 
 ## Tabs of the main window
 
@@ -153,6 +158,20 @@ absolute coordinates, captions in a particular language.
 - MSAA gives `TTabSheet` the property page role. NVDA treats it as a dialog and, on every focus entry
   into the tab, collects dialog text from all its panels: about 250 ms in the main window, with an
   empty result.
+
+## Pages of the Disc Burner tab
+
+- The Disc Burner tab holds a `TPageControl` of three pages, Audio CD, MP3 disc and Data disc (strings
+  `[470]`–`[472]`), with their tab labels hidden: the page control has no tab items, is a Tab stop
+  without a name (NVDA says "tab"), and the arrow keys do nothing on it. Each page is a
+  `TTabSheet` captioned with its string; the window of a page is made the first time it is shown.
+- The pages are switched only by three `TPngSpeedButton`s without windows, captioned with the same
+  strings, in the `TPanel` right above the page control (its bottom one pixel above the page control's
+  top; it has no child windows): 100 × 24 design units, at left 3, 108 and 213, top 0, scaled by the
+  window's DPI / 96. A posted click at a button's centre shows its page.
+- ezcd handles the click in 0.2–0.55 s, sent messages and MSAA calls waiting meanwhile; the new page
+  may be visible after the first 50 ms of it. With focus on the page control, focus stays there; with
+  focus on a control of the old page, it goes to the first control of the new one (its list).
 
 ## Lists of files
 
@@ -423,7 +442,8 @@ absolute coordinates, captions in a particular language.
 ## Language files
 
 - `Language\*.uni` next to `ezcd.exe`: UTF-16 with BOM, each entry is a `[N]` line followed by the
-  text line.
+  text line. Some entries are empty (`[580]` in Croatian): an empty string matches any window
+  without text, so it tells nothing about the language.
 - The active language is `HKCU\Software\Poikosoft\EZ CD Audio Converter`, value `k82`, equal to
   string `[0]` of the active file. When the language is switched in the running application, the
   captions change at once but `k82` keeps the old value, so it cannot tell the current language.

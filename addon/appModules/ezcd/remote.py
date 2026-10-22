@@ -95,10 +95,17 @@ def post_click(hwnd: int, x: int, y: int) -> bool:
 
 @contextmanager
 def buffer(process_handle: int) -> Iterator[int]:
-    """A buffer of ``BUFFER_SIZE`` bytes in ezcd's memory. Raises ``OSError`` if it cannot be made."""
+    """A buffer of ``BUFFER_SIZE`` bytes in ezcd's memory. Raises ``OSError`` if it cannot be made.
+
+    The process handle needs access to ezcd's memory: an NVDAObject's has it, the app module's has not.
+    """
     address = winKernel.virtualAllocEx(
         process_handle, None, BUFFER_SIZE, winKernel.MEM_COMMIT, winKernel.PAGE_READWRITE
     )
+    # winKernel checks the result against 0, but a failed allocation gives None: a message would then
+    # have ezcd write to address 0.
+    if not address:
+        raise ctypes.WinError()
     try:
         yield address
     finally:

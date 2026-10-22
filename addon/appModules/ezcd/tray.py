@@ -6,7 +6,8 @@
 
 It ends the row of the drive and its speed. It is a Tab stop right before the Tab stop right of it on the
 screen, else the one below it: Options on the Disc Burner tab, the list of tracks on the Audio CD Ripper
-tab. Without a drive, ezcd disables both lists and the buttons; Tab skips the lists, but not the stop.
+tab; without either, at the end of the tab (``tab_end``). Without a drive, ezcd disables both lists and
+the buttons; Tab skips the lists, but not the stop.
 """
 
 from collections.abc import Hashable
@@ -40,7 +41,7 @@ class TrayToolbar(toolbar_stops.ToolbarStop):
         return TrayToolbarWindow if button is None else TrayButton
 
 
-def _is_tray(hwnd: int) -> bool:
+def is_tray(hwnd: int) -> bool:
     return (
         winUser.getClassName(hwnd) == "TToolBar"
         and winUser.isWindowVisible(hwnd)
@@ -50,7 +51,7 @@ def _is_tray(hwnd: int) -> bool:
 
 def stop_of(hwnd: int, process_handle: int, language: LanguageFiles) -> TrayToolbar | None:
     """The tray's toolbar, if the window is it."""
-    tab = main_tab(hwnd) if _is_tray(hwnd) else 0
+    tab = main_tab(hwnd) if is_tray(hwnd) else 0
     buttons = toolbar_stops.read_buttons([hwnd], process_handle) if tab else ()
     return TrayToolbar(buttons, winUser.getWindowText(tab)) if buttons else None
 
@@ -68,7 +69,7 @@ def toolbar_passed(window: int, previous: int, forward: bool) -> int:
     """The tray's toolbar if Tab or Shift+Tab from ``previous`` to ``window`` passed by its stop."""
     after = window if forward else previous
     tab = main_tab(after)
-    tray = next((w for w in descendants(tab) if _is_tray(w)), 0) if tab else 0
+    tray = next((w for w in descendants(tab) if is_tray(w)), 0) if tab else 0
     return tray if tray and tray not in (window, previous) and next_control(tray) == after else 0
 
 
