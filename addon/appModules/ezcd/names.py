@@ -5,11 +5,13 @@
 """Names of controls: from the captions on screen, else from ezcd's strings or the add-on's own.
 
 A control ezcd shows without any caption, as a button with only an image, is named by the string ezcd
-has for it, or else by the add-on's own string. A button or check box whose caption repeats in its
-window gets the caption of its row added, and so does a split button showing the value of a setting.
+has for it, or else by the add-on's own string; a parameter of the codec, by what its items are. A
+button or check box whose caption repeats in its window gets the caption of its row added, and so does
+a split button showing the value of a setting.
 """
 
 import ctypes
+import re
 
 import addonHandler
 import characterProcessing
@@ -30,6 +32,14 @@ _CHECK_BOX_CLASS = "TCheckBox"
 _EDIT_CLASS = "TEdit"
 _COMBO_BOX_CLASS = "TComboBox"
 _COMBO_BOX_EDIT_CLASS = "Edit"
+_COMBO_BOX_EX_CLASS = "TComboBoxEx"
+# The combo box of a TComboBoxEx, which gets focus, is its child window.
+COMBO_BOX_EX_CHILD_CLASS = "ComboBox"
+_TOOLBAR_CLASS = "TToolBar"
+_DRIVE_SETTINGS_CLASS = "TSettings2AudioCDRipperDriveForm"
+_CB_GETCOUNT = 0x146
+_CB_GETLBTEXT = 0x148
+_CB_GETLBTEXTLEN = 0x149
 _ROW_SEPARATOR = ", "
 _TEXT_LENGTH = 256
 
@@ -45,6 +55,10 @@ _FIELD_NAME = 834
 _FIELD_VALUE = 835
 _COVER_ART = 349
 _TRACKLIST = 137
+_SOURCE_DRIVE = 462
+_READ_SPEED = 463
+_DISC_WRITER = 235
+_WRITE_SPEED = 236
 
 # A name is a string number of the language files or the add-on's own string.
 type _Name = int | str | None
@@ -110,6 +124,102 @@ def _metadata_combo_box(hwnd: int) -> _Name:
     return _("Picture type")
 
 
+def _combo_box_items(hwnd: int) -> list[str]:
+    items = []
+    for index in range(remote.send(hwnd, _CB_GETCOUNT)):
+        length = remote.send(hwnd, _CB_GETLBTEXTLEN, index)
+        if length <= 0:
+            continue
+        buffer = ctypes.create_unicode_buffer(length + 1)
+        if remote.send(hwnd, _CB_GETLBTEXT, index, ctypes.addressof(buffer)) > 0:
+            items.append(buffer.value)
+    return items
+
+
+# The items of a codec's parameters are the codec's own, not translated: values with units, modes,
+# levels. The first kind that any of its items has names the parameter.
+_CODEC_PARAMETERS = (
+    # Translators: The short name of the list of sample rates of a codec (44100 Hz, ...).
+    (re.compile(r"\d\s*Hz$|^DSD\d+$"), _("Rate")),
+    # Translators: The short name of the list of bit rates of a codec (~128 kbit/s, ...).
+    (re.compile("kbit/s"), _("Bitrate")),
+    # Translators: The short name of the list of channel layouts of a codec (Stereo, Mono, 5.1, ...).
+    (re.compile("^(Joint )?Stereo$|^Mono$"), _("Channels")),
+    # Translators: The short name of the list of bit depths of a codec (16-bit, 24-bit, ...).
+    (re.compile(r"^\d+-bit"), _("Bits")),
+    # Translators: The short name of the list of bit rate modes of a codec (VBR, CBR, ...).
+    (re.compile("^C?[ACV]BR$"), _("Mode")),
+)
+# Translators: The short name of any other list of a codec's parameters: compression level,
+# encoder quality, kind of signal.
+_CODEC_LEVEL = _("Level")
+# The format and its extension are named alike the parameters of the codec next to them, not by
+# ezcd's "Format".
+# Translators: The name of the list of output formats (MP3 | LAME, FLAC, ...).
+_FORMAT = _("Format")
+# Translators: The name of the list of file name extensions of the output format (.m4a, .aac, ...).
+_EXTENSION = _("Extension")
+
+
+def _codec_parameter(hwnd: int) -> _Name:
+    items = _combo_box_items(hwnd)
+    if not items:
+        return None
+    for pattern, name in _CODEC_PARAMETERS:
+        if any(pattern.search(item) for item in items):
+            return name
+    return _CODEC_LEVEL
+
+
+def _output_combo_box(hwnd: int) -> _Name:
+    """The output panel: the format, with its extension right next to it."""
+    layout = captions.Layout(hwnd, None, texts=[])
+    _texts, left = layout.left_texts()
+    if left and winUser.getClassName(left) == _COMBO_BOX_CLASS and layout.adjoins(left):
+        return _EXTENSION
+    right = layout.right_window()
+    if (
+        right
+        and winUser.getClassName(right) == _COMBO_BOX_CLASS
+        and captions.Layout(right, None, texts=[]).adjoins(hwnd)
+    ):
+        return _FORMAT
+    return None
+
+
+def _drive_combo_box(hwnd: int) -> _Name:
+    """The drive and its speed: side by side on the ripper's tab, one above the other on the burner's."""
+    layout = captions.Layout(hwnd, None, texts=[])
+    others = [s for s in layout.siblings if winUser.getClassName(s) == _COMBO_BOX_CLASS]
+    if len(others) != 1:
+        return None
+    other = layout.siblings[others[0]]
+    if other.top < layout.rect.bottom and layout.rect.top < other.bottom:
+        return _SOURCE_DRIVE if layout.rect.left < other.left else _READ_SPEED
+    return _DISC_WRITER if layout.rect.top < other.top else _WRITE_SPEED
+
+
+def _main_combo_box(hwnd: int) -> _Name:
+    panel = winUser.getAncestor(hwnd, winUser.GA_PARENT)
+    if child_windows(panel, _COMBO_BOX_EX_CLASS):
+        return _output_combo_box(hwnd)
+    if child_windows(winUser.getAncestor(panel, winUser.GA_PARENT), _COMBO_BOX_EX_CLASS):
+        # The parameters of the codec lie in a panel of their own inside the output panel.
+        return _codec_parameter(hwnd)
+    if child_windows(panel, _TOOLBAR_CLASS) and len(child_windows(panel, _COMBO_BOX_CLASS)) == 2:
+        # The toolbar opens and closes the drive's tray.
+        return _drive_combo_box(hwnd)
+    return None
+
+
+def _settings_combo_box(hwnd: int) -> _Name:
+    """Drive settings: the drive is chosen at the top of the page."""
+    if winUser.getClassName(winUser.getAncestor(hwnd, winUser.GA_PARENT)) != _DRIVE_SETTINGS_CLASS:
+        return None
+    _texts, above = captions.Layout(hwnd, None, texts=[]).above_texts()
+    return None if above else _SOURCE_DRIVE
+
+
 _ANY_FORM = {_BUTTON_CLASS: _button, _CHECK_BOX_CLASS: _check_box}
 # Translators: The name of the list of settings pages.
 _CATEGORIES = _("Categories")
@@ -125,7 +235,8 @@ _FORMS = {
     # The caption of the last field lies below the edge of its panel and is not drawn.
     "TMBManual": {_EDIT_CLASS: _RELEASE_CODE, "TListView": _RESULTS},
     "TFC_GetMetadata": {"TVirtualStringTree": _TRACKLIST},
-    "TSettings2Form": {"TTreeView": _CATEGORIES},
+    "TMainform": {_COMBO_BOX_EX_CLASS: _PROFILE, _COMBO_BOX_CLASS: _main_combo_box},
+    "TSettings2Form": {"TTreeView": _CATEGORIES, _COMBO_BOX_CLASS: _settings_combo_box},
     "TNamePreview": {_EDIT_CLASS: _FILENAMES, "TListBox": _TEMPLATES, "TListView": _FILENAME_PREVIEW},
     "TTMetadata": {
         "TVirtualStringTree": _metadata_tree,
@@ -151,7 +262,8 @@ def fixed_name(hwnd: int, language: LanguageFiles) -> str:
     if not isinstance(name, int):
         return name or ""
     strings = language.strings_of(_shown_texts(form))
-    return strings.get(name, "") if strings else ""
+    # Some strings are captions of labels: "Disc writer :".
+    return strings.get(name, "").rstrip(" :") if strings else ""
 
 
 def _repeats(hwnd: int, caption: str) -> bool:
@@ -188,6 +300,10 @@ def row_caption(hwnd: int, binding_handle, language: LanguageFiles, choice_only:
     return caption
 
 
+def is_combo_box_ex_child(hwnd: int) -> bool:
+    return winUser.getClassName(winUser.getAncestor(hwnd, winUser.GA_PARENT)) == _COMBO_BOX_EX_CLASS
+
+
 class Captioned(IAccessible):
     """A control without an MSAA name, named by the caption ezcd draws beside it or else by a string."""
 
@@ -201,9 +317,12 @@ class Captioned(IAccessible):
         if name:
             return name
         if self._screen_name is None:
+            window = self.windowHandle
+            if self.windowClassName == COMBO_BOX_EX_CHILD_CLASS:
+                window = winUser.getAncestor(window, winUser.GA_PARENT)
             self._screen_name = captions.caption(
-                self.windowHandle, self.appModule.helperLocalBindingHandle
-            ) or fixed_name(self.windowHandle, self.appModule.language)
+                window, self.appModule.helperLocalBindingHandle
+            ) or fixed_name(window, self.appModule.language)
         return self._screen_name
 
 

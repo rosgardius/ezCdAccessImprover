@@ -127,11 +127,18 @@ as in the replacements of characters not allowed in file names, is read by NVDA'
 "colon".
 
 A field or list without any caption on the screen is named by the application's own word for it, in
-its language, where it has one: Profile in Edit profiles; Files, Metadata, Name, Value and Cover Art in
-the metadata editor; the file name template and the preview in Filename preview; Tracklist in the
+its language, where it has one: Profile on the output panels of the Audio Converter and Audio CD
+Ripper tabs and in Edit profiles; Source drive and Read speed on the Audio CD Ripper tab and in Drive
+settings, Disc writer and Write speed on the Disc Burner tab; Files, Metadata, Name, Value and Cover Art
+in the metadata editor; the file name template and the preview in Filename preview; Tracklist in the
 results of Search for CD metadata. Otherwise it gets a name of this add-on: Categories for the pages of
 Settings, Templates for the template history, Picture type in the metadata editor, Release code and
 Results in the manual search of metadata. Fields not named in either way stay without a name.
+
+The format and the codec's parameters on the output panels get short names of this add-on, all of
+them, whichever format is chosen: Format, Extension, and for each parameter by what it offers, Rate
+(sample rate), Bitrate, Channels, Bits (bit depth), Mode (VBR, CBR) and Level for any other, such as
+the compression level of FLAC.
 
 ### Buttons
 

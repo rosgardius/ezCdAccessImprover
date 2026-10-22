@@ -224,6 +224,23 @@ absolute coordinates, captions in a particular language.
   can be typed in (it has an `Edit` child), that of picture types cannot. The language files have
   Profile `[582]`, Filenames `[180]`, Filename preview `[266]`, Files `[494]`, Metadata `[101]`, Name
   `[834]`, Value `[835]`, Cover Art `[349]`, Tracklist `[137]`.
+- The output panels of the Audio Converter and Audio CD Ripper tabs have no caption for the profile,
+  the format, its extension and the codec's parameters. The profile is a `TComboBoxEx`, whose child
+  `ComboBox` gets focus. The format and the extension are combo boxes right next to each other below
+  it. The codec's parameters (up to six combo boxes, hidden as the format needs) lie in a panel of
+  their own inside the output panel; which parameter is in which box depends on the format. Their items
+  are the codec's, the same in every language: sample rates (`44100 Hz`, `Auto`, for DSD `DSD64` …),
+  bit rates (`~128 kbit/s | V 5`), channels (`Stereo`, `Mono`, `5.1`), bit depths (`16-bit`), bit rate
+  modes (`VBR`, `CBR`, `ABR`, `CVBR`), and levels: compression of FLAC, Monkey's Audio and WavPack,
+  `q 0 (Best)` of LAME, `Music`/`Voice` of Opus, `Standard`/`Lossless` of WMA. ezcd keeps the
+  parameters of each format, so switching the format and back keeps them.
+- The drive and its speed have only icons before them: side by side on the Audio CD Ripper tab
+  (Source drive `[462]`, Read speed `[463]`), one above the other on the Disc Burner tab (only hints
+  Device and Speed; the language files have Disc writer `[235]` and Write speed `[236]`, ending in
+  ` :` in some languages). Each pair lies in a panel with the toolbar of the tray. The drive at the top
+  of the Drive settings page of Settings (`TSettings2AudioCDRipperDriveForm`) has no caption either.
+  The language files have Profile `[582]`, Format `[619]`, Bit rate `[478]`, Bit depth `[479]`, Sample
+  rate `[480]` and Channels `[481]`, but nothing for the extension, the bit rate mode or the levels.
 - The manual search of metadata (`TMBManual`, one window for GD3, MusicBrainz, Discogs and Deezer) has
   no caption for its list of results. Its panel is too short at higher DPI: the last row (Release
   Code, a `TEdit` and a Search button) lies below the panel's edge, over the list, and its caption is

@@ -224,6 +224,14 @@ class AppModule(appModuleHandler.AppModule):
             if obj.IAccessibleChildID == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW:
                 clsList.insert(0, names.CaptionedButton)
             return
+        if obj.windowClassName == names.COMBO_BOX_EX_CHILD_CLASS:
+            if (
+                obj.IAccessibleChildID == 0
+                and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW
+                and names.is_combo_box_ex_child(obj.windowHandle)
+            ):
+                clsList.insert(0, names.Captioned)
+            return
         if obj.windowClassName in captions.CLASSES:
             if obj.IAccessibleChildID == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW:
                 clsList.insert(0, names.Captioned)
