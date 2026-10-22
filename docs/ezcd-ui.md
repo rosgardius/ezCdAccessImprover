@@ -277,12 +277,39 @@ absolute coordinates, captions in a particular language.
   with a colon, Number being `[590]` and Disc number `[598]`. Short captions are the same in several
   languages: Number in Russian, Bulgarian and Ukrainian, in English and Estonian. Strings `[801]` and
   `[503]` are the totals as placeholders of the file name pattern (`<Total Tracks>`, `<Total Discs>`).
-- The `TDropPanel`'s window text is the localized Cover Art (string `[349]`); MSAA gives it no name.
-  It is not a tab stop. Under it, a label without a window shows the format, size and file size of
+- The `TDropPanel`'s window text is the localized Cover Art (string `[349]`); MSAA gives it no name
+  (see Cover art and rating). Under it, a label without a window shows the format, size and file size of
   the cover (`JPEG | 250x250 | 49.95 kB`), and nothing without a cover.
 - The CD-Text fields of the Disc Burner tab are two `TEdit`s in a `TPanel` under the list of tracks,
   on the Audio CD page of the tab's own page control, captioned by labels without windows left of them.
 - With the fields disabled (no file selected, no disc in the ripper), the captions are still drawn.
+
+## Cover art and rating
+
+- The cover art of the metadata panel (`TDropPanel`) is not a tab stop, but takes focus. VCL's Tab
+  from it goes to the panel's first field in the Tab order, Shift+Tab to the control before the panel.
+  Its menu (View, Load, Download, Save as, Resize ▸, Cut, Copy, Paste, Clear; View is not translated)
+  opens on `WM_CONTEXTMENU` posted to it; with the point -1, -1 of the keyboard the menu shows at the
+  mouse pointer. A posted Applications key does not open it.
+- View (`TCoverArtWnd2`) has no focusable control: focus stays on the form. Its menu (as the cover's,
+  without View) belongs to the larger of its two `TPanel`s, the picture; the other is the line of text
+  under it. Escape does not close it.
+- The panel over the cover art (`TCoverArtWnd`, caption Cover Art, not translated) shows while the
+  mouse pointer rests on the cover art; a posted `WM_MOUSEMOVE` does not bring it up. Focus is on its
+  `TPanel` captioned Cover Art. It closes on `WM_CLOSE` and shows again while the pointer stays there.
+- Download Cover Art (`TAmazon`) opens with focus on the form; its list of results has no name. Escape
+  closes it.
+- The rating (`TRating`, caption Rating `[592]` left of it) has no window: five stars drawn in the
+  metadata panel, 16 × 16 design units each from its left edge. A click sets the stars up to the one
+  clicked; a click in the first few pixels of the rating (5 at 120 DPI) sets none, a click right of
+  the stars all five. ezcd marks the file as changed (its name in italics) even when the stars are set
+  back. ezcd hides it with the Rating field and disables it without a file.
+- VCL objects in ezcd's memory: a window's object is in its property `ControlOfs` followed by the
+  module instance and the thread id, 8 hexadecimal digits each. In the object, at 0x398 is
+  `FControls`, the `TList` of the controls without windows (at 8 the pointer to the items, at 16 their
+  count). A class name is a short string pointed to from 136 bytes before the virtual method table the
+  object points to. A control has `FLeft`, `FTop`, `FWidth`, `FHeight` at 0x90 (parent's client
+  pixels), `FVisible` at 0xA9 and `FEnabled` at 0xAA; `TRating` has its number of stars at 0x340.
 
 ## Captions in all windows
 

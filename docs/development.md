@@ -52,6 +52,7 @@ The app module is a few thousand lines. These rules keep it from growing copies 
   - `windows.py`: the window tree and window rectangles;
   - `screen.py`: what ezcd draws without windows (display model texts, logical coordinates, repaint);
   - `remote.py`: messages to ezcd and buffers in its memory;
+  - `vcl.py`: VCL objects in ezcd's memory, such as controls without windows;
   - `captions.py`: captions found by position;
   - `panels.py`: panels of the main window, recognised by the windows they hold;
   - `language.py`: ezcd's strings;

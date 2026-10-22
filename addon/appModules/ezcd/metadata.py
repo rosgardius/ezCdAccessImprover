@@ -8,11 +8,11 @@ import winUser
 from NVDAObjects.IAccessible import IAccessible
 
 from . import captions, screen, top_panel
+from .cover_art import COVER_CLASS
 from .language import LanguageFiles
 from .windows import child_windows, parent
 
 FIELD_CLASSES = ("TEdit", "TMemo", "TCheckBox")
-COVER_CLASS = "TDropPanel"
 
 # Strings of the language files: the captions of the number fields and the names of the totals right of them.
 _NUMBER_STRING = 590
@@ -60,15 +60,6 @@ def field_name(field: int, binding_handle, language: LanguageFiles) -> str:
     return captions.from_screen(field, binding_handle, lambda layout: _caption_of(layout, language))
 
 
-def cover_info(cover: int, binding_handle) -> str:
-    """The text under the cover art: its size and format, if there is a cover."""
-    panel = parent(cover)
-    area = screen.logical_rect(panel, panel)
-    rect = screen.logical_rect(cover, panel)
-    area.left, area.top, area.right = rect.left, rect.bottom, rect.right
-    return " ".join(screen.joined(line) for line in screen.lines(screen.texts(panel, binding_handle, area)))
-
-
 class MetadataField(IAccessible):
     """A metadata field, named by its caption, which is a label without a window."""
 
@@ -80,13 +71,3 @@ class MetadataField(IAccessible):
                 self.windowHandle, self.appModule.helperLocalBindingHandle, self.appModule.language
             )
         return self._field_name
-
-
-class CoverArt(IAccessible):
-    """The cover art of the metadata panel, with its size and format as the description."""
-
-    def _get_name(self):
-        return winUser.getWindowText(self.windowHandle)
-
-    def _get_description(self):
-        return cover_info(self.windowHandle, self.appModule.helperLocalBindingHandle)

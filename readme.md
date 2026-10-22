@@ -176,8 +176,24 @@ closes the field, keeping what was typed, and opens a new one in the next cell. 
 The metadata fields below the list of files (Album artist, Title, Compilation and the others), the same
 fields of the Audio CD Ripper tab, and the CD-Text fields of the Disc Burner tab are named by their
 captions on the screen, in the language of the application. The fields right of the track and disc
-numbers are named by the application's own words for the totals, such as Total Tracks. The cover art,
-reached with object navigation, is named Cover Art and has its size and format as the description.
+numbers are named by the application's own words for the totals, such as Total Tracks.
+
+### Cover art and rating
+
+The cover art left of the metadata fields of the Audio Converter and Audio CD Ripper tabs is a stop in
+the Tab order right before the first field. It is read as Cover Art with the format and size of the
+picture, such as "JPEG | 250x250 | 49.95 kB". Applications or Shift+F10 there opens its menu, which the
+application otherwise opens only with the mouse: View, Load, Download, Save as, Resize, Cut, Copy,
+Paste and Clear. In the window that View opens, Applications or Shift+F10 opens the same menu, and
+Escape closes the window.
+
+The panel with Load, Download, Save, Resize and View that the application shows while the mouse pointer
+rests on the cover art cannot be left from the keyboard otherwise: Escape closes it and moves the mouse
+pointer onto the title bar of the main window, so that the panel does not show again.
+
+The rating, five stars that the application lets you set only with the mouse, is a stop in the Tab
+order right before the field below it, read as a slider: "Rating, slider, 3 of 5". Right and Up Arrow
+add a star, Left and Down Arrow take one away, Home sets none and End all five.
 
 ### Names of fields in all windows
 
@@ -196,7 +212,8 @@ settings, Disc writer and Write speed on the Disc Burner tab; Files, Metadata, N
 in the metadata editor; the file name template and the preview in Filename preview; Tracklist in the
 results of Search for CD metadata. Otherwise it gets a name of this add-on: Categories for the pages of
 Settings, Templates for the template history, Picture type in the metadata editor, Release code and
-Results in the manual search of metadata. Fields not named in either way stay without a name.
+Results in the manual search of metadata and in Download Cover Art. Fields not named in either way stay
+without a name.
 
 The format and the codec's parameters on the output panels get short names of this add-on, all of
 them, whichever format is chosen: Format, Extension, and for each parameter by what it offers, Rate

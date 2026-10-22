@@ -31,12 +31,14 @@ from . import (
     cells,
     convert_window,
     counters,
+    cover_art,
     dialogs,
     explorer,
     file_lists,
     list_items,
     metadata,
     names,
+    rating,
     tab_end,
     toolbar,
     toolbar_stops,
@@ -219,6 +221,12 @@ class AppModule(appModuleHandler.AppModule):
                 # Focus may have left the tab for the main form in between.
                 self._tab_kept = True
                 return
+        # VCL skips the cover art and the rating; stop at them.
+        stop = cover_art.stop_target(obj.windowHandle, previous, tab_key) or rating.stop_target(
+            obj.windowHandle, previous, tab_key, obj.processHandle
+        )
+        if stop and toolbar.set_focus(stop):
+            return
         if self.closed_editor.is_left_focus(obj):
             braille.handler.handleGainFocus(obj)
             return
@@ -381,7 +389,7 @@ class AppModule(appModuleHandler.AppModule):
         # The client object of the window, not its window object.
         client = child_id == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW
         if child_id == 0 and obj.IAccessibleRole == oleacc.ROLE_SYSTEM_CLIENT and dialogs.is_dialog(hwnd):
-            clsList.insert(0, dialogs.EzcdDialog)
+            clsList.insert(0, cover_art.DIALOG_CLASSES.get(window_class, dialogs.EzcdDialog))
         elif window_class == "TProgressBar":
             if convert_window.bar_kind(hwnd) == convert_window.Bar.TOTAL:
                 clsList.insert(0, convert_window.TotalProgressBar)
@@ -408,9 +416,9 @@ class AppModule(appModuleHandler.AppModule):
         elif window_class == "Edit":
             if client and explorer.is_path_field(hwnd):
                 clsList.insert(0, explorer.PathEdit)
-        elif window_class == metadata.COVER_CLASS:
+        elif window_class == cover_art.COVER_CLASS:
             if client:
-                clsList.insert(0, metadata.CoverArt)
+                clsList.insert(0, cover_art.CoverArt)
         elif window_class == "TVTEdit":
             if file_lists.is_main_list_editor(hwnd):
                 clsList.insert(0, cells.CellEditor)
@@ -428,7 +436,9 @@ class AppModule(appModuleHandler.AppModule):
             if top_panel.is_main_window_tab(hwnd):
                 clsList.insert(0, top_panel.MainWindowTab)
         elif window_class == "TPanel" and child_id == 0:
-            if top_panel.read_top_panel(hwnd, obj.processHandle, self.language) is not None:
+            if client and rating.is_stop(hwnd):
+                clsList.insert(0, rating.RatingSlider)
+            elif top_panel.read_top_panel(hwnd, obj.processHandle, self.language) is not None:
                 clsList.insert(0, top_panel.TopPanelWindow)
             elif explorer.is_hidden_explorer_row(hwnd):
                 clsList.insert(0, explorer.HiddenExplorerRow)

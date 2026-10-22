@@ -212,7 +212,8 @@ _TEMPLATES = _("Templates")
 # Translators: The name of the field for the release code (catalogue number) in the manual search of
 # metadata.
 _RELEASE_CODE = _("Release code")
-# Translators: The name of the list of releases found by the manual search of metadata.
+# Translators: The name of the list of releases found by the manual search of metadata, and of the list
+# of pictures found by Download Cover Art.
 _RESULTS = _("Results")
 # Translators: The name of the list of files and folders in the folder chosen in the file explorer.
 _FOLDER_CONTENTS = _("Folder contents")
@@ -221,6 +222,7 @@ _FORMS = {
     # The caption of the last field lies below the edge of its panel and is not drawn.
     "TMBManual": {"TEdit": _RELEASE_CODE, "TListView": _RESULTS},
     "TFC_GetMetadata": {"TVirtualStringTree": _TRACKLIST},
+    "TAmazon": {"TListView": _RESULTS},
     "TMainform": {
         "TComboBoxEx": _PROFILE,
         "TComboBox": _main_combo_box,
