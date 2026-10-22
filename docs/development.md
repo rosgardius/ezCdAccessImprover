@@ -53,6 +53,7 @@ The app module is a few thousand lines. These rules keep it from growing copies 
   - `screen.py`: what ezcd draws without windows (display model texts, logical coordinates, repaint);
   - `remote.py`: messages to ezcd and buffers in its memory;
   - `captions.py`: captions found by position;
+  - `panels.py`: panels of the main window, recognised by the windows they hold;
   - `language.py`: ezcd's strings.
 
   A second copy of a helper, even a one-line one such as `parent(hwnd)`, is a defect. A helper

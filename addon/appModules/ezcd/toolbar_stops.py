@@ -11,8 +11,10 @@ buttons, and Enter presses them with a posted click. Where a stop lies in the Ta
 
 import collections
 import contextlib
+import functools
 from collections.abc import Callable, Hashable
 from dataclasses import dataclass
+from typing import ClassVar
 
 import api
 import controlTypes
@@ -23,7 +25,7 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from scriptHandler import script
 
-from . import toolbar, windows
+from . import names, toolbar, windows
 from .language import LanguageFiles
 
 _MENU_MARK = "▼"
@@ -145,7 +147,19 @@ class _StopToolbar(IAccessible):
 
 
 class ToolbarWindow(_StopToolbar):
-    """The toolbar window: focus goes on to its remembered or first button."""
+    """The toolbar window: focus goes on to its remembered or first button.
+
+    It is presented as a toolbar without its design-time caption ("ToolBar6"); a toolbar of a single
+    button, as View, presents the button alone.
+    """
+
+    name = ""
+
+    def _get_isPresentableFocusAncestor(self):
+        if not super().isPresentableFocusAncestor:
+            return False
+        stop = self._stop()
+        return stop is not None and len(stop.buttons) > 1
 
     def _get_focusRedirect(self):
         stop = self._stop()
@@ -154,7 +168,13 @@ class ToolbarWindow(_StopToolbar):
 
 
 class ToolbarButton(_StopToolbar):
-    """A button of a toolbar stop, exposed by the toolbar's MSAA proxy."""
+    """A button of a toolbar stop, exposed by the toolbar's MSAA proxy.
+
+    One that shows only an image is named by ezcd's string for the image.
+    """
+
+    image_names: ClassVar[dict[int, int]] = {}
+    """Numbers of ezcd's strings for buttons without text, by image."""
 
     @property
     def button_index(self) -> int:
@@ -165,6 +185,15 @@ class ToolbarButton(_StopToolbar):
         stop, button = self._find()
         target = None if stop is None else stop.entry(self.appModule.remembered_buttons, self.windowHandle)
         return None if target in (None, button) else _button_object(target)
+
+    def _get_name(self):
+        return super()._get_name() or self._image_name
+
+    @functools.cached_property
+    def _image_name(self) -> str:
+        button = self._tool_button() if self.image_names else None
+        number = None if button is None else self.image_names.get(button.image)
+        return "" if number is None else names.ezcd_string(self.windowHandle, number, self.appModule.language)
 
     def _tool_button(self) -> toolbar.ToolButton | None:
         buttons = toolbar.read_buttons(self.windowHandle, self.processHandle)
@@ -243,6 +272,31 @@ class ToolbarButton(_StopToolbar):
     def script_stay(self, gesture):
         # VCL would move focus to the next or previous window of the toolbar's parent.
         pass
+
+
+class ButtonBeforeControl(ToolbarButton):
+    """A button of a stop that stands right before another control in the Tab order.
+
+    ezcd's own Tab order does not always run so from a toolbar, so Tab and Shift+Tab leave the toolbar by
+    way of that control.
+    """
+
+    next_control: Callable[[int], int]
+    """The control after the stop of the toolbar window, 0 if none."""
+
+    @script(gesture="kb:tab")
+    def script_next_control(self, gesture):
+        neighbour = self.next_control(self.windowHandle)
+        if not neighbour or not toolbar.set_focus(neighbour):
+            gesture.send()
+
+    @script(gesture="kb:shift+tab")
+    def script_previous_control(self, gesture):
+        # ezcd moves from the control after the toolbar to the one before it.
+        neighbour = self.next_control(self.windowHandle)
+        if neighbour:
+            self.appModule.pass_focus(neighbour)
+        gesture.send()
 
 
 class ToolbarMenuButton(ToolbarButton):

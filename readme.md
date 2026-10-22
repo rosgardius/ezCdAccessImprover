@@ -45,6 +45,15 @@ undoes it; as with any toggle button, only the new state is reported: pressed or
 * Enter, Numpad Enter and Space press the focused button. On View, they or Down Arrow open the menu of
   the list's view (List, Details, Icons, Large icons).
 
+### Toolbar of the drive's tray
+
+The toolbar at the end of the drive and speed row of the Audio CD Ripper and Disc Burner tabs is a
+stop in the Tab order right after the speed: before the list of tracks of the Audio CD Ripper tab and
+before Options of the Disc Burner tab. Its buttons are named by the application's own hints: Open tray,
+Close tray and, on the Audio CD Ripper tab, Drive settings. On the Disc Burner tab, with Open tray
+alone, it is read as a button without the toolbar. Without a disc drive the buttons are unavailable.
+Arrows, Home, End, Enter and Space work as in the toolbars of the file explorer.
+
 ### Conversion window
 
 Only the total progress of the conversion is reported, as NVDA's progress bar settings say; the

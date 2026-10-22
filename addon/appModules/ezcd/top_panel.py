@@ -171,7 +171,7 @@ class TopPanelToolbarWindow(toolbar_stops.ToolbarWindow):
     """A toolbar window of the panel."""
 
     find_stop = staticmethod(panel_of)
-    # Its name is a design-time caption such as "ToolBar9".
+    # The panel is presented as the toolbar.
     isPresentableFocusAncestor = False
 
 

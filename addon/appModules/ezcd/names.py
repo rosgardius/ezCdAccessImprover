@@ -19,7 +19,7 @@ import controlTypes
 import winUser
 from NVDAObjects.IAccessible import IAccessible
 
-from . import captions, remote
+from . import captions, panels, remote
 from .captions import Layout
 from .language import LanguageFiles
 from .windows import child_windows, descendants, parent, root
@@ -186,8 +186,7 @@ def _main_combo_box(hwnd: int) -> _Name:
     if child_windows(parent(panel), "TComboBoxEx"):
         # The parameters of the codec lie in a panel of their own inside the output panel.
         return _codec_parameter(hwnd)
-    if child_windows(panel, "TToolBar") and len(child_windows(panel, "TComboBox")) == 2:
-        # The toolbar opens and closes the drive's tray.
+    if panels.is_drive_panel(panel):
         return _drive_combo_box(hwnd)
     return None
 

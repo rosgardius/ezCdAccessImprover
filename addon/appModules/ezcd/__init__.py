@@ -38,6 +38,7 @@ from . import (
     toolbar,
     toolbar_stops,
     top_panel,
+    tray,
 )
 from .language import LanguageFiles
 from .windows import root
@@ -111,12 +112,17 @@ class AppModule(appModuleHandler.AppModule):
         self._toggle_pressed_at = time.monotonic()
 
     def _toolbar_passed(self, window: int, previous: int, tab_key: int) -> int:
-        """The explorer's toolbar that Tab or Shift+Tab passed by, once for the focus and its ancestors."""
+        """The toolbar of the explorer or the tray that Tab or Shift+Tab passed by, once for the focus and
+        its ancestors."""
         if not tab_key:
             return 0
         key = (window, previous, tab_key)
         if self._passed_toolbar[0] != key:
-            self._passed_toolbar = (key, explorer.toolbar_passed(window, previous, tab_key == 1))
+            forward = tab_key == 1
+            passed = explorer.toolbar_passed(window, previous, forward) or tray.toolbar_passed(
+                window, previous, forward
+            )
+            self._passed_toolbar = (key, passed)
         return self._passed_toolbar[1]
 
     def _note_gesture(self, gesture) -> bool:
@@ -184,9 +190,12 @@ class AppModule(appModuleHandler.AppModule):
             )
         ):
             return
-        # VCL skips the explorer's toolbars; stop at the one that Tab or Shift+Tab passed by.
+        # VCL skips the toolbars of the explorer and the tray; stop at the one Tab or Shift+Tab passed by.
         passed = self._toolbar_passed(obj.windowHandle, previous, tab_key)
-        if passed and self._enter_stop(explorer.stop_of(passed, obj.processHandle, self.language)):
+        if passed and self._enter_stop(
+            explorer.stop_of(passed, obj.processHandle, self.language)
+            or tray.stop_of(passed, obj.processHandle, self.language)
+        ):
             return
         nextHandler()
 
@@ -259,7 +268,7 @@ class AppModule(appModuleHandler.AppModule):
         # Focus stayed in the tab: the tab labels or the main form in between were not announced.
         if self._tab_kept and obj.windowClassName in ("TTabSheet", "TPageControl"):
             return
-        # Focus is passing by, or about to go on to a toolbar of the explorer: the control is not announced.
+        # Focus is passing by, or about to go on to a toolbar Tab passed by: the control is not announced.
         focus = api.getFocusObject().windowHandle
         if (focus and focus in (self._passing, self._quiet_toggle)) or (
             self._toolbar_passed(focus, self._focus_window, self._tab_key)
@@ -320,8 +329,10 @@ class AppModule(appModuleHandler.AppModule):
             elif explorer.is_hidden_explorer_row(hwnd):
                 clsList.insert(0, explorer.HiddenExplorerRow)
         elif window_class == "TToolBar":
-            stop = top_panel.panel_of(hwnd, obj.processHandle, self.language) or explorer.stop_of(
-                hwnd, obj.processHandle, self.language
+            stop = (
+                top_panel.panel_of(hwnd, obj.processHandle, self.language)
+                or explorer.stop_of(hwnd, obj.processHandle, self.language)
+                or tray.stop_of(hwnd, obj.processHandle, self.language)
             )
             overlay = None if stop is None else toolbar_stops.overlay_class(obj, stop)
             if overlay is not None:

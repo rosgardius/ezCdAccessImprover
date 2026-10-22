@@ -104,6 +104,18 @@ absolute coordinates, captions in a particular language.
 - View Explorer hides the button that has the focus: when it hides the explorer, focus goes to the main
   form; when it shows the explorer, to the navigation toolbar above it.
 
+## Toolbar of the drive's tray
+
+- The drive, its speed and the toolbar of the tray lie in one `TPanel`, the toolbar at the end of the
+  row: right of the speed on both tabs, with the drive left of the speed on the Audio CD Ripper tab and
+  above it on the Disc Burner tab. No other panel holds a toolbar and two combo boxes.
+- Buttons, without text: Open tray (image 8, hint `[191]`) and Close tray (image 7, hint `[192]`,
+  hidden); on the Audio CD Ripper tab also a hidden separator and a gear (image 9) without a hint,
+  whose purpose is not known. Without a disc drive the combo boxes and the buttons are disabled.
+- The toolbar is not a tab stop, and Tab skips the disabled combo boxes: Tab goes from the tab labels
+  to the list of tracks on the Audio CD Ripper tab, and from the breadcrumb bar to Options on the Disc
+  Burner tab.
+
 ## Tabs of the main window
 
 - The main window's `TPageControl` is a direct child of `TMainform`; each tab is a `TTabSheet` child of

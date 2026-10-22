@@ -7,26 +7,20 @@
 Above the explorer, each toolbar is a Tab stop right before the control right of it on the screen: the
 navigation before the breadcrumb bar, the view of the list before the filter of file types. While the
 explorer is hidden, a row of toolbars takes its place (View Explorer, Add files, ...): one Tab stop right
-before the control below it. ezcd's own Tab order does not always run so from a toolbar, so Tab and
-Shift+Tab leave a toolbar by way of that control.
+before the control below it.
 """
 
-import functools
 from collections.abc import Hashable
 from dataclasses import dataclass
 
 import controlTypes
 import winUser
 from NVDAObjects.IAccessible import IAccessible
-from scriptHandler import script
 
-from . import captions, names, toolbar, toolbar_stops
+from . import captions, toolbar, toolbar_stops
 from .language import LanguageFiles
 from .top_panel import main_tab
-from .windows import child_windows, descendants, is_tab_stop, parent, rect
-
-# A control below the row may overlap it by a pixel or two.
-_ROW_OVERLAP = 2
+from .windows import child_windows, descendants, parent, rect, tab_stop_below
 
 # ezcd's strings for the buttons, by image.
 _VIEW_EXPLORER = 29
@@ -104,20 +98,9 @@ def stop_of(hwnd: int, process_handle: int, language: LanguageFiles) -> Explorer
 
 
 def _first_below(panel: int) -> int:
-    """The Tab stop of the tab nearest below the panel, the leftmost of those at the same height."""
+    """The Tab stop of the tab nearest below the panel."""
     tab = main_tab(panel)
-    edge = rect(panel)
-    below = {}
-    for window in descendants(tab) if tab else ():
-        if is_tab_stop(window):
-            other = rect(window)
-            if (
-                other.top >= edge.bottom - _ROW_OVERLAP
-                and other.left < edge.right
-                and edge.left < other.right
-            ):
-                below[window] = (other.top, other.left)
-    return min(below, key=below.get, default=0)
+    return tab_stop_below(tab, rect(panel)) if tab else 0
 
 
 def next_control(hwnd: int) -> int:
@@ -180,35 +163,20 @@ class HiddenExplorerRow(IAccessible):
 
 
 class ExplorerToolbarWindow(toolbar_stops.ToolbarWindow):
-    """The toolbar window, presented as a toolbar without its design-time caption ("ToolBar6").
-
-    In the row of the hidden explorer the row is the toolbar; a toolbar of one button is not presented.
-    """
+    """The toolbar window; in the row of the hidden explorer the row is the toolbar."""
 
     find_stop = staticmethod(stop_of)
-    name = ""
 
     def _get_isPresentableFocusAncestor(self):
-        # A toolbar of a single button, as View, presents the button alone.
-        if not super().isPresentableFocusAncestor or is_hidden_explorer_row(parent(self.windowHandle)):
-            return False
-        stop = self._stop()
-        return stop is not None and len(stop.buttons) > 1
+        return not is_hidden_explorer_row(parent(self.windowHandle)) and super().isPresentableFocusAncestor
 
 
-class ExplorerButton(toolbar_stops.ToolbarButton):
-    """A button of an explorer toolbar; one that shows only an image is named by ezcd's hint for it."""
+class ExplorerButton(toolbar_stops.ButtonBeforeControl):
+    """A button of an explorer toolbar."""
 
     find_stop = staticmethod(stop_of)
-
-    def _get_name(self):
-        return super()._get_name() or self._ezcd_name
-
-    @functools.cached_property
-    def _ezcd_name(self) -> str:
-        button = self._tool_button()
-        number = None if button is None else _NAMES.get(button.image)
-        return "" if number is None else names.ezcd_string(self.windowHandle, number, self.appModule.language)
+    next_control = staticmethod(next_control)
+    image_names = _NAMES
 
     def _is_toggle(self) -> bool:
         button = self._tool_button()
@@ -223,20 +191,6 @@ class ExplorerButton(toolbar_stops.ToolbarButton):
             # ezcd hides the button with the focus: focus goes on to View Explorer in the other place.
             self.appModule.explorer_toggled(self.windowHandle)
         super().doAction(index)
-
-    @script(gesture="kb:tab")
-    def script_next_control(self, gesture):
-        neighbour = next_control(self.windowHandle)
-        if not neighbour or not toolbar.set_focus(neighbour):
-            gesture.send()
-
-    @script(gesture="kb:shift+tab")
-    def script_previous_control(self, gesture):
-        # ezcd moves from the control after the toolbar to the one before it.
-        neighbour = next_control(self.windowHandle)
-        if neighbour:
-            self.appModule.pass_focus(neighbour)
-        gesture.send()
 
 
 class ExplorerMenuButton(toolbar_stops.ToolbarMenuButton, ExplorerButton):
