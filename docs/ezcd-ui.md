@@ -160,7 +160,8 @@ absolute coordinates, captions in a particular language.
   column can be edited. A key press sent with `SendMessageTimeout` returns once the editor exists and
   has the focus (25–35 ms); without an editor, in 1–5 ms. At the end of the row the key does nothing.
   Once a column other than the file name has been focused, the tree also opens the editor in it when
-  its focus moves with Shift and the arrow keys, Home, End, Page Up and Page Down, or by `accSelect`.
+  its focus moves with Shift and the arrow keys, Home, End, Page Up and Page Down, or by `accSelect`,
+  and when it gets the keyboard focus after files were added (Tab from the tab labels).
 - F2 opens the editor in the focused column; if that column cannot be edited, in the column edited
   last, leaving the focused one where it is.
 - In the editor: Enter keeps the text and closes it; Escape discards the text and closes it, the
@@ -176,6 +177,8 @@ absolute coordinates, captions in a particular language.
   and the next editor opens about 25 ms after the key returns.
 - Not editable in the list: the file name, Rating, Compilation and the Info columns (Length, Format,
   Bit rate, …).
+- A folder's row has only its name; the tree opens an empty editor in its other cells too. When that
+  editor is left with Down Arrow, ezcd's focus stays on the main form and no next editor opens.
 - The Lyrics column (caption `[474]`) opens the modal `TLyricsEditor` dialog in the tree's handling of
   the key that focuses the column, so a key sent to the tree does not return while the dialog is open.
   While the Lyrics column is focused, moving to another file opens the dialog too. After the dialog

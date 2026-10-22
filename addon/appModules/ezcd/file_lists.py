@@ -181,6 +181,12 @@ def node_index(hwnd: int, node: int) -> int | None:
     return None
 
 
+def is_folder(hwnd: int) -> bool:
+    """Whether the tree's focused node is a folder, with files in it."""
+    node = next_node(hwnd, TVGN_CARET)
+    return bool(node and next_node(hwnd, TVGN_CHILD, node))
+
+
 def descendant_count(hwnd: int, node: int) -> int:
     count = 0
     child = next_node(hwnd, TVGN_CHILD, node)
@@ -200,14 +206,16 @@ class ClosedEditor:
     """Cell editors the user did not ask for, closed as soon as the tree opens them.
 
     Once a column other than the file name has been edited, the tree opens the editor in that column
-    whenever its focus moves, except on the plain arrow keys, Home, End, Page Up and Page Down.
+    whenever its focus moves, except on the plain arrow keys, Home, End, Page Up and Page Down, and when
+    it gets the focus after files were added. An editor on a folder's row is never wanted: its cells are
+    empty, and leaving it with Down Arrow leaves ezcd's focus on the main form.
     """
 
     def __init__(self):
         self._editor = 0
         self._until = 0.0
         self._key_time = 0.0
-        self._key_in_tree = False
+        self._key_beside_editor = False
         self._key_opens_editor = False
         self._report_time = 0.0
 
@@ -215,17 +223,22 @@ class ClosedEditor:
         # Called in NVDA's keyboard hook thread.
         focus = winUser.getGUIThreadInfo(0).hwndFocus
         # A key held in the editor repeats while the add-on moves it, with the tree focused in between.
-        self._key_in_tree = (
-            bool(focus) and is_main_window_list(focus) and api.getFocusObject().windowClassName != "TVTEdit"
+        self._key_beside_editor = (
+            bool(focus)
+            and winUser.getClassName(root(focus)) == "TMainform"
+            and not is_main_list_editor(focus)
+            and api.getFocusObject().windowClassName != "TVTEdit"
         )
         self._key_opens_editor = gesture.vkCode == winUser.VK_F2 and not gesture.modifiers
         self._key_time = time.monotonic()
 
     def is_unasked(self, obj) -> bool:
-        """Whether the focus event is of an editor the tree opened on a key not meant to open it."""
-        return (
-            is_main_list_editor(obj.windowHandle)
-            and self._key_in_tree
+        """Whether the focus event is of an editor the tree opened on a folder or on a key in the main
+        window that is not meant to open it."""
+        if not is_main_list_editor(obj.windowHandle):
+            return False
+        return is_folder(parent(obj.windowHandle)) or (
+            self._key_beside_editor
             and not self._key_opens_editor
             and time.monotonic() - self._key_time < _CLOSED_EDITOR_EVENTS_SECONDS
         )
@@ -374,16 +387,15 @@ class MainFileListItem(TreeItem):
     @script(gestures=["kb:leftArrow", "kb:rightArrow"])
     def script_keep_column(self, gesture):
         # On a file the tree would move its focused column and open the cell editor there; F2 opens it.
-        node = next_node(self.windowHandle, TVGN_CARET)
-        if self._is_editing() or (node and next_node(self.windowHandle, TVGN_CHILD, node)):
+        if self._is_editing() or is_folder(self.windowHandle):
             gesture.send()
 
     @script(gesture="kb:f2")
     def script_edit_cell(self, gesture):
         if self._is_editing():
             gesture.send()
-            return
-        self.appModule.cells.open_editor(self.windowHandle, self.appModule.helperLocalBindingHandle)
+        elif not is_folder(self.windowHandle):
+            self.appModule.cells.open_editor(self.windowHandle, self.appModule.helperLocalBindingHandle)
 
     @script(gesture="kb:control+upArrow")
     def script_previous_file(self, gesture):
