@@ -5,12 +5,15 @@
 """App module for EZ CD Audio Converter (ezcd.exe)."""
 
 import ctypes
+import time
+from collections.abc import Hashable
 from ctypes.wintypes import DWORD
 
 import addonHandler
 import api
 import appModuleHandler
 import braille
+import controlTypes
 import eventHandler
 import inputCore
 import oleacc
@@ -19,6 +22,7 @@ import winUser
 from keyboardHandler import KeyboardInputGesture
 from logHandler import log
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
+from speech.speech import speakMessage
 from winBindings import kernel32
 
 from . import (
@@ -27,10 +31,13 @@ from . import (
     convert_window,
     converters,
     dialogs,
+    explorer,
     file_lists,
     list_items,
     metadata,
     names,
+    toolbar,
+    toolbar_stops,
     top_panel,
 )
 from .language import LanguageFiles
@@ -38,6 +45,8 @@ from .language import LanguageFiles
 addonHandler.initTranslation()
 
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+# Seconds from pressing View Explorer to the focus ezcd moves as it hides the button.
+_TOGGLE_FOCUS_TIMEOUT = 1.5
 _MENU_CLASS = "#32768"
 _MAX_PATH_LENGTH = 32767
 
@@ -49,11 +58,20 @@ class AppModule(appModuleHandler.AppModule):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.language = LanguageFiles(self._executable_path())
-        self.remembered_buttons: dict[int, tuple[int, int]] = {}
-        """``PanelButton.key`` of the last focused button of each top panel, by ``TopPanel.key``."""
+        self.remembered_buttons: dict[Hashable, tuple[int, int]] = {}
+        """``StopButton.key`` of the last focused button of each toolbar stop, by ``ToolbarStop.key``."""
         self._focus_window = 0
         self._tab_menu_tab = 0
-        self._tab_pressed = False
+        self._tab_key = 0
+        """1 after Tab, -1 after Shift+Tab, until the next focus or key."""
+        self._passing = 0
+        self._passed_toolbar: tuple[tuple[int, int, int] | None, int] = (None, 0)
+        """The last answer of ``_toolbar_passed``, until the next key."""
+        self._explorer_toggle = 0
+        """The toolbar on which View Explorer was pressed, until the next focus."""
+        self._toggle_pressed_at = 0.0
+        self._quiet_toggle = 0
+        """The toolbar of View Explorer that gets focus after the press: only its state is reported."""
         self._tab_kept = False
         self._conversion_status = convert_window.ConversionStatus()
         self.converter_steps = converters.StepAnnouncer()
@@ -87,10 +105,37 @@ class AppModule(appModuleHandler.AppModule):
         """The menu that switches the main window's tab is opening on the tab's top panel."""
         self._tab_menu_tab = tab
 
+    def pass_focus(self, hwnd: int) -> bool:
+        """Moves ezcd's focus to the window for the key that follows, without NVDA reporting it."""
+        self._passing = hwnd
+        if toolbar.set_focus(hwnd):
+            return True
+        self._passing = 0
+        return False
+
+    def explorer_toggled(self, toolbar_hwnd: int):
+        """View Explorer is being pressed on the toolbar: ezcd will hide it and show the other one."""
+        self._explorer_toggle = toolbar_hwnd
+        self._toggle_pressed_at = time.monotonic()
+
+    def _toolbar_passed(self, window: int, previous: int, tab_key: int) -> int:
+        """The explorer's toolbar that Tab or Shift+Tab passed by, once for the focus and its ancestors."""
+        if not tab_key:
+            return 0
+        key = (window, previous, tab_key)
+        if self._passed_toolbar[0] != key:
+            self._passed_toolbar = (key, explorer.toolbar_passed(window, previous, tab_key == 1))
+        return self._passed_toolbar[1]
+
     def _note_gesture(self, gesture) -> bool:
         # Called in NVDA's keyboard hook thread for every gesture, in any application.
         is_key = isinstance(gesture, KeyboardInputGesture)
-        self._tab_pressed = is_key and gesture.vkCode == winUser.VK_TAB and not gesture.modifiers
+        self._tab_key = 0
+        self._passing = 0
+        self._passed_toolbar = (None, 0)
+        if is_key and gesture.vkCode == winUser.VK_TAB:
+            modifiers = gesture.modifierNames
+            self._tab_key = 1 if not modifiers else -1 if modifiers == ["shift"] else 0
         if is_key:
             self.closed_editor.note_key(gesture)
             self.cells.note_key(gesture.vkCode)
@@ -100,8 +145,26 @@ class AppModule(appModuleHandler.AppModule):
         if isinstance(obj, cells.CellEditor) and obj.is_closed:
             return
         previous, self._focus_window = self._focus_window, obj.windowHandle
-        tab_pressed, self._tab_pressed = self._tab_pressed, False
+        tab_key, self._tab_key = self._tab_key, 0
+        passing, self._passing = self._passing, 0
         self._tab_kept = False
+        if passing and obj.windowHandle == passing:
+            return
+        quiet, self._quiet_toggle = self._quiet_toggle, 0
+        if quiet and obj.windowHandle == quiet:
+            # Only the new state, as for a toggle button that keeps the focus.
+            braille.handler.handleGainFocus(obj)
+            pressed = controlTypes.State.PRESSED
+            speakMessage(pressed.displayString if pressed in obj.states else pressed.negativeDisplayString)
+            return
+        toggle, self._explorer_toggle = self._explorer_toggle, 0
+        if toggle and time.monotonic() - self._toggle_pressed_at < _TOGGLE_FOCUS_TIMEOUT:
+            found = explorer.toggle_button(toggle, obj.processHandle, self.language)
+            if found is not None and toolbar_stops.focus_button(self, *found, obj.windowHandle):
+                self._quiet_toggle = found[1].toolbar
+                # Focus may have left the tab for the main form in between.
+                self._tab_kept = True
+                return
         if self.closed_editor.is_left_focus(obj):
             braille.handler.handleGainFocus(obj)
             return
@@ -117,15 +180,25 @@ class AppModule(appModuleHandler.AppModule):
             if (
                 panel is not None
                 and top_panel.is_beside_panel(panel, obj.windowHandle)
-                and top_panel.focus_button(self, panel, panel.buttons[0])
+                and toolbar_stops.focus_button(self, panel, panel.buttons[0])
             ):
                 return
         # VCL skips the top panel on Tab; stop at it instead of the tab labels.
-        if tab_pressed and previous and obj.windowClassName == top_panel.PAGE_CONTROL_CLASS:
+        if tab_key == 1 and previous and obj.windowClassName == top_panel.PAGE_CONTROL_CLASS:
             panel = top_panel.panel_left_by_tab(obj.windowHandle, previous, obj.processHandle, self.language)
-            if panel is not None and top_panel.focus_button(
+            if panel is not None and toolbar_stops.focus_button(
                 self, panel, panel.entry(self.remembered_buttons)
             ):
+                self._tab_kept = True
+                return
+        # VCL skips the explorer's toolbars; stop at the one that Tab or Shift+Tab passed by.
+        passed = self._toolbar_passed(obj.windowHandle, previous, tab_key)
+        if passed:
+            stop = explorer.stop_of(passed, obj.processHandle, self.language)
+            if stop is not None and toolbar_stops.focus_button(
+                self, stop, stop.entry(self.remembered_buttons)
+            ):
+                # Shift+Tab from the tab's first control passed by the tab labels.
                 self._tab_kept = True
                 return
         nextHandler()
@@ -154,6 +227,15 @@ class AppModule(appModuleHandler.AppModule):
                 self._conversion_status.sample_speed(obj.windowHandle, self.helperLocalBindingHandle)
         nextHandler()
 
+    def event_stateChange(self, obj, nextHandler):
+        # View Explorer changes its state as ezcd hides it; the state of the other one comes with the focus.
+        if (
+            obj.windowClassName == top_panel.TOOLBAR_CLASS
+            and time.monotonic() - self._toggle_pressed_at < _TOGGLE_FOCUS_TIMEOUT
+        ):
+            return
+        nextHandler()
+
     def _get_statusBar(self):
         window = winUser.getAncestor(api.getForegroundObject().windowHandle, winUser.GA_ROOT)
         panel = convert_window.summary_panel(window)
@@ -178,8 +260,14 @@ class AppModule(appModuleHandler.AppModule):
     def event_focusEntered(self, obj, nextHandler):
         if self.cells.is_coming_back(obj):
             return
-        # Focus stayed in the tab: the tab labels in between were not announced.
-        if self._tab_kept and obj.windowClassName == top_panel.TAB_CLASS:
+        # Focus stayed in the tab: the tab labels or the main form in between were not announced.
+        if self._tab_kept and obj.windowClassName in (top_panel.TAB_CLASS, top_panel.PAGE_CONTROL_CLASS):
+            return
+        # Focus is passing by, or about to go on to a toolbar of the explorer: the control is not announced.
+        focus = api.getFocusObject().windowHandle
+        if (focus and focus in (self._passing, self._quiet_toggle)) or (
+            self._toolbar_passed(focus, self._focus_window, self._tab_key)
+        ):
             return
         # Focus is about to leave the tab's first control for its top panel: the control is not announced.
         if self._tab_menu_tab:
@@ -275,14 +363,18 @@ class AppModule(appModuleHandler.AppModule):
                 clsList.insert(0, top_panel.MainWindowTab)
             return
         if obj.windowClassName == top_panel.PANEL_CLASS:
-            panel = top_panel.read_top_panel(obj.windowHandle, obj.processHandle, self.language)
-            if obj.IAccessibleChildID == 0 and panel is not None:
+            if obj.IAccessibleChildID != 0:
+                return
+            if top_panel.read_top_panel(obj.windowHandle, obj.processHandle, self.language) is not None:
                 clsList.insert(0, top_panel.TopPanelWindow)
+            elif explorer.is_hidden_explorer_row(obj.windowHandle):
+                clsList.insert(0, explorer.HiddenExplorerRow)
             return
         if obj.windowClassName != top_panel.TOOLBAR_CLASS:
             return
         panel = top_panel.panel_of(obj.windowHandle, obj.processHandle, self.language)
         if panel is None:
+            self._choose_explorer_classes(obj, clsList)
             return
         if obj.IAccessibleChildID == 0:
             clsList.insert(0, top_panel.TopPanelToolbarWindow)
@@ -296,3 +388,17 @@ class AppModule(appModuleHandler.AppModule):
             clsList.insert(0, top_panel.MenuButton)
         else:
             clsList.insert(0, top_panel.TopPanelButton)
+
+    def _choose_explorer_classes(self, obj, clsList):
+        stop = explorer.stop_of(obj.windowHandle, obj.processHandle, self.language)
+        if stop is None:
+            return
+        child_id = toolbar_stops.button_child_id(obj)
+        if child_id == 0:
+            clsList.insert(0, explorer.ExplorerToolbarWindow)
+            return
+        button = stop.find(obj.windowHandle, child_id - 1)
+        if button is not None:
+            clsList.insert(
+                0, explorer.ExplorerMenuButton if stop.has_menu(button) else explorer.ExplorerButton
+            )

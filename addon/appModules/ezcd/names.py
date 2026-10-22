@@ -259,11 +259,14 @@ def fixed_name(hwnd: int, language: LanguageFiles) -> str:
     control_class = winUser.getClassName(hwnd)
     rule = _FORMS.get(winUser.getClassName(form), {}).get(control_class) or _ANY_FORM.get(control_class)
     name = rule(hwnd) if callable(rule) else rule
-    if not isinstance(name, int):
-        return name or ""
-    strings = language.strings_of(_shown_texts(form))
+    return ezcd_string(hwnd, name, language) if isinstance(name, int) else name or ""
+
+
+def ezcd_string(hwnd: int, number: int, language: LanguageFiles) -> str:
+    """The string of the language files in the language of the control's window; empty if it has none."""
+    strings = language.strings_of(_shown_texts(winUser.getAncestor(hwnd, winUser.GA_ROOT)))
     # Some strings are captions of labels: "Disc writer :".
-    return strings.get(name, "").rstrip(" :") if strings else ""
+    return strings.get(number, "").rstrip(" :") if strings else ""
 
 
 def _repeats(hwnd: int, caption: str) -> bool:

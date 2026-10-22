@@ -71,10 +71,44 @@ absolute coordinates, captions in a particular language.
 - When a toolbar window gets focus, the proxy fires focus for the window and then for its first
   button: VCL keeps no current button within a toolbar.
 
+## Toolbars of the explorer
+
+- The file explorer of the Audio Converter and Disc Burner tabs has a row above its tree and list: a
+  `TPanel` holding the navigation toolbar on the left, the breadcrumb bar (`TJamShellBreadCrumbBar`),
+  the toolbar of the list's view and the filter of file types (`TComboBox`). No other panel has a
+  breadcrumb bar. Hiding the explorer hides the row.
+- The toolbars are not tab stops; Tab goes from the explorer's list to the filter and on to the
+  breadcrumb bar. Their `TabOrder` is the view, the filter, the navigation, the breadcrumb bar on the
+  Audio Converter tab, but the view, the navigation, the filter, the breadcrumb bar on the Disc Burner
+  tab. With a toolbar made the active control by `SetFocus`, Tab and Shift+Tab go on by `TabOrder`, not
+  by the screen.
+- The buttons show only an image and have no text. Images: 29 View Explorer, 33 Add files, 32 Add
+  folder, 25 Go to Computer, 26 Go to Music, 30 and 31 back and forward in history, 3 Go up; the Disc
+  Burner tab has no Add files and Add folder. Their hints are strings `[704]`, `[327]`, `[328]`, `[489]`,
+  `[490]`, `[701]`, `[702]`, `[703]`. Separators have `TBSTYLE_SEP` and their width as `iBitmap`.
+- View Explorer shows and hides the explorer; while it is shown, the button has `TBSTATE_PRESSED`, and
+  the MSAA proxy reports it pressed.
+- The view's toolbar has one button (image 4), without hint, with `TBSTYLE_DROPDOWN` on a toolbar with
+  `TBSTYLE_EX_DRAWDDARROWS`. A click on its body does nothing; a posted click on the arrow, the right
+  end of `TB_GETITEMRECT`, opens the menu List `[227]`, Details `[228]`, Icons `[339]`, Large icons
+  `[735]`, the current one radio-checked. The MSAA proxy gives the button an object of its own (split
+  button, child id 0); focus events for it carry child id 1.
+- Posted clicks take the toolbar's client coordinates as `TB_GETITEMRECT` gives them only from a
+  DPI-aware process, such as NVDA; Windows scales the coordinates posted by a DPI-unaware one.
+- After a navigation button is pressed, focus stays on the toolbar.
+- While the explorer is hidden, a `TPanel` of toolbars alone takes the place of the row above it, a
+  sibling of that row's panel: View Explorer (image 29, without caption) on a toolbar of its own, and a
+  toolbar with captions (`ShowCaptions`): Add files..., Add folder..., on the Audio Converter tab also
+  Select all, Remove all and Create M3U playlist. The first control below it is the list of files on the
+  Audio Converter tab and the page control of the Disc Burner tab, each its tab's first Tab stop.
+- View Explorer hides the button that has the focus: when it hides the explorer, focus goes to the main
+  form; when it shows the explorer, to the navigation toolbar above it.
+
 ## Tabs of the main window
 
 - The main window's `TPageControl` is a direct child of `TMainform`; each tab is a `TTabSheet` child of
-  it, the active one visible. The Disc Burner tab holds another `TPageControl`.
+  it, the active one visible. The Disc Burner tab holds another `TPageControl`. The order of the
+  `TTabSheet` windows changes as the tabs are switched.
 - MSAA gives `TTabSheet` the property page role. NVDA treats it as a dialog and, on every focus entry
   into the tab, collects dialog text from all its panels: about 250 ms in the main window, with an
   empty result.

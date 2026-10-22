@@ -25,6 +25,26 @@ they are unavailable. Convert and Rip CD report their shortcut, F8.
   button of that tab.
 * To press a button without focusing it, move the navigator object to it and press NVDA+Numpad Enter.
 
+### Toolbars of the file explorer
+
+The two toolbars above the file explorer of the Audio Converter and Disc Burner tabs are stops in the
+Tab order, each right before the control right of it on the screen: the navigation toolbar before the
+path bar, the view toolbar before the filter of file types. Their buttons are named by the
+application's own hints, in its language: View Explorer, Add files, Add folder, Go to Computer, Go to
+Music, back and forward in history, Go up, and View. View, alone in its toolbar, is read as a menu button
+without the toolbar. View Explorer is a toggle button, pressed while the explorer is shown.
+
+While the explorer is hidden, its place is taken by one toolbar: View Explorer, Add files, Add folder and,
+on the Audio Converter tab, Select all, Remove all and Create M3U playlist. It is a stop in the Tab order
+right before the list of files of the Audio Converter tab and before the page tabs of the Disc Burner
+tab. Pressing View Explorer moves focus to View Explorer in the other place, so pressing it again
+undoes it; as with any toggle button, only the new state is reported: pressed or not pressed.
+
+* Focus comes to the button that had it last in that toolbar, or to the first one.
+* Left and Right Arrow move between the buttons, Home and End to the first and the last one.
+* Enter, Numpad Enter and Space press the focused button. On View, they or Down Arrow open the menu of
+  the list's view (List, Details, Icons, Large icons).
+
 ### Conversion window
 
 Only the total progress of the conversion is reported, as NVDA's progress bar settings say; the

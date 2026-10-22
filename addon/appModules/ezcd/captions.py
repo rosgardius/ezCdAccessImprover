@@ -42,6 +42,7 @@ CLASSES = frozenset(
 CHOICE_CLASSES = ("TCheckBox", "TRadioButton")
 # The arrows of a spin box, right of its edit.
 _SPIN_CLASS = "TUpDown"
+_WS_TABSTOP = 0x10000
 # Texts on one line differ in top by a few pixels at most.
 _LINE_TOLERANCE = 8
 # The numbers of a scale over or beside a slider.
@@ -247,10 +248,14 @@ class Layout:
         ]
         return sorted(left, key=lambda s: self.siblings[s].left)
 
-    def right_window(self) -> int:
-        """The nearest window right of the control on its line, 0 if none."""
+    def right_window(self, tab_stop: bool = False) -> int:
+        """The nearest window right of the control on its line, 0 if none; with ``tab_stop``, a Tab stop."""
         right = [
-            s for s, other in self.siblings.items() if self.rect.left < other.left and self._beside(other)
+            s
+            for s, other in self.siblings.items()
+            if self.rect.left < other.left
+            and self._beside(other)
+            and (not tab_stop or (winUser.getWindowStyle(s) & _WS_TABSTOP and winUser.isWindowEnabled(s)))
         ]
         return min(right, key=lambda s: self.siblings[s].left, default=0)
 

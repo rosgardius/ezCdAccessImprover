@@ -19,9 +19,13 @@ TB_GETITEMRECT = 0x41D
 TB_GETBUTTONTEXTW = 0x44B
 TBSTATE_ENABLED = 0x04
 TBSTATE_HIDDEN = 0x08
+TBSTYLE_SEP = 0x01
+TBSTYLE_DROPDOWN = 0x08
 WM_LBUTTONDOWN = 0x201
 WM_LBUTTONUP = 0x202
 MK_LBUTTON = 0x1
+# Within the drop-down arrow of a button at any DPI: the arrow is wider than twice this.
+_ARROW_INSET = 4
 
 _MAX_TEXT_LENGTH = remote.BUFFER_SIZE // 2 - 1
 
@@ -48,6 +52,7 @@ class ToolButton:
     """``iBitmap``, equal to ``ImageIndex`` of the ``TToolButton``."""
     command: int
     state: int
+    style: int
     text: str
 
     @property
@@ -57,6 +62,15 @@ class ToolButton:
     @property
     def hidden(self) -> bool:
         return bool(self.state & TBSTATE_HIDDEN)
+
+    @property
+    def separator(self) -> bool:
+        return bool(self.style & TBSTYLE_SEP)
+
+    @property
+    def dropdown(self) -> bool:
+        """Whether the button has a drop-down arrow, which opens its menu."""
+        return bool(self.style & TBSTYLE_DROPDOWN)
 
 
 def button_count(hwnd: int) -> int:
@@ -81,7 +95,7 @@ def read_buttons(hwnd: int, process_handle: int) -> list[ToolButton]:
                 buffer = ctypes.create_unicode_buffer(length + 1)
                 remote.read(process_handle, address, buffer)
                 text = buffer.value
-            buttons.append(ToolButton(index, head.iBitmap, head.idCommand, head.fsState, text))
+            buttons.append(ToolButton(index, head.iBitmap, head.idCommand, head.fsState, head.fsStyle, text))
     return buttons
 
 
@@ -95,12 +109,13 @@ def item_rect(hwnd: int, process_handle: int, index: int) -> RECT | None:
     return rect
 
 
-def click(hwnd: int, process_handle: int, index: int) -> bool:
-    """Posts a left click to the button's centre; the real mouse pointer does not move."""
+def click(hwnd: int, process_handle: int, index: int, arrow: bool = False) -> bool:
+    """Posts a left click to the button's centre or its drop-down arrow; the mouse pointer does not move."""
     rect = item_rect(hwnd, process_handle, index)
     if rect is None:
         return False
-    lparam = winUser.MAKELONG((rect.left + rect.right) // 2, (rect.top + rect.bottom) // 2)
+    x = rect.right - _ARROW_INSET if arrow else (rect.left + rect.right) // 2
+    lparam = winUser.MAKELONG(x, (rect.top + rect.bottom) // 2)
     return bool(user32.PostMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, lparam)) and bool(
         user32.PostMessage(hwnd, WM_LBUTTONUP, 0, lparam)
     )
