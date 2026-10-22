@@ -11,25 +11,20 @@ before the control below it. ezcd's own Tab order does not always run so from a 
 Shift+Tab leave a toolbar by way of that control.
 """
 
-import ctypes
+import functools
 from collections.abc import Hashable
-from ctypes.wintypes import RECT
 from dataclasses import dataclass
 
 import controlTypes
 import winUser
-from logHandler import log
 from NVDAObjects.IAccessible import IAccessible
 from scriptHandler import script
-from winBindings import user32
 
 from . import captions, names, toolbar, toolbar_stops
 from .language import LanguageFiles
-from .top_panel import MAIN_WINDOW_CLASS, PAGE_CONTROL_CLASS, PANEL_CLASS, TAB_CLASS, TOOLBAR_CLASS
-from .windows import child_windows, descendants
+from .top_panel import main_tab
+from .windows import child_windows, descendants, is_tab_stop, parent, rect
 
-BREADCRUMB_CLASS = "TJamShellBreadCrumbBar"
-_WS_TABSTOP = 0x10000
 # A control below the row may overlap it by a pixel or two.
 _ROW_OVERLAP = 2
 
@@ -57,39 +52,21 @@ class ExplorerToolbar(toolbar_stops.ToolbarStop):
 
     @property
     def key(self) -> Hashable:
-        return (TOOLBAR_CLASS, self.tab, self.row, self.buttons[0].key)
+        return (self.tab, self.row, self.buttons[0].key)
 
-    def has_menu(self, button: toolbar_stops.StopButton) -> bool:
-        return button.button.dropdown
-
-
-def _parent(hwnd: int) -> int:
-    return winUser.getAncestor(hwnd, winUser.GA_PARENT)
-
-
-def _rect(hwnd: int) -> RECT:
-    rect = RECT()
-    user32.GetWindowRect(hwnd, ctypes.byref(rect))
-    return rect
-
-
-def _tab_sheet(hwnd: int) -> int:
-    """The main window's tab that holds the window, 0 if none."""
-    window = hwnd
-    while (parent := _parent(window)) and winUser.getClassName(parent) != PAGE_CONTROL_CLASS:
-        window = parent
-    if not parent or winUser.getClassName(_parent(parent)) != MAIN_WINDOW_CLASS:
-        return 0
-    return window if winUser.getClassName(window) == TAB_CLASS else 0
+    def overlay_class(self, button: toolbar_stops.StopButton | None) -> type:
+        if button is None:
+            return ExplorerToolbarWindow
+        return ExplorerMenuButton if button.button.dropdown else ExplorerButton
 
 
 def _shown_toolbars(panel: int) -> list[int]:
-    return [t for t in child_windows(panel, TOOLBAR_CLASS) if winUser.isWindowVisible(t)]
+    return [t for t in child_windows(panel, "TToolBar") if winUser.isWindowVisible(t)]
 
 
 def _is_bar_row(panel: int) -> bool:
     """Whether the panel is the row above the explorer, with the breadcrumb bar."""
-    return bool(child_windows(panel, BREADCRUMB_CLASS))
+    return bool(child_windows(panel, "TJamShellBreadCrumbBar"))
 
 
 def is_hidden_explorer_row(panel: int) -> bool:
@@ -99,78 +76,64 @@ def is_hidden_explorer_row(panel: int) -> bool:
     """
     children = child_windows(panel)
     return (
-        winUser.getClassName(panel) == PANEL_CLASS
+        winUser.getClassName(panel) == "TPanel"
         and bool(children)
-        and all(winUser.getClassName(c) == TOOLBAR_CLASS for c in children)
-        and any(p != panel and _is_bar_row(p) for p in child_windows(_parent(panel), PANEL_CLASS))
+        and all(winUser.getClassName(c) == "TToolBar" for c in children)
+        and any(p != panel and _is_bar_row(p) for p in child_windows(parent(panel), "TPanel"))
     )
 
 
 def _stop_toolbars(hwnd: int) -> tuple[list[int], bool]:
     """The toolbars of the stop the toolbar is on, and whether they are the row of the hidden explorer."""
-    if winUser.getClassName(hwnd) != TOOLBAR_CLASS or not winUser.isWindowVisible(hwnd):
+    if winUser.getClassName(hwnd) != "TToolBar" or not winUser.isWindowVisible(hwnd):
         return [], False
-    parent = _parent(hwnd)
-    if _is_bar_row(parent):
+    row = parent(hwnd)
+    if _is_bar_row(row):
         return [hwnd], False
-    if is_hidden_explorer_row(parent):
-        return _shown_toolbars(parent), True
+    if is_hidden_explorer_row(row):
+        return _shown_toolbars(row), True
     return [], False
 
 
 def stop_of(hwnd: int, process_handle: int, language: LanguageFiles) -> ExplorerToolbar | None:
     """The explorer toolbar or the row of the hidden explorer, if the window is a toolbar of either."""
     toolbars, row = _stop_toolbars(hwnd)
-    tab = _tab_sheet(hwnd) if toolbars else 0
-    if not tab:
-        return None
-    try:
-        buttons = toolbar_stops.read_buttons(toolbars, process_handle)
-    except OSError:
-        log.debugWarning("Cannot read toolbar buttons of ezcd", exc_info=True)
-        return None
+    tab = main_tab(hwnd) if toolbars else 0
+    buttons = toolbar_stops.read_buttons(toolbars, process_handle) if tab else ()
     return ExplorerToolbar(buttons, winUser.getWindowText(tab), row) if buttons else None
 
 
 def _first_below(panel: int) -> int:
     """The Tab stop of the tab nearest below the panel, the leftmost of those at the same height."""
-    tab = _tab_sheet(panel)
-    edge = _rect(panel)
-    best, best_corner = 0, None
+    tab = main_tab(panel)
+    edge = rect(panel)
+    below = {}
     for window in descendants(tab) if tab else ():
-        if not (
-            winUser.getWindowStyle(window) & _WS_TABSTOP
-            and winUser.isWindowVisible(window)
-            and winUser.isWindowEnabled(window)
-        ):
-            continue
-        rect = _rect(window)
-        corner = (rect.top, rect.left)
-        if (
-            rect.top >= edge.bottom - _ROW_OVERLAP
-            and rect.left < edge.right
-            and edge.left < rect.right
-            and (best_corner is None or corner < best_corner)
-        ):
-            best, best_corner = window, corner
-    return best
+        if is_tab_stop(window):
+            other = rect(window)
+            if (
+                other.top >= edge.bottom - _ROW_OVERLAP
+                and other.left < edge.right
+                and edge.left < other.right
+            ):
+                below[window] = (other.top, other.left)
+    return min(below, key=below.get, default=0)
 
 
 def next_control(hwnd: int) -> int:
     """The control after the toolbar's stop in the Tab order: the Tab stop right of it or below its row."""
-    parent = _parent(hwnd)
-    if _is_bar_row(parent):
-        return captions.Layout(hwnd, None, texts=[]).right_window(tab_stop=True)
-    return _first_below(parent)
+    row = parent(hwnd)
+    if _is_bar_row(row):
+        return captions.Layout(hwnd).right_window(tab_stop=True)
+    return _first_below(row)
 
 
 def _hidden_explorer_row(hwnd: int) -> int:
     """The shown row of the hidden explorer in the window's tab, 0 if none."""
-    tab = _tab_sheet(hwnd)
-    bars = [w for w in descendants(tab) if winUser.getClassName(w) == BREADCRUMB_CLASS] if tab else []
+    tab = main_tab(hwnd)
+    bars = [w for w in descendants(tab) if winUser.getClassName(w) == "TJamShellBreadCrumbBar"] if tab else []
     for bar in bars:
-        bar_row = _parent(bar)
-        for panel in child_windows(_parent(bar_row), PANEL_CLASS):
+        for panel in child_windows(parent(parent(bar)), "TPanel"):
             if winUser.isWindowVisible(panel) and is_hidden_explorer_row(panel):
                 return panel
     return 0
@@ -180,11 +143,11 @@ def _toolbars_before(hwnd: int) -> list[int]:
     """The toolbars of the explorer's stop that comes right before the window in the Tab order."""
     if not hwnd:
         return []
-    parent = _parent(hwnd)
-    if _is_bar_row(parent):
-        return [t for t in _shown_toolbars(parent) if next_control(t) == hwnd][:1]
-    row = _hidden_explorer_row(hwnd)
-    return _shown_toolbars(row) if row and _first_below(row) == hwnd else []
+    row = parent(hwnd)
+    if _is_bar_row(row):
+        return [t for t in _shown_toolbars(row) if next_control(t) == hwnd][:1]
+    hidden_row = _hidden_explorer_row(hwnd)
+    return _shown_toolbars(hidden_row) if hidden_row and _first_below(hidden_row) == hwnd else []
 
 
 def toolbar_passed(window: int, previous: int, forward: bool) -> int:
@@ -197,16 +160,14 @@ def toggle_button(
     hwnd: int, process_handle: int, language: LanguageFiles
 ) -> tuple[ExplorerToolbar, toolbar_stops.StopButton] | None:
     """View Explorer on the shown stop in the window's tab: above the explorer or in its place."""
-    tab = _tab_sheet(hwnd)
-    toolbars = [
-        w
-        for w in (descendants(tab) if tab else ())
-        if winUser.getClassName(w) == TOOLBAR_CLASS and winUser.isWindowVisible(w)
-    ]
-    for window in toolbars:
+    tab = main_tab(hwnd)
+    for window in descendants(tab) if tab else ():
         stop = stop_of(window, process_handle, language)
-        buttons = () if stop is None else stop.buttons
-        button = next((b for b in buttons if b.button.image == _VIEW_EXPLORER), None)
+        button = (
+            None
+            if stop is None
+            else next((b for b in stop.buttons if b.button.image == _VIEW_EXPLORER), None)
+        )
         if button is not None:
             return stop, button
     return None
@@ -215,8 +176,7 @@ def toggle_button(
 class HiddenExplorerRow(IAccessible):
     """The row of the hidden explorer, an unnamed pane: presented as a toolbar, its buttons being a group."""
 
-    def _get_role(self):
-        return controlTypes.Role.TOOLBAR
+    role = controlTypes.Role.TOOLBAR
 
 
 class ExplorerToolbarWindow(toolbar_stops.ToolbarWindow):
@@ -226,13 +186,11 @@ class ExplorerToolbarWindow(toolbar_stops.ToolbarWindow):
     """
 
     find_stop = staticmethod(stop_of)
-
-    def _get_name(self):
-        return ""
+    name = ""
 
     def _get_isPresentableFocusAncestor(self):
         # A toolbar of a single button, as View, presents the button alone.
-        if not super().isPresentableFocusAncestor or is_hidden_explorer_row(_parent(self.windowHandle)):
+        if not super().isPresentableFocusAncestor or is_hidden_explorer_row(parent(self.windowHandle)):
             return False
         stop = self._stop()
         return stop is not None and len(stop.buttons) > 1
@@ -242,21 +200,15 @@ class ExplorerButton(toolbar_stops.ToolbarButton):
     """A button of an explorer toolbar; one that shows only an image is named by ezcd's hint for it."""
 
     find_stop = staticmethod(stop_of)
-    _ezcd_name: str | None = None
 
     def _get_name(self):
-        caption = super()._get_name()
-        if caption:
-            return caption
-        if self._ezcd_name is None:
-            button = self._tool_button()
-            number = None if button is None else _NAMES.get(button.image)
-            self._ezcd_name = (
-                ""
-                if number is None
-                else names.ezcd_string(self.windowHandle, number, self.appModule.language)
-            )
-        return self._ezcd_name
+        return super()._get_name() or self._ezcd_name
+
+    @functools.cached_property
+    def _ezcd_name(self) -> str:
+        button = self._tool_button()
+        number = None if button is None else _NAMES.get(button.image)
+        return "" if number is None else names.ezcd_string(self.windowHandle, number, self.appModule.language)
 
     def _is_toggle(self) -> bool:
         button = self._tool_button()

@@ -9,10 +9,9 @@ toolbar windows from left to right: focus comes to the button it had last, the a
 buttons, and Enter presses them with a posted click. Where a stop lies in the Tab order is up to its kind.
 """
 
+import collections
 import contextlib
-import ctypes
 from collections.abc import Callable, Hashable
-from ctypes.wintypes import RECT
 from dataclasses import dataclass
 
 import api
@@ -23,9 +22,8 @@ import winUser
 from logHandler import log
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from scriptHandler import script
-from winBindings import user32
 
-from . import toolbar
+from . import toolbar, windows
 from .language import LanguageFiles
 
 _MENU_MARK = "▼"
@@ -40,34 +38,27 @@ class StopButton:
     """The image and the number of buttons with the same image to the left: images repeat on a panel."""
 
 
-def _left(hwnd: int) -> int:
-    rect = RECT()
-    user32.GetWindowRect(hwnd, ctypes.byref(rect))
-    return rect.left
-
-
 def read_buttons(
     toolbars: list[int], process_handle: int, image_key: Callable[[int], int] | None = None
 ) -> tuple[StopButton, ...]:
     """The shown buttons of the toolbars from left to right, without separators.
 
-    ``image_key`` gives buttons that stand for one another the same image. Raises ``OSError`` if ezcd's
-    memory is not accessible.
+    ``image_key`` gives buttons that stand for one another the same image.
     """
     shown = []
     for hwnd in toolbars:
-        left = _left(hwnd)
+        left = windows.rect(hwnd).left
         shown += [
             (left, b.index, hwnd, b)
             for b in toolbar.read_buttons(hwnd, process_handle)
             if not b.hidden and not b.separator
         ]
     buttons = []
-    seen: dict[int, int] = {}
-    for _left_edge, _index, hwnd, button in sorted(shown, key=lambda item: item[:2]):
+    seen = collections.Counter()
+    for _left, _index, hwnd, button in sorted(shown, key=lambda item: item[:2]):
         image = image_key(button.image) if image_key else button.image
-        buttons.append(StopButton(hwnd, button, (image, seen.get(image, 0))))
-        seen[image] = seen.get(image, 0) + 1
+        buttons.append(StopButton(hwnd, button, (image, seen[image])))
+        seen[image] += 1
     return tuple(buttons)
 
 
@@ -84,19 +75,16 @@ class ToolbarStop:
     def find(self, hwnd: int, index: int) -> StopButton | None:
         return next((b for b in self.buttons if b.toolbar == hwnd and b.button.index == index), None)
 
-    def has_menu(self, button: StopButton) -> bool:
-        return False
-
-    def entry(self, remembered: dict[Hashable, tuple[int, int]]) -> StopButton:
-        """The button to enter the stop at: the remembered one while it is shown, else the first one."""
-        key = remembered.get(self.key)
-        return next((b for b in self.buttons if b.key == key), self.buttons[0])
-
-    def toolbar_entry(self, hwnd: int, remembered: dict[Hashable, tuple[int, int]]) -> StopButton | None:
-        """The button that focus on the toolbar window means: the remembered one if it is there."""
-        buttons = [b for b in self.buttons if b.toolbar == hwnd]
+    def entry(self, remembered: dict[Hashable, tuple[int, int]], hwnd: int = 0) -> StopButton | None:
+        """The button to enter the stop, or its toolbar window ``hwnd``, at: the remembered one if it is
+        there, else the first one."""
+        buttons = [b for b in self.buttons if not hwnd or b.toolbar == hwnd]
         key = remembered.get(self.key)
         return next((b for b in buttons if b.key == key), buttons[0] if buttons else None)
+
+    def overlay_class(self, button: StopButton | None) -> type:
+        """The overlay class of the button, or of a toolbar window of the stop for ``None``."""
+        raise NotImplementedError
 
 
 # Finds the stop that the toolbar window is on: (toolbar, process handle, language files).
@@ -112,13 +100,16 @@ def focus_button(app_module, stop: ToolbarStop, button: StopButton, focused_tool
     app_module.remembered_buttons[stop.key] = button.key
     if button.toolbar != focused_toolbar:
         # The toolbar window redirects focus to the remembered button.
-        return toolbar.set_focus(button.toolbar)
-    # VCL's focus stays on the window, the button changes only for NVDA.
-    obj = _button_object(button)
-    if obj is None:
-        return False
-    eventHandler.queueEvent("gainFocus", obj)
-    return True
+        moved = toolbar.set_focus(button.toolbar)
+    else:
+        # VCL's focus stays on the window, the button changes only for NVDA.
+        obj = _button_object(button)
+        moved = obj is not None
+        if moved:
+            eventHandler.queueEvent("gainFocus", obj)
+    if not moved:
+        log.debugWarning("ezcd is not responding, focus not moved")
+    return moved
 
 
 def button_child_id(obj: IAccessible) -> int:
@@ -130,6 +121,15 @@ def button_child_id(obj: IAccessible) -> int:
     if obj.IAccessibleChildID:
         return obj.IAccessibleChildID
     return (obj.event_childID or 0) if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_SPLITBUTTON else 0
+
+
+def overlay_class(obj: IAccessible, stop: ToolbarStop) -> type | None:
+    """The overlay class of a toolbar window of the stop or of one of its buttons."""
+    child_id = button_child_id(obj)
+    if not child_id:
+        return stop.overlay_class(None)
+    button = stop.find(obj.windowHandle, child_id - 1)
+    return None if button is None else stop.overlay_class(button)
 
 
 class _StopToolbar(IAccessible):
@@ -149,9 +149,7 @@ class ToolbarWindow(_StopToolbar):
 
     def _get_focusRedirect(self):
         stop = self._stop()
-        button = (
-            None if stop is None else stop.toolbar_entry(self.windowHandle, self.appModule.remembered_buttons)
-        )
+        button = None if stop is None else stop.entry(self.appModule.remembered_buttons, self.windowHandle)
         return self.firstChild if button is None else _button_object(button)
 
 
@@ -165,17 +163,11 @@ class ToolbarButton(_StopToolbar):
     def _get_focusRedirect(self):
         # After focus on the window, the toolbar fires focus for its first button too.
         stop, button = self._find()
-        target = (
-            None if stop is None else stop.toolbar_entry(self.windowHandle, self.appModule.remembered_buttons)
-        )
-        return None if target is None or target == button else _button_object(target)
+        target = None if stop is None else stop.entry(self.appModule.remembered_buttons, self.windowHandle)
+        return None if target in (None, button) else _button_object(target)
 
     def _tool_button(self) -> toolbar.ToolButton | None:
-        try:
-            buttons = toolbar.read_buttons(self.windowHandle, self.processHandle)
-        except OSError:
-            log.debugWarning("Cannot read toolbar button state", exc_info=True)
-            return None
+        buttons = toolbar.read_buttons(self.windowHandle, self.processHandle)
         return buttons[self.button_index] if self.button_index < len(buttons) else None
 
     def _get_states(self):
@@ -202,21 +194,14 @@ class ToolbarButton(_StopToolbar):
 
     def setFocus(self):
         stop, button = self._find()
-        if stop is None or not focus_button(self.appModule, stop, button, api.getFocusObject().windowHandle):
-            log.debugWarning("ezcd is not responding, focus not moved")
+        if stop is not None:
+            focus_button(self.appModule, stop, button, api.getFocusObject().windowHandle)
 
     def _click(self) -> bool:
         return toolbar.click(self.windowHandle, self.processHandle, self.button_index)
 
     def doAction(self, index=None):
-        if index:
-            raise NotImplementedError
-        try:
-            pressed = self._click()
-        except OSError:
-            log.debugWarning("Cannot press toolbar button", exc_info=True)
-            pressed = False
-        if not pressed:
+        if index or not self._click():
             raise NotImplementedError
 
     @script(gestures=("kb:enter", "kb:numpadEnter", "kb:space"))
@@ -235,8 +220,8 @@ class ToolbarButton(_StopToolbar):
         else:
             index = min(max(stop.buttons.index(button) + step, 0), len(stop.buttons) - 1)
         target = stop.buttons[index]
-        if target != button and not focus_button(self.appModule, stop, target, self.windowHandle):
-            log.debugWarning("ezcd is not responding, focus not moved")
+        if target != button:
+            focus_button(self.appModule, stop, target, self.windowHandle)
 
     @script(gesture="kb:leftArrow")
     def script_previous_button(self, gesture):
@@ -263,8 +248,7 @@ class ToolbarButton(_StopToolbar):
 class ToolbarMenuButton(ToolbarButton):
     """A button that opens a menu."""
 
-    def _get_role(self):
-        return controlTypes.Role.MENUBUTTON
+    role = controlTypes.Role.MENUBUTTON
 
     def _get_name(self):
         # The role tells about the menu; a caption may mark it with a trailing triangle.

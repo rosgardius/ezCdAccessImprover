@@ -5,46 +5,33 @@
 """The window shown while files are converted."""
 
 import collections
-import ctypes
 import enum
 import re
-import threading
 import time
-from ctypes.wintypes import RECT
 from dataclasses import dataclass
 
 import addonHandler
-import displayModel
-import textUtils
-import windowUtils
 import winUser
-import XMLFormatting
 from logHandler import log
 from NVDAObjects.IAccessible import IAccessible
-from winBindings import user32
 
+from . import screen
 from .language import LanguageFiles
-from .windows import child_windows
+from .windows import child_windows, parent, root
 
 addonHandler.initTranslation()
 
-PROGRESS_BAR_CLASS = "TProgressBar"
 _WINDOW_CLASSES = ("TConvertWnd", "TConvertWnd_Single")
-_PANEL_CLASS = "TPanel"
-_BUTTON_CLASS = "TButton"
 _RESUME_STRING = 145
 
 # The summary panel in design units (DFM): the row of the total bar and the percentage right of it, and
 # the grid of label and value pairs under it.
-_DEFAULT_DPI = 96
 _BAR_ROW = 16
 _ROWS = (0, 16, 37, 53, 69)
 _COLUMNS = (0, 128, 264, 384, 528, 648)
 
 _SPEED_INTERVAL = 0.5
 _SPEED_PERIOD = 5.0
-_REDRAW_TIMEOUT = 0.3
-_RDW_FRAME = 0x0400
 _STATUS_REUSE = 0.5
 _NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
 
@@ -77,15 +64,12 @@ def is_conversion_window(window: int) -> bool:
 
 def bar_kind(hwnd: int) -> Bar | None:
     """Which bar of the conversion window a progress bar window is, ``None`` if it is in another window."""
-    if not is_conversion_window(winUser.getAncestor(hwnd, winUser.GA_ROOT)):
+    if not is_conversion_window(root(hwnd)):
         return None
     # The total bar is in the summary panel, inside the panel with the file list. A converter bar is in
     # the grid panel, or, in the window for one converter, in a panel right on the form.
-    parent = winUser.getAncestor(hwnd, winUser.GA_PARENT)
-    if (
-        winUser.getClassName(parent) == _PANEL_CLASS
-        and winUser.getClassName(winUser.getAncestor(parent, winUser.GA_PARENT)) == _PANEL_CLASS
-    ):
+    panel = parent(hwnd)
+    if winUser.getClassName(panel) == "TPanel" and winUser.getClassName(parent(panel)) == "TPanel":
         return Bar.TOTAL
     return Bar.CONVERTER
 
@@ -94,17 +78,15 @@ def summary_panel(window: int) -> int | None:
     """The summary panel of a conversion window, the parent of the total bar."""
     if not is_conversion_window(window):
         return None
-    for outer in child_windows(window, _PANEL_CLASS):
-        for panel in child_windows(outer, _PANEL_CLASS):
-            if child_windows(panel, PROGRESS_BAR_CLASS):
+    for outer in child_windows(window, "TPanel"):
+        for panel in child_windows(outer, "TPanel"):
+            if child_windows(panel, "TProgressBar"):
                 return panel
     return None
 
 
 def state(window: int, language: LanguageFiles) -> State:
-    buttons = [
-        b for panel in child_windows(window, _PANEL_CLASS) for b in child_windows(panel, _BUTTON_CLASS)
-    ]
+    buttons = [b for panel in child_windows(window, "TPanel") for b in child_windows(panel, "TButton")]
     # After the end, Pause is disabled; while paused, it says Resume.
     if any(not winUser.isWindowEnabled(b) for b in buttons):
         return State.FINISHED
@@ -114,32 +96,8 @@ def state(window: int, language: LanguageFiles) -> State:
     return State.RUNNING
 
 
-def logical_rect(hwnd: int, reference: int) -> RECT:
-    rect = RECT()
-    user32.GetWindowRect(hwnd, ctypes.byref(rect))
-    rect.left, rect.top = windowUtils.physicalToLogicalPoint(reference, rect.left, rect.top)
-    rect.right, rect.bottom = windowUtils.physicalToLogicalPoint(reference, rect.right, rect.bottom)
-    return rect
-
-
 def _nearest(value: float, anchors: tuple[int, ...]) -> int:
     return min(anchors, key=lambda anchor: abs(anchor - value))
-
-
-def display_texts(window: int, area: RECT, binding_handle) -> list[tuple[int, int, str]]:
-    """The texts the display model has for the window within the area, with the left and top of each."""
-    text, rects = displayModel.getWindowTextInRect(
-        binding_handle, window, area.left, area.top, area.right, area.bottom, 8, 32, True, False
-    )
-    texts = []
-    offset = 0
-    for item in XMLFormatting.XMLTextParser().parse(f"<control>{text}</control>"):
-        if not isinstance(item, str):
-            continue
-        start, offset = offset, offset + textUtils.WideStringOffsetConverter(item).encodedStringLength
-        if item.strip() and start < len(rects):
-            texts.append((rects[start].left, rects[start].top, item.strip()))
-    return texts
 
 
 @dataclass(frozen=True)
@@ -157,47 +115,26 @@ class Summary:
         return self.cells.get((row, value), "")
 
 
-def redraw(window: int, frame: bool = False) -> bool:
-    """Has ezcd paint the window, with its non-client area if ``frame``; ``False`` if it did not in time.
-
-    ezcd fills the summary panel's background on every change and draws only the changed labels again,
-    and the fill clears the display model in the whole panel.
-    """
-    done = threading.Event()
-    flags = winUser.RDW_INVALIDATE | winUser.RDW_UPDATENOW | (_RDW_FRAME if frame else 0)
-
-    def redraw():
-        user32.RedrawWindow(window, None, None, flags)
-        done.set()
-
-    # A window of another thread is painted synchronously: a hung ezcd must not stop NVDA.
-    threading.Thread(target=redraw, name="ezcdRedraw", daemon=True).start()
-    return done.wait(_REDRAW_TIMEOUT)
-
-
 def read_summary(panel: int, binding_handle) -> Summary | None:
     """Reads the texts the display model has for the summary panel; ``None`` if it has none."""
-    bars = child_windows(panel, PROGRESS_BAR_CLASS)
-    if not bars or not binding_handle:
-        return None
-    area = logical_rect(panel, panel)
-    bar = logical_rect(bars[0], panel)
-    # The labels stay where the form designer put them, scaled with the form; the bar and the percentage
-    # stretch with the window.
-    scale = (user32.GetDpiForWindow(panel) or _DEFAULT_DPI) / _DEFAULT_DPI
-    found = display_texts(panel, area, binding_handle)
+    bars = child_windows(panel, "TProgressBar")
+    found = screen.texts(panel, binding_handle) if bars else []
     if not found:
         return None
-    pieces: dict[tuple[int, int], list[tuple[int, str]]] = collections.defaultdict(list)
+    area = screen.logical_rect(panel, panel)
+    bar = screen.logical_rect(bars[0], panel)
+    # The labels stay where the form designer put them, scaled with the form; the bar and the percentage
+    # stretch with the window.
+    scale = screen.dpi_scale(panel)
+    pieces: dict[tuple[int, int], list[screen.Text]] = collections.defaultdict(list)
     percent = []
-    for left, top, text in found:
-        row = _nearest((top - area.top) / scale, _ROWS)
-        if row == _BAR_ROW and left >= bar.right:
-            percent.append((left, text))
+    for text in sorted(found, key=lambda t: t.left):
+        row = _nearest((text.top - area.top) / scale, _ROWS)
+        if row == _BAR_ROW and text.left >= bar.right:
+            percent.append(text)
         elif row > _BAR_ROW:
-            pieces[row, _nearest((left - area.left) / scale, _COLUMNS)].append((left, text))
-    cells = {cell: " ".join(t for _x, t in sorted(texts)) for cell, texts in pieces.items()}
-    return Summary(" ".join(t for _x, t in sorted(percent)), cells)
+            pieces[row, _nearest((text.left - area.left) / scale, _COLUMNS)].append(text)
+    return Summary(screen.joined(percent), {cell: screen.joined(texts) for cell, texts in pieces.items()})
 
 
 class SpeedAverage:
@@ -270,7 +207,7 @@ class ConversionStatus:
         """
         if not self._speed.due():
             return
-        summary = read_summary(winUser.getAncestor(bar, winUser.GA_PARENT), binding_handle)
+        summary = read_summary(parent(bar), binding_handle)
         self._speed.add(summary.value(Field.SPEED) if summary is not None else "")
 
     def text(self, window: int, binding_handle, language: LanguageFiles) -> str:
@@ -283,7 +220,8 @@ class ConversionStatus:
             last_panel, last_time, last_text = self._last
             if last_panel == panel and time.monotonic() - last_time < _STATUS_REUSE:
                 return last_text
-        if not redraw(panel):
+        # ezcd fills the panel's background on every change and draws only the changed labels again.
+        if not screen.redraw(panel):
             log.debugWarning("The summary panel of the conversion window was not redrawn in time")
         summary = read_summary(panel, binding_handle)
         if summary is None:
@@ -297,6 +235,5 @@ class ConversionStatus:
 class TotalProgressBar(IAccessible):
     """The progress of the whole conversion; its caption is a label without a window."""
 
-    def _get_name(self):
-        # Translators: The name of the progress bar of the whole conversion in EZ CD Audio Converter.
-        return _("Total progress")
+    # Translators: The name of the progress bar of the whole conversion in EZ CD Audio Converter.
+    name = _("Total progress")

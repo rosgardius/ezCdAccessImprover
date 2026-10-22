@@ -6,6 +6,8 @@ App module in `addon/appModules/ezcd/`, built with nvda-addon-kit (`addon.toml`)
 - NVDA: 2026.1 – 2026.2. Check every API used against the NVDA source of these versions
   (tags `release-2026.1`, `release-2026.2` of nvaccess/nvda).
 - Development docs live in `docs/` (start with `docs/development.md`); keep them there, not here.
+- Before writing or reviewing code, read "Code rules" and "Comments" in `docs/development.md`: look for
+  an existing helper in its home module first, and remove what a change leaves unused.
 - Keep this file short. Personal, machine-specific instructions go to `CLAUDE.local.md` (git-ignored).
 - Before handing over code: `uv run ruff format addon`, `uv run ruff check addon`, `uv run nvaddon check`, `uv run nvaddon build`.
 

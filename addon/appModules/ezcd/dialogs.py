@@ -13,12 +13,10 @@ import winUser
 from NVDAObjects.behaviors import Dialog
 from NVDAObjects.IAccessible import IAccessible
 
-from . import captions, convert_window, top_panel
-from .windows import child_windows
+from . import captions, convert_window, screen
+from .windows import child_windows, root
 
-_NOT_DIALOG_CLASSES = frozenset(
-    (top_panel.MAIN_WINDOW_CLASS, "TApplication", "THintWindow", "#32768", "#32770")
-)
+_NOT_DIALOG_CLASSES = frozenset(("TMainform", "TApplication", "THintWindow", "#32768", "#32770"))
 # Windows that hold labels; the texts of other windows are their own content.
 _CONTAINER_CLASSES = frozenset(
     ("TPanel", "TGroupBox", "TRadioGroup", "TTabSheet", "TScrollBox", "TGridPanel", "TCardPanel", "TCard")
@@ -28,12 +26,11 @@ _PASS_THROUGH_CLASSES = frozenset(("TPageControl",))
 _CAPTIONED_CLASSES = captions.CLASSES | frozenset(
     (*captions.CHOICE_CLASSES, "TVirtualStringTree", "TComboBoxEx")
 )
-_LINE_TOLERANCE = 8
 
 
 def is_dialog(hwnd: int) -> bool:
     return (
-        winUser.getAncestor(hwnd, winUser.GA_ROOT) == hwnd
+        root(hwnd) == hwnd
         and winUser.getClassName(hwnd) not in _NOT_DIALOG_CLASSES
         and not convert_window.is_conversion_window(hwnd)
     )
@@ -49,19 +46,8 @@ def _containers(window: int) -> list[int]:
     return found
 
 
-def _lines(texts: list[captions.Text]) -> list[str]:
-    """The texts by lines, top to bottom, each line from left to right."""
-    lines: list[list[captions.Text]] = []
-    for text in sorted(texts, key=lambda t: t.top):
-        if lines and text.top - lines[-1][0].top < _LINE_TOLERANCE:
-            lines[-1].append(text)
-        else:
-            lines.append([text])
-    return [captions.joined(sorted(line, key=lambda t: t.left)) for line in lines]
-
-
 def _container_text(container: int, binding_handle) -> list[str]:
-    texts = captions.read_texts(container, binding_handle)
+    texts = screen.texts(container, binding_handle)
     if not texts:
         return []
     left_out = {t for t in texts if t.text in captions.BUTTON_TEXTS}
@@ -70,11 +56,11 @@ def _container_text(container: int, binding_handle) -> list[str]:
             continue
         child_class = winUser.getClassName(child)
         if child_class in _CAPTIONED_CLASSES:
-            left_out.update(captions.Layout(child, None, texts=texts).caption_texts())
+            left_out.update(captions.Layout(child, texts=texts).caption_texts())
         if child_class in captions.SLIDER_CLASSES:
-            slider = convert_window.logical_rect(child, container)
+            slider = screen.logical_rect(child, container)
             left_out.update(t for t in texts if captions.is_scale(t, slider))
-    return _lines([t for t in texts if t not in left_out])
+    return [screen.joined(line) for line in screen.lines([t for t in texts if t not in left_out])]
 
 
 def _comparable(text: str) -> str:
@@ -86,9 +72,7 @@ def dialog_text(window: int, binding_handle) -> str:
 
     A line repeating the title, as in Checking filenames, is left out: NVDA says the title already.
     """
-    if not binding_handle:
-        return ""
-    rects = {c: convert_window.logical_rect(c, window) for c in _containers(window)[1:]}
+    rects = {c: screen.logical_rect(c, window) for c in _containers(window)[1:]}
     containers = sorted(rects, key=lambda c: (rects[c].top, rects[c].left))
     title = _comparable(winUser.getWindowText(window))
     lines = [line for c in (window, *containers) for line in _container_text(c, binding_handle)]
@@ -98,8 +82,7 @@ def dialog_text(window: int, binding_handle) -> str:
 class EzcdDialog(Dialog, IAccessible):
     """A form of ezcd other than the main and the conversion window; its text is in labels without windows."""
 
-    def _get_role(self):
-        return controlTypes.Role.DIALOG
+    role = controlTypes.Role.DIALOG
 
     def _get_description(self):
         return dialog_text(self.windowHandle, self.appModule.helperLocalBindingHandle)

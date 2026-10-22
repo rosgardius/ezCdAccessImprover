@@ -9,6 +9,7 @@ from ctypes.wintypes import BOOL, HWND, RECT
 from dataclasses import dataclass
 
 import winUser
+from logHandler import log
 from winBindings import kernel32, user32
 
 from . import remote
@@ -21,9 +22,6 @@ TBSTATE_ENABLED = 0x04
 TBSTATE_HIDDEN = 0x08
 TBSTYLE_SEP = 0x01
 TBSTYLE_DROPDOWN = 0x08
-WM_LBUTTONDOWN = 0x201
-WM_LBUTTONUP = 0x202
-MK_LBUTTON = 0x1
 # Within the drop-down arrow of a button at any DPI: the arrow is wider than twice this.
 _ARROW_INSET = 4
 
@@ -50,7 +48,6 @@ class ToolButton:
     index: int
     image: int
     """``iBitmap``, equal to ``ImageIndex`` of the ``TToolButton``."""
-    command: int
     state: int
     style: int
     text: str
@@ -73,52 +70,53 @@ class ToolButton:
         return bool(self.style & TBSTYLE_DROPDOWN)
 
 
-def button_count(hwnd: int) -> int:
-    return max(remote.send(hwnd, TB_BUTTONCOUNT), 0)
-
-
 def read_buttons(hwnd: int, process_handle: int) -> list[ToolButton]:
-    """Reads all buttons of the toolbar. Raises ``OSError`` if ezcd's memory is not accessible."""
+    """All buttons of the toolbar; none if ezcd's memory is not accessible."""
     buttons = []
-    with remote.buffer(process_handle) as address:
-        for index in range(button_count(hwnd)):
-            if not remote.send(hwnd, TB_GETBUTTON, index, address):
-                continue
-            head = _ButtonHead()
-            remote.read(process_handle, address, head)
-            text = ""
-            length = remote.send(hwnd, TB_GETBUTTONTEXTW, head.idCommand, 0)
-            if (
-                0 < length <= _MAX_TEXT_LENGTH
-                and remote.send(hwnd, TB_GETBUTTONTEXTW, head.idCommand, address) > 0
-            ):
-                buffer = ctypes.create_unicode_buffer(length + 1)
-                remote.read(process_handle, address, buffer)
-                text = buffer.value
-            buttons.append(ToolButton(index, head.iBitmap, head.idCommand, head.fsState, head.fsStyle, text))
+    try:
+        with remote.buffer(process_handle) as address:
+            for index in range(remote.send(hwnd, TB_BUTTONCOUNT)):
+                if not remote.send(hwnd, TB_GETBUTTON, index, address):
+                    continue
+                head = _ButtonHead()
+                remote.read(process_handle, address, head)
+                text = ""
+                length = remote.send(hwnd, TB_GETBUTTONTEXTW, head.idCommand, 0)
+                if (
+                    0 < length <= _MAX_TEXT_LENGTH
+                    and remote.send(hwnd, TB_GETBUTTONTEXTW, head.idCommand, address) > 0
+                ):
+                    buffer = ctypes.create_unicode_buffer(length + 1)
+                    remote.read(process_handle, address, buffer)
+                    text = buffer.value
+                buttons.append(ToolButton(index, head.iBitmap, head.fsState, head.fsStyle, text))
+    except OSError:
+        log.debugWarning("Cannot read toolbar buttons of ezcd", exc_info=True)
+        return []
     return buttons
 
 
 def item_rect(hwnd: int, process_handle: int, index: int) -> RECT | None:
-    """The button's rectangle in the toolbar's client coordinates."""
+    """The button's rectangle in the toolbar's client coordinates; ``None`` if ezcd did not tell."""
     rect = RECT()
-    with remote.buffer(process_handle) as address:
-        if not remote.send(hwnd, TB_GETITEMRECT, index, address):
-            return None
-        remote.read(process_handle, address, rect)
+    try:
+        with remote.buffer(process_handle) as address:
+            if not remote.send(hwnd, TB_GETITEMRECT, index, address):
+                return None
+            remote.read(process_handle, address, rect)
+    except OSError:
+        log.debugWarning("Cannot read the rectangle of a toolbar button of ezcd", exc_info=True)
+        return None
     return rect
 
 
 def click(hwnd: int, process_handle: int, index: int, arrow: bool = False) -> bool:
-    """Posts a left click to the button's centre or its drop-down arrow; the mouse pointer does not move."""
+    """Posts a left click to the button's centre or its drop-down arrow."""
     rect = item_rect(hwnd, process_handle, index)
     if rect is None:
         return False
     x = rect.right - _ARROW_INSET if arrow else (rect.left + rect.right) // 2
-    lparam = winUser.MAKELONG(x, (rect.top + rect.bottom) // 2)
-    return bool(user32.PostMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, lparam)) and bool(
-        user32.PostMessage(hwnd, WM_LBUTTONUP, 0, lparam)
-    )
+    return remote.post_click(hwnd, x, (rect.top + rect.bottom) // 2)
 
 
 def set_focus(hwnd: int) -> bool:

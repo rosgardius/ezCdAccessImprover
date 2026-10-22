@@ -9,7 +9,6 @@ import time
 from collections.abc import Hashable
 from ctypes.wintypes import DWORD
 
-import addonHandler
 import api
 import appModuleHandler
 import braille
@@ -41,20 +40,15 @@ from . import (
     top_panel,
 )
 from .language import LanguageFiles
+from .windows import root
 
-addonHandler.initTranslation()
-
-PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+_PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 # Seconds from pressing View Explorer to the focus ezcd moves as it hides the button.
 _TOGGLE_FOCUS_TIMEOUT = 1.5
-_MENU_CLASS = "#32768"
 _MAX_PATH_LENGTH = 32767
 
 
 class AppModule(appModuleHandler.AppModule):
-    # Translators: The name of this add-on's category in NVDA's Input Gestures dialog.
-    scriptCategory = _("EZ CD Audio Converter")
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.language = LanguageFiles(self._executable_path())
@@ -88,7 +82,7 @@ class AppModule(appModuleHandler.AppModule):
         if self.appPath:
             return self.appPath
         # NVDA's handle to an elevated ezcd may lack query rights; the limited right is granted anyway.
-        handle = winKernel.openProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, self.processID)
+        handle = winKernel.openProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, self.processID)
         if not handle:
             return None
         try:
@@ -105,13 +99,11 @@ class AppModule(appModuleHandler.AppModule):
         """The menu that switches the main window's tab is opening on the tab's top panel."""
         self._tab_menu_tab = tab
 
-    def pass_focus(self, hwnd: int) -> bool:
+    def pass_focus(self, hwnd: int):
         """Moves ezcd's focus to the window for the key that follows, without NVDA reporting it."""
         self._passing = hwnd
-        if toolbar.set_focus(hwnd):
-            return True
-        self._passing = 0
-        return False
+        if not toolbar.set_focus(hwnd):
+            self._passing = 0
 
     def explorer_toggled(self, toolbar_hwnd: int):
         """View Explorer is being pressed on the toolbar: ezcd will hide it and show the other one."""
@@ -129,14 +121,13 @@ class AppModule(appModuleHandler.AppModule):
 
     def _note_gesture(self, gesture) -> bool:
         # Called in NVDA's keyboard hook thread for every gesture, in any application.
-        is_key = isinstance(gesture, KeyboardInputGesture)
         self._tab_key = 0
         self._passing = 0
         self._passed_toolbar = (None, 0)
-        if is_key and gesture.vkCode == winUser.VK_TAB:
-            modifiers = gesture.modifierNames
-            self._tab_key = 1 if not modifiers else -1 if modifiers == ["shift"] else 0
-        if is_key:
+        if isinstance(gesture, KeyboardInputGesture):
+            if gesture.vkCode == winUser.VK_TAB:
+                modifiers = gesture.modifierNames
+                self._tab_key = 1 if not modifiers else -1 if modifiers == ["shift"] else 0
             self.closed_editor.note_key(gesture)
             self.cells.note_key(gesture.vkCode)
         return True
@@ -173,7 +164,7 @@ class AppModule(appModuleHandler.AppModule):
             return
         if self.cells.handle_focus(obj, self.helperLocalBindingHandle):
             return
-        if self._tab_menu_tab and obj.windowClassName != _MENU_CLASS:
+        if self._tab_menu_tab and obj.windowClassName != "#32768":
             # Whichever tab was chosen, VCL puts focus on the tab's first control.
             panel = top_panel.panel_after_tab_menu(self._tab_menu_tab, obj.processHandle, self.language)
             self._tab_menu_tab = 0
@@ -184,27 +175,33 @@ class AppModule(appModuleHandler.AppModule):
             ):
                 return
         # VCL skips the top panel on Tab; stop at it instead of the tab labels.
-        if tab_key == 1 and previous and obj.windowClassName == top_panel.PAGE_CONTROL_CLASS:
-            panel = top_panel.panel_left_by_tab(obj.windowHandle, previous, obj.processHandle, self.language)
-            if panel is not None and toolbar_stops.focus_button(
-                self, panel, panel.entry(self.remembered_buttons)
-            ):
-                self._tab_kept = True
-                return
+        if (
+            tab_key == 1
+            and previous
+            and obj.windowClassName == "TPageControl"
+            and self._enter_stop(
+                top_panel.panel_left_by_tab(obj.windowHandle, previous, obj.processHandle, self.language)
+            )
+        ):
+            return
         # VCL skips the explorer's toolbars; stop at the one that Tab or Shift+Tab passed by.
         passed = self._toolbar_passed(obj.windowHandle, previous, tab_key)
-        if passed:
-            stop = explorer.stop_of(passed, obj.processHandle, self.language)
-            if stop is not None and toolbar_stops.focus_button(
-                self, stop, stop.entry(self.remembered_buttons)
-            ):
-                # Shift+Tab from the tab's first control passed by the tab labels.
-                self._tab_kept = True
-                return
+        if passed and self._enter_stop(explorer.stop_of(passed, obj.processHandle, self.language)):
+            return
         nextHandler()
 
+    def _enter_stop(self, stop: toolbar_stops.ToolbarStop | None) -> bool:
+        """Moves focus to the stop's remembered button; ``False`` if it did not move.
+
+        Focus stays in the tab, but may have passed by the tab labels, as Shift+Tab from its first control.
+        """
+        if stop is None or not toolbar_stops.focus_button(self, stop, stop.entry(self.remembered_buttons)):
+            return False
+        self._tab_kept = True
+        return True
+
     def event_nameChange(self, obj, nextHandler):
-        if obj.windowClassName == file_lists.TREE_CLASS:
+        if obj.windowClassName == "TVirtualStringTree":
             focus = api.getFocusObject()
             if file_lists.is_list_focus_event(obj, focus):
                 # The focus event that follows would be dropped as a duplicate of the item without a name.
@@ -218,7 +215,7 @@ class AppModule(appModuleHandler.AppModule):
         nextHandler()
 
     def event_valueChange(self, obj, nextHandler):
-        if obj.windowClassName == convert_window.PROGRESS_BAR_CLASS:
+        if obj.windowClassName == "TProgressBar":
             kind = convert_window.bar_kind(obj.windowHandle)
             # Every converter bar changes several times a second; drop them before anything else.
             if kind == convert_window.Bar.CONVERTER:
@@ -230,21 +227,20 @@ class AppModule(appModuleHandler.AppModule):
     def event_stateChange(self, obj, nextHandler):
         # View Explorer changes its state as ezcd hides it; the state of the other one comes with the focus.
         if (
-            obj.windowClassName == top_panel.TOOLBAR_CLASS
+            obj.windowClassName == "TToolBar"
             and time.monotonic() - self._toggle_pressed_at < _TOGGLE_FOCUS_TIMEOUT
         ):
             return
         nextHandler()
 
     def _get_statusBar(self):
-        window = winUser.getAncestor(api.getForegroundObject().windowHandle, winUser.GA_ROOT)
-        panel = convert_window.summary_panel(window)
+        panel = convert_window.summary_panel(root(api.getForegroundObject().windowHandle))
         if panel is None:
             raise NotImplementedError
         return getNVDAObjectFromEvent(panel, winUser.OBJID_CLIENT, 0)
 
     def getStatusBarText(self, obj):
-        window = winUser.getAncestor(obj.windowHandle, winUser.GA_ROOT)
+        window = root(obj.windowHandle)
         if obj.windowHandle != convert_window.summary_panel(window):
             raise NotImplementedError
         return self._conversion_status.text(window, self.helperLocalBindingHandle, self.language)
@@ -261,7 +257,7 @@ class AppModule(appModuleHandler.AppModule):
         if self.cells.is_coming_back(obj):
             return
         # Focus stayed in the tab: the tab labels or the main form in between were not announced.
-        if self._tab_kept and obj.windowClassName in (top_panel.TAB_CLASS, top_panel.PAGE_CONTROL_CLASS):
+        if self._tab_kept and obj.windowClassName in ("TTabSheet", "TPageControl"):
             return
         # Focus is passing by, or about to go on to a toolbar of the explorer: the control is not announced.
         focus = api.getFocusObject().windowHandle
@@ -279,126 +275,72 @@ class AppModule(appModuleHandler.AppModule):
     def chooseNVDAObjectOverlayClasses(self, obj, clsList):
         if not isinstance(obj, IAccessible):
             return
-        if (
-            obj.IAccessibleChildID == 0
-            and obj.IAccessibleRole == oleacc.ROLE_SYSTEM_CLIENT
-            and dialogs.is_dialog(obj.windowHandle)
-        ):
+        hwnd, window_class, child_id = obj.windowHandle, obj.windowClassName, obj.IAccessibleChildID
+        # The client object of the window, not its window object.
+        client = child_id == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW
+        if child_id == 0 and obj.IAccessibleRole == oleacc.ROLE_SYSTEM_CLIENT and dialogs.is_dialog(hwnd):
             clsList.insert(0, dialogs.EzcdDialog)
-            return
-        if obj.windowClassName == convert_window.PROGRESS_BAR_CLASS:
-            if convert_window.bar_kind(obj.windowHandle) == convert_window.Bar.TOTAL:
+        elif window_class == "TProgressBar":
+            if convert_window.bar_kind(hwnd) == convert_window.Bar.TOTAL:
                 clsList.insert(0, convert_window.TotalProgressBar)
-            return
-        if (
-            obj.windowClassName == converters.EDIT_CLASS
-            and obj.IAccessibleChildID == 0
-            and converters.is_converters_edit(obj.windowHandle)
-        ):
-            if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_WINDOW:
-                clsList.insert(0, converters.ConvertersSpinWindow)
-            else:
-                clsList.insert(0, converters.ConvertersSpinBox)
-            return
-        if (
-            obj.windowClassName in metadata.FIELD_CLASSES
-            and obj.IAccessibleChildID == 0
-            and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW
-            and metadata.is_metadata_field(obj.windowHandle)
-        ):
+        elif window_class == "TEdit" and child_id == 0 and converters.is_converters_edit(hwnd):
+            clsList.insert(0, converters.ConvertersSpinBox if client else converters.ConvertersSpinWindow)
+        elif window_class in metadata.FIELD_CLASSES and client and metadata.is_metadata_field(hwnd):
             clsList.insert(0, metadata.MetadataField)
-            return
-        if obj.windowClassName in names.BUTTON_CLASSES:
-            if obj.IAccessibleChildID == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW:
+        elif window_class in names.BUTTON_CLASSES:
+            if client:
                 clsList.insert(0, names.CaptionedButton)
-            return
-        if obj.windowClassName == names.COMBO_BOX_EX_CHILD_CLASS:
-            if (
-                obj.IAccessibleChildID == 0
-                and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW
-                and names.is_combo_box_ex_child(obj.windowHandle)
-            ):
+        elif window_class == "ComboBox":
+            if client and names.is_combo_box_ex_child(hwnd):
                 clsList.insert(0, names.Captioned)
-            return
-        if obj.windowClassName in captions.CLASSES:
-            if obj.IAccessibleChildID == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW:
+        elif window_class in captions.CLASSES:
+            if client:
                 clsList.insert(0, names.Captioned)
-            elif obj.IAccessibleChildID > 0 and obj.windowClassName in list_items.CLASSES:
+            elif child_id > 0 and window_class in list_items.CLASSES:
                 clsList.insert(0, list_items.ListItem)
-            return
-        if obj.windowClassName == metadata.COVER_CLASS:
-            if obj.IAccessibleChildID == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW:
+        elif window_class == metadata.COVER_CLASS:
+            if client:
                 clsList.insert(0, metadata.CoverArt)
-            return
-        if obj.windowClassName == file_lists.EDITOR_CLASS:
-            if cells.is_main_list_editor(obj.windowHandle):
+        elif window_class == "TVTEdit":
+            if file_lists.is_main_list_editor(hwnd):
                 clsList.insert(0, cells.CellEditor)
-            return
-        if obj.windowClassName == file_lists.TREE_CLASS and obj.IAccessibleChildID == 0:
-            if file_lists.is_main_window_list(obj.windowHandle):
-                if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINEITEM:
-                    clsList.insert(0, file_lists.MainFileListItem)
-                else:
-                    if obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINE:
-                        clsList.insert(0, file_lists.MainWindowList)
-                    # The list itself, or a file as ezcd shows it while busy.
-                    clsList.insert(0, cells.BetweenEditors)
-            elif obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINEITEM:
-                clsList.insert(0, file_lists.TreeItem)
-            elif obj.IAccessibleRole == oleacc.ROLE_SYSTEM_OUTLINE:
-                if file_lists.is_conversion_list(obj.windowHandle):
-                    clsList.insert(0, file_lists.ConversionFileList)
-                else:
-                    clsList.insert(0, file_lists.DialogList)
-            return
-        if obj.windowClassName == top_panel.MAIN_WINDOW_CLASS:
-            if obj.IAccessibleChildID == 0:
+        elif window_class == "TVirtualStringTree" and child_id == 0:
+            self._choose_list_classes(obj, clsList)
+        elif window_class == "TMainform":
+            if child_id == 0:
                 clsList.insert(0, cells.BetweenEditors)
-            return
-        if obj.windowClassName == top_panel.PAGE_CONTROL_CLASS:
+        elif window_class == "TPageControl":
             clsList.insert(0, top_panel.TabLabels)
-            return
-        if obj.windowClassName == top_panel.TAB_CLASS:
-            if top_panel.is_main_window_tab(obj.windowHandle):
+        elif window_class == "TTabSheet":
+            if top_panel.is_main_window_tab(hwnd):
                 clsList.insert(0, top_panel.MainWindowTab)
-            return
-        if obj.windowClassName == top_panel.PANEL_CLASS:
-            if obj.IAccessibleChildID != 0:
-                return
-            if top_panel.read_top_panel(obj.windowHandle, obj.processHandle, self.language) is not None:
+        elif window_class == "TPanel" and child_id == 0:
+            if top_panel.read_top_panel(hwnd, obj.processHandle, self.language) is not None:
                 clsList.insert(0, top_panel.TopPanelWindow)
-            elif explorer.is_hidden_explorer_row(obj.windowHandle):
+            elif explorer.is_hidden_explorer_row(hwnd):
                 clsList.insert(0, explorer.HiddenExplorerRow)
-            return
-        if obj.windowClassName != top_panel.TOOLBAR_CLASS:
-            return
-        panel = top_panel.panel_of(obj.windowHandle, obj.processHandle, self.language)
-        if panel is None:
-            self._choose_explorer_classes(obj, clsList)
-            return
-        if obj.IAccessibleChildID == 0:
-            clsList.insert(0, top_panel.TopPanelToolbarWindow)
-            return
-        button = panel.find(obj.windowHandle, obj.IAccessibleChildID - 1)
-        if button is None:
-            return
-        if button == panel.main and panel.main_shortcut:
-            clsList.insert(0, top_panel.MainButton)
-        elif panel.has_menu(button):
-            clsList.insert(0, top_panel.MenuButton)
-        else:
-            clsList.insert(0, top_panel.TopPanelButton)
-
-    def _choose_explorer_classes(self, obj, clsList):
-        stop = explorer.stop_of(obj.windowHandle, obj.processHandle, self.language)
-        if stop is None:
-            return
-        child_id = toolbar_stops.button_child_id(obj)
-        if child_id == 0:
-            clsList.insert(0, explorer.ExplorerToolbarWindow)
-            return
-        button = stop.find(obj.windowHandle, child_id - 1)
-        if button is not None:
-            clsList.insert(
-                0, explorer.ExplorerMenuButton if stop.has_menu(button) else explorer.ExplorerButton
+        elif window_class == "TToolBar":
+            stop = top_panel.panel_of(hwnd, obj.processHandle, self.language) or explorer.stop_of(
+                hwnd, obj.processHandle, self.language
             )
+            overlay = None if stop is None else toolbar_stops.overlay_class(obj, stop)
+            if overlay is not None:
+                clsList.insert(0, overlay)
+
+    def _choose_list_classes(self, obj, clsList):
+        role = obj.IAccessibleRole
+        if file_lists.is_main_window_list(obj.windowHandle):
+            if role == oleacc.ROLE_SYSTEM_OUTLINEITEM:
+                clsList.insert(0, file_lists.MainFileListItem)
+                return
+            if role == oleacc.ROLE_SYSTEM_OUTLINE:
+                clsList.insert(0, file_lists.MainWindowList)
+            # The list itself, or a file as ezcd shows it while busy.
+            clsList.insert(0, cells.BetweenEditors)
+        elif role == oleacc.ROLE_SYSTEM_OUTLINEITEM:
+            clsList.insert(0, file_lists.TreeItem)
+        elif role == oleacc.ROLE_SYSTEM_OUTLINE:
+            if file_lists.is_conversion_list(obj.windowHandle):
+                clsList.insert(0, file_lists.ConversionFileList)
+            else:
+                clsList.insert(0, file_lists.DialogList)

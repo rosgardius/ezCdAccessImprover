@@ -11,20 +11,13 @@ from dataclasses import dataclass
 
 import controlTypes
 import winUser
-from logHandler import log
 from NVDAObjects.IAccessible import IAccessible
 from scriptHandler import script
 
 from . import toolbar, toolbar_stops
 from .language import LanguageFiles
 from .toolbar_stops import StopButton
-from .windows import child_windows
-
-TOOLBAR_CLASS = "TToolBar"
-PAGE_CONTROL_CLASS = "TPageControl"
-TAB_CLASS = "TTabSheet"
-PANEL_CLASS = "TPanel"
-MAIN_WINDOW_CLASS = "TMainform"
+from .windows import child_windows, parent
 
 # The tab's main action, recognised by the ImageIndex of its button and its caption in the language file,
 # and whether F8 presses it.
@@ -60,13 +53,30 @@ class TopPanel(toolbar_stops.ToolbarStop):
     def has_menu(self, button: StopButton) -> bool:
         return button.key in _MENU_BUTTONS.get(self.key, ())
 
+    def overlay_class(self, button: StopButton | None) -> type:
+        if button is None:
+            return TopPanelToolbarWindow
+        if button == self.main and self.main_shortcut:
+            return MainButton
+        return MenuButton if self.has_menu(button) else TopPanelButton
+
 
 def _image_key(image: int) -> int:
     return _SAME_IMAGES.get(image, image)
 
 
-def _parent(hwnd: int) -> int:
-    return winUser.getAncestor(hwnd, winUser.GA_PARENT)
+def is_main_window_tab(hwnd: int) -> bool:
+    return (
+        winUser.getClassName(hwnd) == "TTabSheet"
+        and winUser.getClassName(parent(parent(hwnd))) == "TMainform"
+    )
+
+
+def main_tab(hwnd: int) -> int:
+    """The main window's tab that holds the window, or is the window; 0 if none."""
+    while hwnd and not is_main_window_tab(hwnd):
+        hwnd = parent(hwnd)
+    return hwnd
 
 
 def _main_shortcut(button: toolbar.ToolButton, language: LanguageFiles) -> bool | None:
@@ -82,12 +92,8 @@ def _main_shortcut(button: toolbar.ToolButton, language: LanguageFiles) -> bool 
 
 
 def _read_panel(panel: int, process_handle: int, language: LanguageFiles) -> TopPanel | None:
-    toolbars = [hwnd for hwnd in child_windows(panel, TOOLBAR_CLASS) if winUser.isWindowVisible(hwnd)]
-    try:
-        buttons = toolbar_stops.read_buttons(toolbars, process_handle, _image_key)
-    except OSError:
-        log.debugWarning("Cannot read toolbar buttons of ezcd", exc_info=True)
-        return None
+    toolbars = [hwnd for hwnd in child_windows(panel, "TToolBar") if winUser.isWindowVisible(hwnd)]
+    buttons = toolbar_stops.read_buttons(toolbars, process_handle, _image_key)
     for candidate in buttons:
         # The main action has a toolbar of its own.
         if sum(b.toolbar == candidate.toolbar for b in buttons) != 1:
@@ -100,61 +106,55 @@ def _read_panel(panel: int, process_handle: int, language: LanguageFiles) -> Top
 
 def read_top_panel(panel: int, process_handle: int, language: LanguageFiles) -> TopPanel | None:
     """The top panel, if the panel window is one."""
-    if winUser.getClassName(panel) != PANEL_CLASS or winUser.getClassName(_parent(panel)) != TAB_CLASS:
+    if winUser.getClassName(panel) != "TPanel" or winUser.getClassName(parent(panel)) != "TTabSheet":
         return None
     return _read_panel(panel, process_handle, language)
 
 
 def panel_of(hwnd: int, process_handle: int, language: LanguageFiles) -> TopPanel | None:
     """The top panel that the toolbar window is on."""
-    found = read_top_panel(_parent(hwnd), process_handle, language)
+    found = read_top_panel(parent(hwnd), process_handle, language)
     return found if found is not None and any(b.toolbar == hwnd for b in found.buttons) else None
 
 
 def panel_of_tab(tab: int, process_handle: int, language: LanguageFiles) -> TopPanel | None:
-    for panel in child_windows(tab, PANEL_CLASS):
+    for panel in child_windows(tab, "TPanel"):
         found = _read_panel(panel, process_handle, language)
         if found is not None:
             return found
     return None
 
 
-def is_main_window_tab(hwnd: int) -> bool:
-    return winUser.getClassName(_parent(_parent(hwnd))) == MAIN_WINDOW_CLASS
-
-
 def active_tab(page_control: int) -> int | None:
-    return next((tab for tab in child_windows(page_control, TAB_CLASS) if winUser.isWindowVisible(tab)), None)
+    return next(
+        (tab for tab in child_windows(page_control, "TTabSheet") if winUser.isWindowVisible(tab)), None
+    )
 
 
 def panel_left_by_tab(
     page_control: int, previous_focus: int, process_handle: int, language: LanguageFiles
 ) -> TopPanel | None:
     """The tab's top panel, if Tab from ``previous_focus`` left the tab's other controls for its labels."""
-    # isDescendantWindow is true for the window itself.
-    if previous_focus == page_control or not winUser.isDescendantWindow(page_control, previous_focus):
-        return None
-    tab = previous_focus
-    while (parent := _parent(tab)) != page_control:
-        tab = parent
-    if winUser.getClassName(tab) != TAB_CLASS:
+    tab = main_tab(previous_focus)
+    if not tab or parent(tab) != page_control:
         return None
     found = panel_of_tab(tab, process_handle, language)
-    if found is None or winUser.isDescendantWindow(_parent(found.main.toolbar), previous_focus):
+    # isDescendantWindow is true for the window itself.
+    if found is None or winUser.isDescendantWindow(parent(found.main.toolbar), previous_focus):
         return None
     return found
 
 
 def panel_after_tab_menu(old_tab: int, process_handle: int, language: LanguageFiles) -> TopPanel | None:
     """The top panel of the tab active after the tab menu was opened on ``old_tab``."""
-    tab = active_tab(_parent(old_tab))
+    tab = active_tab(parent(old_tab))
     return None if tab is None else panel_of_tab(tab, process_handle, language)
 
 
 def is_beside_panel(panel: TopPanel, hwnd: int) -> bool:
     """Whether the window is in the panel's tab, but is neither the tab nor on the way to its first button."""
     first = panel.buttons[0].toolbar
-    tab = _parent(_parent(first))
+    tab = parent(parent(first))
     # isDescendantWindow is true for the window itself.
     return (
         hwnd != tab and winUser.isDescendantWindow(tab, hwnd) and not winUser.isDescendantWindow(hwnd, first)
@@ -164,8 +164,7 @@ def is_beside_panel(panel: TopPanel, hwnd: int) -> bool:
 class TopPanelWindow(IAccessible):
     """The panel itself, an unnamed pane: presented as a toolbar, so its buttons are known to be a group."""
 
-    def _get_role(self):
-        return controlTypes.Role.TOOLBAR
+    role = controlTypes.Role.TOOLBAR
 
 
 class TopPanelToolbarWindow(toolbar_stops.ToolbarWindow):
@@ -185,8 +184,7 @@ class TopPanelButton(toolbar_stops.ToolbarButton):
 class MainButton(TopPanelButton):
     """Convert or Rip CD, pressed by F8 anywhere in the main window."""
 
-    def _get_keyboardShortcut(self):
-        return "F8"
+    keyboardShortcut = "F8"
 
 
 class MenuButton(toolbar_stops.ToolbarMenuButton, TopPanelButton):
@@ -196,7 +194,7 @@ class MenuButton(toolbar_stops.ToolbarMenuButton, TopPanelButton):
         panel, button = self._find()
         if not index and panel is not None and button == panel.buttons[0]:
             # The menu of the first button switches the tab: focus goes to the new tab's first button.
-            self.appModule.tab_menu_opened(_parent(_parent(self.windowHandle)))
+            self.appModule.tab_menu_opened(parent(parent(self.windowHandle)))
         super().doAction(index)
 
 

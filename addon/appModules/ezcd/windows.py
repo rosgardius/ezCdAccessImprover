@@ -4,11 +4,38 @@
 
 """Walking ezcd's window tree."""
 
+import ctypes
 from collections.abc import Iterator
+from ctypes.wintypes import RECT
 
 import winUser
+from winBindings import user32
 
 _GW_CHILD = 5
+_WS_TABSTOP = 0x10000
+
+
+def parent(hwnd: int) -> int:
+    return winUser.getAncestor(hwnd, winUser.GA_PARENT)
+
+
+def root(hwnd: int) -> int:
+    return winUser.getAncestor(hwnd, winUser.GA_ROOT)
+
+
+def rect(hwnd: int) -> RECT:
+    """The window's rectangle on the screen, in physical coordinates."""
+    result = RECT()
+    user32.GetWindowRect(hwnd, ctypes.byref(result))
+    return result
+
+
+def is_tab_stop(hwnd: int) -> bool:
+    return bool(
+        winUser.getWindowStyle(hwnd) & _WS_TABSTOP
+        and winUser.isWindowVisible(hwnd)
+        and winUser.isWindowEnabled(hwnd)
+    )
 
 
 def child_windows(hwnd: int, class_name: str | None = None) -> list[int]:

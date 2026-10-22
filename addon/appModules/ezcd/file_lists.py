@@ -10,7 +10,7 @@ The tree also answers some TreeView messages; a node handle there is VirtualTree
 import ctypes
 import re
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 
 import api
 import braille
@@ -29,13 +29,11 @@ from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from scriptHandler import script
 
 from . import convert_window, names, remote, top_panel
+from .windows import parent, root
 
-TREE_CLASS = "TVirtualStringTree"
-EDITOR_CLASS = "TVTEdit"
 _FILES_STRING = 494
 _CONVERTING_STRING = 476
 _CONVERTER_PAGE_STRING = 9
-_PAGE_CLASS = "TTabSheet"
 
 TVM_GETNEXTITEM = 0x110A
 TVM_GETITEMW = 0x113E
@@ -81,19 +79,18 @@ class _TvItem(ctypes.Structure):
 
 
 def is_conversion_list(hwnd: int) -> bool:
-    return convert_window.is_conversion_window(winUser.getAncestor(hwnd, winUser.GA_ROOT))
+    return convert_window.is_conversion_window(root(hwnd))
 
 
 def is_main_window_list(hwnd: int) -> bool:
     """A list on a tab of the main window; the add-on leaves the trees of dialogs to NVDA."""
-    return winUser.getClassName(winUser.getAncestor(hwnd, winUser.GA_ROOT)) == top_panel.MAIN_WINDOW_CLASS
+    return (
+        winUser.getClassName(hwnd) == "TVirtualStringTree" and winUser.getClassName(root(hwnd)) == "TMainform"
+    )
 
 
-def _page(hwnd: int) -> int:
-    """The tab page the window is on; 0 if none."""
-    while hwnd and winUser.getClassName(hwnd) != _PAGE_CLASS:
-        hwnd = winUser.getAncestor(hwnd, winUser.GA_PARENT)
-    return hwnd
+def is_main_list_editor(hwnd: int) -> bool:
+    return winUser.getClassName(hwnd) == "TVTEdit" and is_main_window_list(parent(hwnd))
 
 
 def _is_client_event_with_focus(obj, focus, role: controlTypes.Role) -> bool:
@@ -148,33 +145,32 @@ def _node_selected(hwnd: int, process_handle: int, address: int, node: int) -> b
     return bool(item.state & TVIS_SELECTED)
 
 
-def is_selected(hwnd: int, process_handle: int, node: int) -> bool | None:
-    """Whether the node is selected; ``None`` if ezcd did not tell."""
+def _selected(hwnd: int, process_handle: int, nodes: Iterable[int]) -> list[bool] | None:
+    """Whether each node is selected; ``None`` if ezcd did not tell."""
+    states = []
     try:
         with remote.buffer(process_handle) as address:
-            return _node_selected(hwnd, process_handle, address, node)
+            for node in nodes:
+                state = _node_selected(hwnd, process_handle, address, node)
+                if state is None:
+                    return None
+                states.append(state)
     except OSError:
         log.debugWarning("Tree item state unavailable", exc_info=True)
         return None
+    return states
+
+
+def is_selected(hwnd: int, process_handle: int, node: int) -> bool | None:
+    """Whether the node is selected; ``None`` if ezcd did not tell."""
+    states = _selected(hwnd, process_handle, (node,))
+    return None if states is None else states[0]
 
 
 def selection(hwnd: int, process_handle: int) -> tuple[set[int], int] | None:
     """The ``node_index`` of every selected node and the number of nodes; ``None`` if ezcd did not tell."""
-    selected = set()
-    count = 0
-    try:
-        with remote.buffer(process_handle) as address:
-            for index, node in enumerate(_walk(hwnd)):
-                state = _node_selected(hwnd, process_handle, address, node)
-                if state is None:
-                    return None
-                if state:
-                    selected.add(index)
-                count = index + 1
-    except OSError:
-        log.debugWarning("Tree item state unavailable", exc_info=True)
-        return None
-    return selected, count
+    states = _selected(hwnd, process_handle, _walk(hwnd))
+    return None if states is None else ({i for i, state in enumerate(states) if state}, len(states))
 
 
 def node_index(hwnd: int, node: int) -> int | None:
@@ -197,13 +193,7 @@ def descendant_count(hwnd: int, node: int) -> int:
 def cell_editor(hwnd: int) -> int:
     """The tree's cell editor if it has the keyboard focus, otherwise 0."""
     focus = winUser.getGUIThreadInfo(winUser.getWindowThreadProcessID(hwnd)[1]).hwndFocus
-    if (
-        focus
-        and winUser.getClassName(focus) == EDITOR_CLASS
-        and winUser.getAncestor(focus, winUser.GA_PARENT) == hwnd
-    ):
-        return focus
-    return 0
+    return focus if focus and winUser.getClassName(focus) == "TVTEdit" and parent(focus) == hwnd else 0
 
 
 class ClosedEditor:
@@ -226,21 +216,15 @@ class ClosedEditor:
         focus = winUser.getGUIThreadInfo(0).hwndFocus
         # A key held in the editor repeats while the add-on moves it, with the tree focused in between.
         self._key_in_tree = (
-            bool(focus)
-            and winUser.getClassName(focus) == TREE_CLASS
-            and is_main_window_list(focus)
-            and api.getFocusObject().windowClassName != EDITOR_CLASS
+            bool(focus) and is_main_window_list(focus) and api.getFocusObject().windowClassName != "TVTEdit"
         )
         self._key_opens_editor = gesture.vkCode == winUser.VK_F2 and not gesture.modifiers
         self._key_time = time.monotonic()
 
     def is_unasked(self, obj) -> bool:
         """Whether the focus event is of an editor the tree opened on a key not meant to open it."""
-        tree = winUser.getAncestor(obj.windowHandle, winUser.GA_PARENT)
         return (
-            obj.windowClassName == EDITOR_CLASS
-            and winUser.getClassName(tree) == TREE_CLASS
-            and is_main_window_list(tree)
+            is_main_list_editor(obj.windowHandle)
             and self._key_in_tree
             and not self._key_opens_editor
             and time.monotonic() - self._key_time < _CLOSED_EDITOR_EVENTS_SECONDS
@@ -264,7 +248,7 @@ class ClosedEditor:
             return False
         if obj.windowHandle == self._editor:
             return True
-        if obj.windowClassName == TREE_CLASS:
+        if obj.windowClassName == "TVirtualStringTree":
             self._editor = 0
             # NVDA may drop the name change for the new file when a focus event follows at once.
             return self._report_time >= self._key_time
@@ -498,25 +482,20 @@ class MainFileListItem(TreeItem):
 
 
 class MainWindowList(IAccessible):
-    """A list on a tab of the main window, named by ezcd in English or by its class name."""
+    """A list on a tab of the main window; ezcd names it in English or by its class name."""
 
     def _get_name(self):
-        # Of the lists, only the converter's has a name among ezcd's strings; the tab page names the others.
-        return (
-            self.appModule.language.text_in_language_of(
-                _FILES_STRING, _CONVERTER_PAGE_STRING, winUser.getWindowText(_page(self.windowHandle))
-            )
-            or ""
-        )
+        # Of the lists, only the converter's has a name among ezcd's strings; the tab names the others.
+        tab = winUser.getWindowText(top_panel.main_tab(self.windowHandle))
+        return self.appModule.language.text_in_language_of(_FILES_STRING, _CONVERTER_PAGE_STRING, tab) or ""
 
 
 class ConversionFileList(IAccessible):
     """The list of the conversion window, named Format by ezcd."""
 
     def _get_name(self):
-        window = winUser.getAncestor(self.windowHandle, winUser.GA_ROOT)
         name = self.appModule.language.text_in_language_of(
-            _FILES_STRING, _CONVERTING_STRING, winUser.getWindowText(window)
+            _FILES_STRING, _CONVERTING_STRING, winUser.getWindowText(root(self.windowHandle))
         )
         return name or super()._get_name()
 

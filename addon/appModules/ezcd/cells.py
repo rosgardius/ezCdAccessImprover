@@ -26,19 +26,18 @@ import core
 import eventHandler
 import speech
 import textInfos
-import windowUtils
 import winUser
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from NVDAObjects.window.edit import Edit
 from scriptHandler import script
 
-from . import convert_window, file_lists, remote
+from . import file_lists, remote, screen
 from .language import LanguageFiles
+from .windows import parent, root
 
 addonHandler.initTranslation()
 
 _LYRICS_STRING = 474
-_LYRICS_DIALOG_CLASS = "TLyricsEditor"
 _SB_HORZ = 0
 _SIF_RANGE = 0x1
 _SIF_PAGE = 0x2
@@ -84,11 +83,6 @@ class Column:
     caption: str
 
 
-def is_main_list_editor(hwnd: int) -> bool:
-    tree = winUser.getAncestor(hwnd, winUser.GA_PARENT)
-    return winUser.getClassName(tree) == file_lists.TREE_CLASS and file_lists.is_main_window_list(tree)
-
-
 def _scroll_info(tree: int) -> _ScrollInfo | None:
     info = _ScrollInfo(cbSize=ctypes.sizeof(_ScrollInfo), fMask=_SIF_RANGE | _SIF_PAGE | _SIF_POS)
     return info if _get_scroll_info(tree, _SB_HORZ, ctypes.byref(info)) else None
@@ -124,25 +118,23 @@ def header(tree: int, binding_handle, repaint: bool = False) -> list[Column]:
         return []
     scroll = _scroll_position(tree)
     if repaint or _painted_scroll.get(tree) != scroll:
-        convert_window.redraw(tree, frame=True)
+        screen.redraw(tree, frame=True)
         _painted_scroll[tree] = scroll
-    area = convert_window.logical_rect(tree, tree)
-    left, top = winUser.ClientToScreen(tree, 0, 0)
-    area.bottom = windowUtils.physicalToLogicalPoint(tree, left, top)[1]
-    texts = convert_window.display_texts(tree, area, binding_handle)
-    return [Column(left + scroll, text) for left, _top, text in sorted(texts)]
+    area = screen.logical_rect(tree, tree)
+    area.bottom = screen.client_rect(tree).top
+    texts = screen.texts(tree, binding_handle, area)
+    return [Column(t.left + scroll, t.text) for t in sorted(texts, key=lambda t: (t.left, t.top))]
 
 
 def _editor_index(tree: int, editor: int, columns: list[Column]) -> int | None:
     """The column of the cell editor: its caption starts within the editor or, if none does, before it."""
-    rect = convert_window.logical_rect(editor, tree)
+    rect = screen.logical_rect(editor, tree)
     scroll = _scroll_position(tree)
     left, right = rect.left + scroll, rect.right + scroll
     for index, column in enumerate(columns):
         if left <= column.left < right:
             return index
-    before = [index for index, column in enumerate(columns) if column.left < left]
-    return before[-1] if before else None
+    return max((index for index, column in enumerate(columns) if column.left < left), default=None)
 
 
 def editor_column(tree: int, editor: int, binding_handle, repaint: bool = False) -> str:
@@ -156,8 +148,9 @@ def _neighbour(columns: list[Column], left: int, direction: int) -> int | None:
     """The column next to the one whose caption starts at ``left``, in the direction."""
     if direction > 0:
         return next((index for index, column in enumerate(columns) if column.left > left + _SAME_LEFT), None)
-    before = [index for index, column in enumerate(columns) if column.left < left - _SAME_LEFT]
-    return before[-1] if before else None
+    return max(
+        (index for index, column in enumerate(columns) if column.left < left - _SAME_LEFT), default=None
+    )
 
 
 def _in_menu(tree: int) -> bool:
@@ -193,17 +186,14 @@ class _Cursor:
         A key in a column scrolled partly out of view only brings it back into view. The tree scrolls
         by pages or by lines of a few pixels, so this is a page and then lines back.
         """
-        top = winUser.ClientToScreen(self.tree, 0, 0)
-        corner = winUser.ClientToScreen(self.tree, winUser.getClientRect(self.tree).right, 0)
-        view_left = windowUtils.physicalToLogicalPoint(self.tree, *top)[0]
-        view_right = windowUtils.physicalToLogicalPoint(self.tree, *corner)[0]
+        view = screen.client_rect(self.tree)
         if direction > 0:
-            room = self.left - _CAPTION_MARGIN - self.scroll - view_left
+            room = self.left - _CAPTION_MARGIN - self.scroll - view.left
         else:
             index = _neighbour(self.columns, self.left, 1)
             if index is None:
                 return
-            room = view_right - (self.columns[index].left - _CAPTION_MARGIN - self.scroll)
+            room = view.right - (self.columns[index].left - _CAPTION_MARGIN - self.scroll)
         if room <= 0:
             return
         start = _scroll_position(self.tree)
@@ -264,10 +254,10 @@ class CellTable:
         When focus comes back to the list from the lyrics dialog, the focused column moves off the
         lyrics column, which would show the dialog on every move to another file.
         """
-        if obj.windowClassName != file_lists.EDITOR_CLASS:
+        if obj.windowClassName != "TVTEdit":
             self.last_cell = None
-        root = winUser.getAncestor(obj.windowHandle, winUser.GA_ROOT)
-        if winUser.getClassName(root) == _LYRICS_DIALOG_CLASS:
+        form = root(obj.windowHandle)
+        if winUser.getClassName(form) == "TLyricsEditor":
             if self._return is None:
                 # Shown by ezcd itself: the lyrics column was focused, and another file got focus.
                 self._return = _DialogReturn(0, 1, 1, "")
@@ -276,12 +266,11 @@ class CellTable:
         back = self._return
         if back is None:
             return False
-        is_list = obj.windowClassName == file_lists.TREE_CLASS and (
-            obj.windowHandle == back.tree
-            or (not back.tree and file_lists.is_main_window_list(obj.windowHandle))
+        is_list = (
+            obj.windowHandle == back.tree if back.tree else file_lists.is_main_window_list(obj.windowHandle)
         )
         if not is_list:
-            if obj.windowHandle != root:
+            if obj.windowHandle != form:
                 self._return = None
                 return False
             # The main window itself gets focus first when the dialog closes.
@@ -296,11 +285,10 @@ class CellTable:
 
         NVDA would report the main window and the controls around the list on the way.
         """
-        root = winUser.getAncestor(obj.windowHandle, winUser.GA_ROOT)
         return (
             self._return is not None
             and self._return.dialog_seen
-            and winUser.getClassName(root) != _LYRICS_DIALOG_CLASS
+            and winUser.getClassName(root(obj.windowHandle)) != "TLyricsEditor"
         )
 
     def _come_back(self, tree: int, back: _DialogReturn, binding_handle) -> bool:
@@ -328,14 +316,14 @@ class CellTable:
                 break
         return bool(file_lists.cell_editor(tree))
 
-    def _cursor(self, tree: int, binding_handle, editor: int) -> "_Cursor | None":
+    def _cursor(self, tree: int, binding_handle, editor: int) -> _Cursor | None:
         columns = header(tree, binding_handle)
         index = _editor_index(tree, editor, columns)
         if index is None:
             return None
         return _Cursor(tree, binding_handle, columns, columns[index].left, _scroll_position(tree))
 
-    def _seek(self, cursor: "_Cursor", editor: int, direction: int, past_lyrics: bool) -> int | None:
+    def _seek(self, cursor: _Cursor, editor: int, direction: int, past_lyrics: bool) -> int | None:
         """Moves the focused column from the cursor's in the direction until the tree opens an editor.
 
         The lyrics column opens its dialog if ``past_lyrics``, otherwise it ends the row. Returns
@@ -388,7 +376,7 @@ class CellTable:
 
         Returns ``False`` if there is none and the editor stays.
         """
-        tree = winUser.getAncestor(editor, winUser.GA_PARENT)
+        tree = parent(editor)
         if _in_menu(tree):
             return True
         cursor = self._cursor(tree, binding_handle, editor)
@@ -416,7 +404,7 @@ class CellTable:
         It moves one column per core cycle, which also keeps a long row from taking a script longer than
         NVDA's watchdog allows. The editors on the way are not reported.
         """
-        tree = winUser.getAncestor(editor, winUser.GA_PARENT)
+        tree = parent(editor)
         if _in_menu(tree) or self._walk is not None:
             return
         cursor = self._cursor(tree, binding_handle, editor)
@@ -530,7 +518,7 @@ class CellEditor(Edit):
 
     def initOverlayClass(self):
         # Every editor is a window of its own, destroyed when it closes.
-        self.tree = winUser.getAncestor(self.windowHandle, winUser.GA_PARENT)
+        self.tree = parent(self.windowHandle)
 
     def _get_parent(self):
         if winUser.isWindow(self.windowHandle):

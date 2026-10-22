@@ -7,9 +7,9 @@
 import winUser
 from NVDAObjects.IAccessible import IAccessible
 
-from . import captions, convert_window, file_lists, top_panel
+from . import captions, screen, top_panel
 from .language import LanguageFiles
-from .windows import child_windows
+from .windows import child_windows, parent
 
 FIELD_CLASSES = ("TEdit", "TMemo", "TCheckBox")
 COVER_CLASS = "TDropPanel"
@@ -24,61 +24,49 @@ _TOTALS = ((_NUMBER_STRING, _TOTAL_TRACKS_STRING), (_DISC_NUMBER_STRING, _TOTAL_
 _CAPTION_STRINGS = (*range(588, 604), 608, 609, *range(900, 907), 934, 935, 936)
 
 
-def _parent(hwnd: int) -> int:
-    return winUser.getAncestor(hwnd, winUser.GA_PARENT)
-
-
 def is_metadata_field(hwnd: int) -> bool:
     """A field of the metadata panel of the converter or the ripper, or a CD-Text field of the burner."""
-    panel = _parent(hwnd)
-    if winUser.getClassName(panel) != top_panel.PANEL_CLASS:
+    panel = parent(hwnd)
+    if winUser.getClassName(panel) != "TPanel":
         return False
     if child_windows(panel, COVER_CLASS):
         return True
     # The CD-Text panel is under the list of tracks, on a page of the Disc Burner tab's own page control.
-    page = _parent(panel)
+    page = parent(panel)
     return (
-        winUser.getClassName(page) == top_panel.TAB_CLASS
+        winUser.getClassName(page) == "TTabSheet"
         and not top_panel.is_main_window_tab(page)
-        and bool(child_windows(page, file_lists.TREE_CLASS))
+        and bool(child_windows(page, "TVirtualStringTree"))
     )
 
 
-def _clean(caption: str) -> str:
+def _caption_of(layout: captions.Layout, language: LanguageFiles) -> str:
+    texts, neighbour = layout.left()
+    caption = screen.joined(texts)
+    if caption and neighbour and not any(c.isalnum() for c in caption):
+        # The total right of a track or disc number is captioned only by "/" between the two.
+        number = screen.joined(captions.Layout(neighbour, texts=layout.texts).left()[0])
+        strings = language.strings_of({t.text for t in layout.texts}, _CAPTION_STRINGS) or {}
+        for number_string, total_string in _TOTALS:
+            if strings.get(number_string) == number and strings.get(total_string):
+                return strings[total_string].strip("<>")
+        return f"{number.rstrip(' :')} {caption}".strip()
     return caption.rstrip(" :")
 
 
 def field_name(field: int, binding_handle, language: LanguageFiles) -> str:
     """The caption of the field in the language of ezcd; empty if the display model has none."""
-    if not binding_handle:
-        return ""
     # The layout depends on the fields chosen in ezcd's settings, so the caption is found by position.
-    layout = captions.Layout(field, binding_handle)
-    caption, neighbour = layout.left()
-    if not caption:
-        layout = captions.Layout(field, binding_handle, repaint=True)
-        caption, neighbour = layout.left()
-    if caption and neighbour and not any(c.isalnum() for c in caption):
-        # The total right of a track or disc number is captioned only by "/" between the two.
-        number, _neighbour = captions.Layout(neighbour, binding_handle).left()
-        strings = language.strings_showing(_CAPTION_STRINGS, {t.text for t in layout.texts}) or {}
-        for number_string, total_string in _TOTALS:
-            if strings.get(number_string) == number and strings.get(total_string):
-                return strings[total_string].strip("<>")
-        return f"{_clean(number)} {caption}".strip()
-    return _clean(caption)
+    return captions.from_screen(field, binding_handle, lambda layout: _caption_of(layout, language))
 
 
 def cover_info(cover: int, binding_handle) -> str:
     """The text under the cover art: its size and format, if there is a cover."""
-    if not binding_handle:
-        return ""
-    panel = _parent(cover)
-    area = convert_window.logical_rect(panel, panel)
-    rect = convert_window.logical_rect(cover, panel)
+    panel = parent(cover)
+    area = screen.logical_rect(panel, panel)
+    rect = screen.logical_rect(cover, panel)
     area.left, area.top, area.right = rect.left, rect.bottom, rect.right
-    texts = convert_window.display_texts(panel, area, binding_handle)
-    return " ".join(text for _left, _top, text in sorted(texts, key=lambda item: (item[1], item[0])))
+    return " ".join(screen.joined(line) for line in screen.lines(screen.texts(panel, binding_handle, area)))
 
 
 class MetadataField(IAccessible):

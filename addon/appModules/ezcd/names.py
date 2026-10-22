@@ -11,32 +11,22 @@ a split button showing the value of a setting.
 """
 
 import ctypes
+import functools
 import re
 
 import addonHandler
-import characterProcessing
 import controlTypes
 import winUser
 from NVDAObjects.IAccessible import IAccessible
-from speech.speech import getCurrentLanguage
 
 from . import captions, remote
+from .captions import Layout
 from .language import LanguageFiles
-from .windows import child_windows, descendants
+from .windows import child_windows, descendants, parent, root
 
 addonHandler.initTranslation()
 
 BUTTON_CLASSES = frozenset(("TButton", "TBitBtn", "TPngBitBtn", "TCheckBox", "TRadioButton"))
-_BUTTON_CLASS = "TButton"
-_CHECK_BOX_CLASS = "TCheckBox"
-_EDIT_CLASS = "TEdit"
-_COMBO_BOX_CLASS = "TComboBox"
-_COMBO_BOX_EDIT_CLASS = "Edit"
-_COMBO_BOX_EX_CLASS = "TComboBoxEx"
-# The combo box of a TComboBoxEx, which gets focus, is its child window.
-COMBO_BOX_EX_CHILD_CLASS = "ComboBox"
-_TOOLBAR_CLASS = "TToolBar"
-_DRIVE_SETTINGS_CLASS = "TSettings2AudioCDRipperDriveForm"
 _CB_GETCOUNT = 0x146
 _CB_GETLBTEXT = 0x148
 _CB_GETLBTEXTLEN = 0x149
@@ -66,15 +56,15 @@ type _Name = int | str | None
 
 def _image_button(hwnd: int) -> _Name:
     """A button with only an image, right next to the field it serves."""
-    layout = captions.Layout(hwnd, None, texts=[])
-    _texts, neighbour = layout.left_texts()
+    layout = Layout(hwnd)
+    _texts, neighbour = layout.left()
     if not neighbour or not layout.adjoins(neighbour):
         return None
     neighbour_class = winUser.getClassName(neighbour)
-    if neighbour_class == _EDIT_CLASS:
+    if neighbour_class == "TEdit":
         # Translators: The name of a button that opens a dialog to choose a folder or a file.
         return _("Browse")
-    if neighbour_class == _COMBO_BOX_CLASS:
+    if neighbour_class == "TComboBox":
         return _FILENAME_PREVIEW
     return None
 
@@ -83,41 +73,35 @@ def _button(hwnd: int) -> _Name:
     text = winUser.getWindowText(hwnd)
     if text and not text.strip():
         # A tag button of the file name template that inserts a space.
-        language = getCurrentLanguage()
-        return " ".join(characterProcessing.processSpeechSymbol(language, c) for c in text)
+        return captions.symbol_names(text)
     return _image_button(hwnd)
 
 
 def _check_box(hwnd: int) -> _Name:
     """A check box that switches on the effect chosen in the combo box right of it, as in DSP."""
-    combo_box = captions.Layout(hwnd, None, texts=[]).right_window()
-    if winUser.getClassName(combo_box) != _COMBO_BOX_CLASS:
+    combo_box = Layout(hwnd).right_window()
+    if winUser.getClassName(combo_box) != "TComboBox":
         return None
-    buffer = ctypes.create_unicode_buffer(_TEXT_LENGTH)
-    if not remote.send(combo_box, winUser.WM_GETTEXT, _TEXT_LENGTH, ctypes.addressof(buffer)):
-        return None
-    return buffer.value
+    return remote.text(combo_box, _TEXT_LENGTH) or None
 
 
 def _move_button(hwnd: int) -> _Name:
     """Edit profiles: two buttons with only an image right of the list, one above the other."""
-    layout = captions.Layout(hwnd, None, texts=[])
+    layout = Layout(hwnd)
     for sibling, rect in layout.siblings.items():
-        if winUser.getClassName(sibling) == _BUTTON_CLASS and not winUser.getWindowText(sibling):
+        if winUser.getClassName(sibling) == "TButton" and not winUser.getWindowText(sibling):
             return _MOVE_UP if layout.rect.top < rect.top else _MOVE_DOWN
     return None
 
 
 def _metadata_tree(hwnd: int) -> _Name:
     """Metadata editor: the list of files lies in a panel of the form, the list of fields deeper."""
-    panel = winUser.getAncestor(hwnd, winUser.GA_PARENT)
-    form = winUser.getAncestor(hwnd, winUser.GA_ROOT)
-    return _FILES if winUser.getAncestor(panel, winUser.GA_PARENT) == form else _METADATA
+    return _FILES if parent(parent(hwnd)) == root(hwnd) else _METADATA
 
 
 def _metadata_combo_box(hwnd: int) -> _Name:
     """Metadata editor: the name of a field to add is typed, the type of a picture is chosen."""
-    if child_windows(hwnd, _COMBO_BOX_EDIT_CLASS):
+    if child_windows(hwnd, "Edit"):
         return _FIELD_NAME
     # Translators: The name of the list of picture types (front cover, back cover, ...)
     # in the metadata editor.
@@ -173,24 +157,20 @@ def _codec_parameter(hwnd: int) -> _Name:
 
 def _output_combo_box(hwnd: int) -> _Name:
     """The output panel: the format, with its extension right next to it."""
-    layout = captions.Layout(hwnd, None, texts=[])
-    _texts, left = layout.left_texts()
-    if left and winUser.getClassName(left) == _COMBO_BOX_CLASS and layout.adjoins(left):
+    layout = Layout(hwnd)
+    _texts, left = layout.left()
+    if left and winUser.getClassName(left) == "TComboBox" and layout.adjoins(left):
         return _EXTENSION
     right = layout.right_window()
-    if (
-        right
-        and winUser.getClassName(right) == _COMBO_BOX_CLASS
-        and captions.Layout(right, None, texts=[]).adjoins(hwnd)
-    ):
+    if right and winUser.getClassName(right) == "TComboBox" and Layout(right).adjoins(hwnd):
         return _FORMAT
     return None
 
 
 def _drive_combo_box(hwnd: int) -> _Name:
     """The drive and its speed: side by side on the ripper's tab, one above the other on the burner's."""
-    layout = captions.Layout(hwnd, None, texts=[])
-    others = [s for s in layout.siblings if winUser.getClassName(s) == _COMBO_BOX_CLASS]
+    layout = Layout(hwnd)
+    others = [s for s in layout.siblings if winUser.getClassName(s) == "TComboBox"]
     if len(others) != 1:
         return None
     other = layout.siblings[others[0]]
@@ -200,13 +180,13 @@ def _drive_combo_box(hwnd: int) -> _Name:
 
 
 def _main_combo_box(hwnd: int) -> _Name:
-    panel = winUser.getAncestor(hwnd, winUser.GA_PARENT)
-    if child_windows(panel, _COMBO_BOX_EX_CLASS):
+    panel = parent(hwnd)
+    if child_windows(panel, "TComboBoxEx"):
         return _output_combo_box(hwnd)
-    if child_windows(winUser.getAncestor(panel, winUser.GA_PARENT), _COMBO_BOX_EX_CLASS):
+    if child_windows(parent(panel), "TComboBoxEx"):
         # The parameters of the codec lie in a panel of their own inside the output panel.
         return _codec_parameter(hwnd)
-    if child_windows(panel, _TOOLBAR_CLASS) and len(child_windows(panel, _COMBO_BOX_CLASS)) == 2:
+    if child_windows(panel, "TToolBar") and len(child_windows(panel, "TComboBox")) == 2:
         # The toolbar opens and closes the drive's tray.
         return _drive_combo_box(hwnd)
     return None
@@ -214,13 +194,13 @@ def _main_combo_box(hwnd: int) -> _Name:
 
 def _settings_combo_box(hwnd: int) -> _Name:
     """Drive settings: the drive is chosen at the top of the page."""
-    if winUser.getClassName(winUser.getAncestor(hwnd, winUser.GA_PARENT)) != _DRIVE_SETTINGS_CLASS:
+    if winUser.getClassName(parent(hwnd)) != "TSettings2AudioCDRipperDriveForm":
         return None
-    _texts, above = captions.Layout(hwnd, None, texts=[]).above_texts()
+    _texts, above = Layout(hwnd).above()
     return None if above else _SOURCE_DRIVE
 
 
-_ANY_FORM = {_BUTTON_CLASS: _button, _CHECK_BOX_CLASS: _check_box}
+_ANY_FORM = {"TButton": _button, "TCheckBox": _check_box}
 # Translators: The name of the list of settings pages.
 _CATEGORIES = _("Categories")
 # Translators: The name of the list of file name templates used before.
@@ -231,40 +211,37 @@ _RELEASE_CODE = _("Release code")
 # Translators: The name of the list of releases found by the manual search of metadata.
 _RESULTS = _("Results")
 _FORMS = {
-    "TProfile_Editor": {"TVirtualStringTree": _PROFILE, _BUTTON_CLASS: _move_button},
+    "TProfile_Editor": {"TVirtualStringTree": _PROFILE, "TButton": _move_button},
     # The caption of the last field lies below the edge of its panel and is not drawn.
-    "TMBManual": {_EDIT_CLASS: _RELEASE_CODE, "TListView": _RESULTS},
+    "TMBManual": {"TEdit": _RELEASE_CODE, "TListView": _RESULTS},
     "TFC_GetMetadata": {"TVirtualStringTree": _TRACKLIST},
-    "TMainform": {_COMBO_BOX_EX_CLASS: _PROFILE, _COMBO_BOX_CLASS: _main_combo_box},
-    "TSettings2Form": {"TTreeView": _CATEGORIES, _COMBO_BOX_CLASS: _settings_combo_box},
-    "TNamePreview": {_EDIT_CLASS: _FILENAMES, "TListBox": _TEMPLATES, "TListView": _FILENAME_PREVIEW},
+    "TMainform": {"TComboBoxEx": _PROFILE, "TComboBox": _main_combo_box},
+    "TSettings2Form": {"TTreeView": _CATEGORIES, "TComboBox": _settings_combo_box},
+    "TNamePreview": {"TEdit": _FILENAMES, "TListBox": _TEMPLATES, "TListView": _FILENAME_PREVIEW},
     "TTMetadata": {
         "TVirtualStringTree": _metadata_tree,
-        _COMBO_BOX_CLASS: _metadata_combo_box,
+        "TComboBox": _metadata_combo_box,
         "TMemo": _FIELD_VALUE,
         "TListView": _COVER_ART,
     },
 }
 
 
-def _shown_texts(window: int) -> set[str]:
-    texts = {winUser.getWindowText(window)}
-    texts.update(winUser.getWindowText(w) for w in descendants(window) if winUser.isWindowVisible(w))
-    return texts
-
-
 def fixed_name(hwnd: int, language: LanguageFiles) -> str:
     """The name of a control ezcd shows without a caption; empty if none is known for it."""
-    form = winUser.getAncestor(hwnd, winUser.GA_ROOT)
     control_class = winUser.getClassName(hwnd)
-    rule = _FORMS.get(winUser.getClassName(form), {}).get(control_class) or _ANY_FORM.get(control_class)
+    form_rules = _FORMS.get(winUser.getClassName(root(hwnd)), {})
+    rule = form_rules.get(control_class) or _ANY_FORM.get(control_class)
     name = rule(hwnd) if callable(rule) else rule
     return ezcd_string(hwnd, name, language) if isinstance(name, int) else name or ""
 
 
 def ezcd_string(hwnd: int, number: int, language: LanguageFiles) -> str:
     """The string of the language files in the language of the control's window; empty if it has none."""
-    strings = language.strings_of(_shown_texts(winUser.getAncestor(hwnd, winUser.GA_ROOT)))
+    window = root(hwnd)
+    shown = {winUser.getWindowText(window)}
+    shown.update(winUser.getWindowText(w) for w in descendants(window) if winUser.isWindowVisible(w))
+    strings = language.strings_of(shown)
     # Some strings are captions of labels: "Disc writer :".
     return strings.get(number, "").rstrip(" :") if strings else ""
 
@@ -276,57 +253,41 @@ def _repeats(hwnd: int, caption: str) -> bool:
         and winUser.getClassName(other) in BUTTON_CLASSES
         and winUser.getWindowText(other) == caption
         and winUser.isWindowVisible(other)
-        for other in descendants(winUser.getAncestor(hwnd, winUser.GA_ROOT))
+        for other in descendants(root(hwnd))
     )
 
 
-def _row_caption(layout: captions.Layout, language: LanguageFiles, choice_only: bool) -> str:
+def _row_caption(layout: Layout, language: LanguageFiles) -> str:
     """The text nearest to the control on its row, else the caption or name of the row's first window."""
-    if not choice_only:
-        text = layout.row_text()
-        if text:
-            return text
-    first = next(iter(layout.row_windows()), 0)
-    if not first:
-        return ""
-    return captions.choice_caption(first) or ("" if choice_only else fixed_name(first, language))
-
-
-def row_caption(hwnd: int, binding_handle, language: LanguageFiles, choice_only: bool = False) -> str:
-    """The caption of the control's row; with ``choice_only``, only a check box or radio button opening it."""
-    if not binding_handle:
-        return ""
-    caption = _row_caption(captions.Layout(hwnd, binding_handle), language, choice_only)
-    if not caption and not choice_only:
-        # The display model has only what was drawn since the parent last filled its background.
-        caption = _row_caption(captions.Layout(hwnd, binding_handle, repaint=True), language, choice_only)
-    return caption
+    text = layout.row_text()
+    if text:
+        return text
+    first = layout.row_start()
+    return (captions.choice_caption(first) or fixed_name(first, language)) if first else ""
 
 
 def is_combo_box_ex_child(hwnd: int) -> bool:
-    return winUser.getClassName(winUser.getAncestor(hwnd, winUser.GA_PARENT)) == _COMBO_BOX_EX_CLASS
+    return winUser.getClassName(parent(hwnd)) == "TComboBoxEx"
 
 
 class Captioned(IAccessible):
     """A control without an MSAA name, named by the caption ezcd draws beside it or else by a string."""
 
-    _screen_name: str | None = None
-
     def _own_name(self) -> str:
         return super()._get_name() or ""
 
     def _get_name(self):
-        name = self._own_name()
-        if name:
-            return name
-        if self._screen_name is None:
-            window = self.windowHandle
-            if self.windowClassName == COMBO_BOX_EX_CHILD_CLASS:
-                window = winUser.getAncestor(window, winUser.GA_PARENT)
-            self._screen_name = captions.caption(
-                window, self.appModule.helperLocalBindingHandle
-            ) or fixed_name(window, self.appModule.language)
-        return self._screen_name
+        return self._own_name() or self._screen_name
+
+    @functools.cached_property
+    def _screen_name(self) -> str:
+        window = self.windowHandle
+        if self.windowClassName == "ComboBox":
+            # The combo box of a TComboBoxEx, which gets focus, is its child window.
+            window = parent(window)
+        return captions.caption(window, self.appModule.helperLocalBindingHandle) or fixed_name(
+            window, self.appModule.language
+        )
 
 
 class CaptionedButton(IAccessible):
@@ -336,20 +297,22 @@ class CaptionedButton(IAccessible):
     whose caption is the value of the setting its row's check box names.
     """
 
-    _full_name: str | None = None
-
-    def _get_name(self):
-        if self._full_name is None:
-            self._full_name = self._compute_name(super()._get_name() or "")
-        return self._full_name
-
-    def _compute_name(self, name: str) -> str:
+    @functools.cached_property
+    def _full_name(self) -> str:
+        name = super()._get_name() or ""
         if not name.strip():
             return fixed_name(self.windowHandle, self.appModule.language)
-        split = self.role == controlTypes.Role.SPLITBUTTON
-        if not split and not _repeats(self.windowHandle, winUser.getWindowText(self.windowHandle)):
+        if self.role == controlTypes.Role.SPLITBUTTON:
+            row = captions.choice_caption(Layout(self.windowHandle).row_start())
+        elif _repeats(self.windowHandle, winUser.getWindowText(self.windowHandle)):
+            row = captions.from_screen(
+                self.windowHandle,
+                self.appModule.helperLocalBindingHandle,
+                lambda layout: _row_caption(layout, self.appModule.language),
+            )
+        else:
             return name
-        row = row_caption(
-            self.windowHandle, self.appModule.helperLocalBindingHandle, self.appModule.language, split
-        )
         return f"{name}{_ROW_SEPARATOR}{row}" if row and row != name else name
+
+    def _get_name(self):
+        return self._full_name
