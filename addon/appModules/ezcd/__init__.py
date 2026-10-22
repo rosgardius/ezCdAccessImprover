@@ -46,6 +46,9 @@ from .windows import root
 _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 # Seconds from pressing View Explorer to the focus ezcd moves as it hides the button.
 _TOGGLE_FOCUS_TIMEOUT = 1.5
+# Seconds from a key to the focus ezcd moves as it hides the window with the focus and acts, as it goes to
+# a folder.
+_RETURN_FOCUS_TIMEOUT = 5
 _MAX_PATH_LENGTH = 32767
 
 
@@ -68,6 +71,12 @@ class AppModule(appModuleHandler.AppModule):
         self._quiet_toggle = 0
         """The toolbar of View Explorer that gets focus after the press: only its state is reported."""
         self._tab_kept = False
+        self._focus_return = 0
+        """The window that gets focus back when ezcd moves it elsewhere in the window, until the next key."""
+        self._focus_return_at = 0.0
+        self._folder_changed = False
+        """The list in focus went to another folder, until the next key: the names of its items are not
+        reported."""
         self._conversion_status = convert_window.ConversionStatus()
         self.converter_steps = converters.StepAnnouncer()
         self.closed_editor = file_lists.ClosedEditor()
@@ -106,6 +115,22 @@ class AppModule(appModuleHandler.AppModule):
         if not toolbar.set_focus(hwnd):
             self._passing = 0
 
+    def return_focus(self, hwnd: int):
+        """ezcd is about to hide the focus: focus goes back to the window from wherever ezcd moves it in the
+        same top-level window."""
+        self._focus_return = hwnd
+        self._focus_return_at = time.monotonic()
+
+    def _returns_focus(self, hwnd: int) -> bool:
+        """Whether focus on the window goes back to the window of ``return_focus``."""
+        back = self._focus_return
+        return (
+            bool(back)
+            and hwnd != back
+            and root(hwnd) == root(back)
+            and time.monotonic() - self._focus_return_at < _RETURN_FOCUS_TIMEOUT
+        )
+
     def explorer_toggled(self, toolbar_hwnd: int):
         """View Explorer is being pressed on the toolbar: ezcd will hide it and show the other one."""
         self._explorer_toggle = toolbar_hwnd
@@ -130,6 +155,8 @@ class AppModule(appModuleHandler.AppModule):
         self._tab_key = 0
         self._passing = 0
         self._passed_toolbar = (None, 0)
+        self._focus_return = 0
+        self._folder_changed = False
         if isinstance(gesture, KeyboardInputGesture):
             if gesture.vkCode == winUser.VK_TAB:
                 modifiers = gesture.modifierNames
@@ -146,6 +173,9 @@ class AppModule(appModuleHandler.AppModule):
         passing, self._passing = self._passing, 0
         self._tab_kept = False
         if passing and obj.windowHandle == passing:
+            return
+        if self._returns_focus(obj.windowHandle) and toolbar.set_focus(self._focus_return):
+            self._tab_kept = True
             return
         quiet, self._quiet_toggle = self._quiet_toggle, 0
         if quiet and obj.windowHandle == quiet:
@@ -210,6 +240,14 @@ class AppModule(appModuleHandler.AppModule):
         return True
 
     def event_nameChange(self, obj, nextHandler):
+        # The new path: the list in focus is going to another folder.
+        if obj.windowClassName == "TJamShellBreadCrumbBar" and explorer.is_folder_list_focus(
+            obj.windowHandle
+        ):
+            self._folder_changed = True
+            explorer.announce_folder(obj.windowHandle, self.helperLocalBindingHandle)
+        if obj.windowClassName == "TJamShellList" and self._folder_changed:
+            return
         if obj.windowClassName == "TVirtualStringTree":
             focus = api.getFocusObject()
             if file_lists.is_list_focus_event(obj, focus):
@@ -231,6 +269,12 @@ class AppModule(appModuleHandler.AppModule):
                 return
             if kind == convert_window.Bar.TOTAL:
                 self._conversion_status.sample_speed(obj.windowHandle, self.helperLocalBindingHandle)
+        nextHandler()
+
+    def event_selection(self, obj, nextHandler):
+        # ezcd selects the folder it went to in the tree, which has focus on its way back.
+        if self._returns_focus(obj.windowHandle):
+            return
         nextHandler()
 
     def event_stateChange(self, obj, nextHandler):
@@ -268,10 +312,13 @@ class AppModule(appModuleHandler.AppModule):
         # Focus stayed in the tab: the tab labels or the main form in between were not announced.
         if self._tab_kept and obj.windowClassName in ("TTabSheet", "TPageControl"):
             return
-        # Focus is passing by, or about to go on to a toolbar Tab passed by: the control is not announced.
+        # Focus is passing by, about to go back, or about to go on to a toolbar Tab passed by: the control is
+        # not announced.
         focus = api.getFocusObject().windowHandle
-        if (focus and focus in (self._passing, self._quiet_toggle)) or (
-            self._toolbar_passed(focus, self._focus_window, self._tab_key)
+        if (
+            (focus and focus in (self._passing, self._quiet_toggle))
+            or self._returns_focus(focus)
+            or self._toolbar_passed(focus, self._focus_window, self._tab_key)
         ):
             return
         # Focus is about to leave the tab's first control for its top panel: the control is not announced.
@@ -302,11 +349,19 @@ class AppModule(appModuleHandler.AppModule):
         elif window_class == "ComboBox":
             if client and names.is_combo_box_ex_child(hwnd):
                 clsList.insert(0, names.Captioned)
+            elif client and explorer.is_path_field(hwnd):
+                clsList.insert(0, explorer.PathComboBox)
         elif window_class in captions.CLASSES:
             if client:
-                clsList.insert(0, names.Captioned)
+                clsList.insert(0, explorer.FolderList if window_class == "TJamShellList" else names.Captioned)
             elif child_id > 0 and window_class in list_items.CLASSES:
                 clsList.insert(0, list_items.ListItem)
+        elif window_class == "TJamShellBreadCrumbBar":
+            if client:
+                clsList.insert(0, explorer.PathBar)
+        elif window_class == "Edit":
+            if client and explorer.is_path_field(hwnd):
+                clsList.insert(0, explorer.PathEdit)
         elif window_class == metadata.COVER_CLASS:
             if client:
                 clsList.insert(0, metadata.CoverArt)

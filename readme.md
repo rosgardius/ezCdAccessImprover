@@ -45,6 +45,18 @@ undoes it; as with any toggle button, only the new state is reported: pressed or
 * Enter, Numpad Enter and Space press the focused button. On View, they or Down Arrow open the menu of
   the list's view (List, Details, Icons, Large icons).
 
+### File explorer
+
+The tree of folders, the list of the folder and the filter of file types are named: Folders, Folder
+contents and File types. On entering the list without a current item, the number of its items is
+reported. When the list goes to another folder (Enter on a folder, Backspace), the folder and the number
+of its items are reported. The breadcrumb bar is reported as the button Path, with the current folder:
+Enter or Space shows a field in which a path can be typed. Enter goes to that folder, Escape cancels;
+either way focus comes back to Path. For a path that does not exist, focus stays in the field and the
+current folder is reported. Up and Down Arrow in the field go through the address history of Windows'
+File Explorer, as in the application itself, replacing the typed path; Escape brings back the current
+folder.
+
 ### Toolbar of the drive's tray
 
 The toolbar at the end of the drive and speed row of the Audio CD Ripper and Disc Burner tabs is a

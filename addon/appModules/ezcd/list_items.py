@@ -8,8 +8,12 @@ import time
 
 from logHandler import log
 from NVDAObjects.IAccessible import IAccessible
+from NVDAObjects.IAccessible.sysListView32 import LVM_GETITEMCOUNT
 
-CLASSES = ("TListBox", "TCheckListBox", "TListView")
+from . import remote
+
+CLASSES = ("TListBox", "TCheckListBox", "TListView", "TJamShellList")
+_LIST_VIEW_CLASSES = ("TListView", "TJamShellList")
 _REPEAT_WINDOW = 0.1
 """Seconds after an item's focus event within which a focus event for the same item repeats it."""
 
@@ -31,3 +35,12 @@ class ListItem(IAccessible):
             log.debug(f"Repeated focus on a list item after {elapsed * 1000:.0f} ms")
             return True
         return super().isDuplicateIAccessibleEvent(obj)
+
+    def _get_positionInfo(self):
+        info = super().positionInfo
+        if "similarItemsInGroup" in info and self.windowClassName in _LIST_VIEW_CLASSES:
+            # NVDA counts the children of the list, the column header among them.
+            info["similarItemsInGroup"] = (
+                remote.send(self.windowHandle, LVM_GETITEMCOUNT) or info["similarItemsInGroup"]
+            )
+        return info

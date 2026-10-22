@@ -2,25 +2,41 @@
 # This file is covered by the GNU General Public License.
 # See the file COPYING.txt for more details.
 
-"""The toolbars of the file explorer on the Audio Converter and Disc Burner tabs.
+"""The file explorer on the Audio Converter and Disc Burner tabs.
 
 Above the explorer, each toolbar is a Tab stop right before the control right of it on the screen: the
 navigation before the breadcrumb bar, the view of the list before the filter of file types. While the
 explorer is hidden, a row of toolbars takes its place (View Explorer, Add files, ...): one Tab stop right
 before the control below it.
+
+The breadcrumb bar is the path of the folder, edited in a field that ezcd shows on a click into the bar.
 """
 
+import builtins
+import time
 from collections.abc import Hashable
 from dataclasses import dataclass
 
+import addonHandler
+import api
 import controlTypes
+import core
+import ui
 import winUser
 from NVDAObjects.IAccessible import IAccessible
+from NVDAObjects.IAccessible.sysListView32 import LVM_GETITEMCOUNT
+from scriptHandler import script
 
-from . import captions, toolbar, toolbar_stops
+from . import captions, names, panels, remote, screen, toolbar, toolbar_stops
 from .language import LanguageFiles
 from .top_panel import main_tab
 from .windows import child_windows, descendants, parent, rect, tab_stop_below
+
+addonHandler.initTranslation()
+
+# Translators: The name of the breadcrumb bar of the file explorer, which shows the folder's path,
+# and of the field in which the path is edited.
+_PATH = _("Path")
 
 # ezcd's strings for the buttons, by image.
 _VIEW_EXPLORER = 29
@@ -58,11 +74,6 @@ def _shown_toolbars(panel: int) -> list[int]:
     return [t for t in child_windows(panel, "TToolBar") if winUser.isWindowVisible(t)]
 
 
-def _is_bar_row(panel: int) -> bool:
-    """Whether the panel is the row above the explorer, with the breadcrumb bar."""
-    return bool(child_windows(panel, "TJamShellBreadCrumbBar"))
-
-
 def is_hidden_explorer_row(panel: int) -> bool:
     """Whether the panel is the row of toolbars shown while the explorer is hidden.
 
@@ -73,7 +84,7 @@ def is_hidden_explorer_row(panel: int) -> bool:
         winUser.getClassName(panel) == "TPanel"
         and bool(children)
         and all(winUser.getClassName(c) == "TToolBar" for c in children)
-        and any(p != panel and _is_bar_row(p) for p in child_windows(parent(panel), "TPanel"))
+        and any(p != panel and panels.is_explorer_bar(p) for p in child_windows(parent(panel), "TPanel"))
     )
 
 
@@ -82,7 +93,7 @@ def _stop_toolbars(hwnd: int) -> tuple[list[int], bool]:
     if winUser.getClassName(hwnd) != "TToolBar" or not winUser.isWindowVisible(hwnd):
         return [], False
     row = parent(hwnd)
-    if _is_bar_row(row):
+    if panels.is_explorer_bar(row):
         return [hwnd], False
     if is_hidden_explorer_row(row):
         return _shown_toolbars(row), True
@@ -106,7 +117,7 @@ def _first_below(panel: int) -> int:
 def next_control(hwnd: int) -> int:
     """The control after the toolbar's stop in the Tab order: the Tab stop right of it or below its row."""
     row = parent(hwnd)
-    if _is_bar_row(row):
+    if panels.is_explorer_bar(row):
         return captions.Layout(hwnd).right_window(tab_stop=True)
     return _first_below(row)
 
@@ -127,7 +138,7 @@ def _toolbars_before(hwnd: int) -> list[int]:
     if not hwnd:
         return []
     row = parent(hwnd)
-    if _is_bar_row(row):
+    if panels.is_explorer_bar(row):
         return [t for t in _shown_toolbars(row) if next_control(t) == hwnd][:1]
     hidden_row = _hidden_explorer_row(hwnd)
     return _shown_toolbars(hidden_row) if hidden_row and _first_below(hidden_row) == hwnd else []
@@ -198,3 +209,156 @@ class ExplorerMenuButton(toolbar_stops.ToolbarMenuButton, ExplorerButton):
 
     def _click(self) -> bool:
         return toolbar.click(self.windowHandle, self.processHandle, self.button_index, arrow=True)
+
+
+# Milliseconds from the new path of the breadcrumb bar to the list of the new folder.
+_FOLDER_FILL_DELAY = 150
+# Seconds from Enter in the field of the path to the moment that ezcd would have left it for the folder.
+_PATH_ENTER_TIME = 0.5
+_MAX_PATH_LENGTH = 32767
+
+
+def _item_count(folder_list: int) -> str:
+    count = remote.send(folder_list, LVM_GETITEMCOUNT)
+    # NVDA's own translations, which it installs as builtins.
+    return builtins.ngettext("%s item", "%s items", count) % count if count else builtins._("blank")
+
+
+def _last_crumb(bar: int, binding_handle, repaint: bool = False) -> str:
+    """The current folder as the breadcrumb bar draws it; empty if the display model has nothing."""
+    if repaint:
+        screen.redraw(bar)
+    found = screen.texts(bar, binding_handle)
+    if not found and not repaint and screen.redraw(bar):
+        found = screen.texts(bar, binding_handle)
+    return max(found, key=lambda t: t.left).text if found else ""
+
+
+def is_folder_list_focus(bar: int) -> bool:
+    """Whether the focus is in the list of the folder whose path the breadcrumb bar shows."""
+    focus = api.getFocusObject()
+    return focus.windowClassName == "TJamShellList" and main_tab(focus.windowHandle) == main_tab(bar)
+
+
+def announce_folder(bar: int, binding_handle):
+    """Reports the folder that the list in focus went to and the number of its items, once ezcd has
+    filled the list."""
+
+    def announce():
+        if is_folder_list_focus(bar):
+            folder_list = api.getFocusObject().windowHandle
+            ui.message(f"{_last_crumb(bar, binding_handle, repaint=True)}, {_item_count(folder_list)}")
+
+    core.callLater(_FOLDER_FILL_DELAY, announce)
+
+
+class FolderList(names.Captioned):
+    """The list of the folder's files and folders. Without a focused item, its value is the number of
+    items: NVDA reports the list itself then."""
+
+    def _get_value(self):
+        return _item_count(self.windowHandle)
+
+
+def is_path_field(hwnd: int) -> bool:
+    """Whether the window is the combo box of the path or its edit, shown while the breadcrumb bar is
+    edited."""
+    return "TBreadCrumbComboBox" in (
+        winUser.getClassName(parent(hwnd)),
+        winUser.getClassName(parent(parent(hwnd))),
+    )
+
+
+class PathBar(IAccessible):
+    """The breadcrumb bar, presented as a button named Path whose value is the folder: pressing it shows
+    the field of the path."""
+
+    name = _PATH
+    role = controlTypes.Role.BUTTON
+
+    def _get_value(self):
+        # A folder without a path, as This PC, is only drawn as the last crumb.
+        return winUser.getWindowText(self.windowHandle) or _last_crumb(
+            self.windowHandle, self.appModule.helperLocalBindingHandle
+        )
+
+    def doAction(self, index=None):
+        # The empty space left of the drop-down arrow at the right end.
+        client = winUser.getClientRect(self.windowHandle)
+        x = client.right - 2 * client.bottom
+        if index or not remote.post_click(self.windowHandle, x, client.bottom // 2):
+            raise NotImplementedError
+
+    @script(gestures=("kb:enter", "kb:numpadEnter", "kb:space"))
+    def script_edit(self, gesture):
+        try:
+            self.doAction()
+        except NotImplementedError:
+            gesture.send()
+
+    @script(gestures=("kb:upArrow", "kb:downArrow", "kb:leftArrow", "kb:rightArrow"))
+    def script_stay(self, gesture):
+        # VCL would move focus to the next or previous window of the bar's parent.
+        pass
+
+
+class PathComboBox(IAccessible):
+    """The combo box of the path, presented by its edit alone."""
+
+    isPresentableFocusAncestor = False
+
+
+class PathEdit(IAccessible):
+    """The field of the path. Enter goes to the path, Escape cancels; ezcd then hides the field and moves
+    focus elsewhere in the main window, so focus goes back to the bar.
+
+    For a path it cannot go to, ezcd keeps the field and selects the path typed: the current path, with
+    which ezcd opened the field, is reported instead of the selection.
+    """
+
+    name = _PATH
+    _entered_at = 0.0
+    _opened_path = ""
+
+    def event_gainFocus(self):
+        self._opened_path = remote.text(self.windowHandle, _MAX_PATH_LENGTH)
+        super().event_gainFocus()
+
+    @property
+    def _bar(self) -> int:
+        # The edit is in a combo box in the bar's own combo box.
+        return parent(parent(parent(self.windowHandle)))
+
+    @script(gesture="kb:escape")
+    def script_cancel(self, gesture):
+        self.appModule.return_focus(self._bar)
+        gesture.send()
+
+    @script(gesture="kb:shift+tab")
+    def script_previous_control(self, gesture):
+        # ezcd goes back to the bar, while Tab goes on past it: Shift+Tab, too, leaves the bar, for the
+        # toolbar right before it.
+        toolbars = _toolbars_before(self._bar)
+        stop = stop_of(toolbars[0], self.processHandle, self.appModule.language) if toolbars else None
+        if stop is None or not toolbar_stops.focus_button(
+            self.appModule, stop, stop.entry(self.appModule.remembered_buttons)
+        ):
+            gesture.send()
+
+    @script(gestures=("kb:enter", "kb:numpadEnter"))
+    def script_go(self, gesture):
+        self.appModule.return_focus(self._bar)
+        self._entered_at = time.monotonic()
+        gesture.send()
+        core.callLater(int(_PATH_ENTER_TIME * 1000), self._report_kept_path)
+
+    def _report_kept_path(self):
+        if api.getFocusObject() is not self or not winUser.isWindowVisible(self.windowHandle):
+            return
+        self.initAutoSelectDetection()
+        ui.message(self._opened_path)
+
+    def event_caret(self):
+        if time.monotonic() - self._entered_at < _PATH_ENTER_TIME:
+            return
+        super().event_caret()

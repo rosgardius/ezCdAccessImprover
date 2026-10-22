@@ -49,6 +49,7 @@ _SOURCE_DRIVE = 462
 _READ_SPEED = 463
 _DISC_WRITER = 235
 _WRITE_SPEED = 236
+_FOLDERS = 380
 
 # A name is a string number of the language files or the add-on's own string.
 type _Name = int | str | None
@@ -143,6 +144,8 @@ _CODEC_LEVEL = _("Level")
 _FORMAT = _("Format")
 # Translators: The name of the list of file name extensions of the output format (.m4a, .aac, ...).
 _EXTENSION = _("Extension")
+# Translators: The name of the filter of the file explorer (All audio files, *.flac, ...).
+_FILE_TYPES = _("File types")
 
 
 def _codec_parameter(hwnd: int) -> _Name:
@@ -188,6 +191,8 @@ def _main_combo_box(hwnd: int) -> _Name:
         return _codec_parameter(hwnd)
     if panels.is_drive_panel(panel):
         return _drive_combo_box(hwnd)
+    if panels.is_explorer_bar(panel):
+        return _FILE_TYPES
     return None
 
 
@@ -209,12 +214,19 @@ _TEMPLATES = _("Templates")
 _RELEASE_CODE = _("Release code")
 # Translators: The name of the list of releases found by the manual search of metadata.
 _RESULTS = _("Results")
+# Translators: The name of the list of files and folders in the folder chosen in the file explorer.
+_FOLDER_CONTENTS = _("Folder contents")
 _FORMS = {
     "TProfile_Editor": {"TVirtualStringTree": _PROFILE, "TButton": _move_button},
     # The caption of the last field lies below the edge of its panel and is not drawn.
     "TMBManual": {"TEdit": _RELEASE_CODE, "TListView": _RESULTS},
     "TFC_GetMetadata": {"TVirtualStringTree": _TRACKLIST},
-    "TMainform": {"TComboBoxEx": _PROFILE, "TComboBox": _main_combo_box},
+    "TMainform": {
+        "TComboBoxEx": _PROFILE,
+        "TComboBox": _main_combo_box,
+        "TJamShellTree": _FOLDERS,
+        "TJamShellList": _FOLDER_CONTENTS,
+    },
     "TSettings2Form": {"TTreeView": _CATEGORIES, "TComboBox": _settings_combo_box},
     "TNamePreview": {"TEdit": _FILENAMES, "TListBox": _TEMPLATES, "TListView": _FILENAME_PREVIEW},
     "TTMetadata": {

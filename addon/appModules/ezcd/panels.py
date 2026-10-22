@@ -10,3 +10,8 @@ from .windows import child_windows
 def is_drive_panel(panel: int) -> bool:
     """Whether the panel holds the drive, its speed and the toolbar of the drive's tray."""
     return bool(child_windows(panel, "TToolBar")) and len(child_windows(panel, "TComboBox")) == 2
+
+
+def is_explorer_bar(panel: int) -> bool:
+    """Whether the panel is the row above the explorer, with the breadcrumb bar."""
+    return bool(child_windows(panel, "TJamShellBreadCrumbBar"))

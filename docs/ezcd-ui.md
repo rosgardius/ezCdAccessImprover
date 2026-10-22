@@ -104,6 +104,35 @@ absolute coordinates, captions in a particular language.
 - View Explorer hides the button that has the focus: when it hides the explorer, focus goes to the main
   form; when it shows the explorer, to the navigation toolbar above it.
 
+## Breadcrumb bar and lists of the explorer
+
+- The breadcrumb bar (`TJamShellBreadCrumbBar`) is a tab stop without a name; NVDA calls it a pane.
+  Its window text is the path of a file system folder (`C:\Windows`) and is empty for a virtual one
+  (This PC); the crumbs are drawn, the last one the current folder. A drop-down arrow is at its right
+  end.
+- A click on the empty space of the bar shows its hidden combo box (`TBreadCrumbComboBox` holding a
+  `ComboBox` and its `Edit`) over it, with the path selected in the edit and focus in it; F4, Enter,
+  Space and letters on the bar do nothing. Enter in the edit goes to the typed path; a path that does not
+  exist leaves the edit with the path selected and fires no event but the caret's. The edit opens with
+  the current path, This PC too. Enter and Escape hide the combo box: focus goes to the main form, after
+  going to a folder first to the explorer's tree, whose node of the folder is selected. Tab from the
+  edit goes on as from the bar, Shift+Tab goes back to the bar.
+- Whenever the explorer goes to another folder, the bar fires a name change (`OBJID_WINDOW`), and the
+  list of the folder is filled some 50 ms later: names of its items change, with no focused item. Enter
+  on a folder and Backspace in the list keep focus in the list; the tree fires focus for its new node,
+  which NVDA ignores, as the tree has no focus.
+- The arrow keys on the bar move focus to another window of its parent, as VCL does (Down Arrow to the
+  view's toolbar). A Down Arrow posted to the bar opens a popup form (`TForm`) of two list views,
+  `TJamShellOverflowListView` and `TJamShellPopupMenu`, with the folders of a crumb; MSAA shows no
+  focused item in them.
+- The list of the edit's combo box is the address history of Windows' File Explorer (`TypedPaths` in
+  the registry); the arrow keys in the edit go through it.
+- The tree of folders (`TJamShellTree`) and the list of the folder (`TJamShellList`, a list view with a
+  column header) have no caption; the language files have Folders `[380]`. The filter of file types is a
+  `TComboBox` whose items are All audio files `[491]` and extensions (`*.flac`).
+- The MSAA proxy counts the column header of a list view among its children, so NVDA's position of an
+  item ("1 of 3" for two items) is one too many in `TJamShellList` and `TListView`.
+
 ## Toolbar of the drive's tray
 
 - The drive, its speed and the toolbar of the tray lie in one `TPanel`, the toolbar at the end of the
