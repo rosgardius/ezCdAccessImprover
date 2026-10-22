@@ -54,7 +54,8 @@ The app module is a few thousand lines. These rules keep it from growing copies 
   - `remote.py`: messages to ezcd and buffers in its memory;
   - `captions.py`: captions found by position;
   - `panels.py`: panels of the main window, recognised by the windows they hold;
-  - `language.py`: ezcd's strings.
+  - `language.py`: ezcd's strings;
+  - `commands.py`: the category of the add-on's commands in Input Gestures.
 
   A second copy of a helper, even a one-line one such as `parent(hwnd)`, is a defect. A helper
   that a second module needs moves to its home, not into an import from an unrelated module.

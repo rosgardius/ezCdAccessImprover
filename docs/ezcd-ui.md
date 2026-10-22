@@ -381,6 +381,19 @@ absolute coordinates, captions in a particular language.
   `24.09.2026`); the scales of sliders lie over or under the slider, within its height.
 - The window shown while file names are checked before a conversion (Checking filenames...) has a label
   repeating its caption, with a space before the dots.
+- The page forms of Settings are made anew each time their page is chosen. Their settings take effect
+  at once; the dialog has only Close.
+- Counters in Settings: the numbers of parallel converters and of scanners (`TEdit`s in their own
+  `TPanel`s of `TSettings2AudioConverterForm`, captioned above) and the limit of metadata results per
+  service (a read-only `TEdit` under the list of services of
+  `TSettings2GeneralInternetDiscDatabaseForm`, captioned left). Each is a `TEdit` between "-" and "+"
+  `TSpeedButton`s without windows, 23 × 23 design units, 1 unit (converter page) or 2 units (the limit)
+  from the edit, as in the conversion window (see Number of converters). The number of scanners also
+  takes typing. ezcd handles a click at once; the numbers go down to 1.
+- The list of metadata services (`TCheckListBox`) has two `TPngSpeedButton`s without windows right of it,
+  Move up and Move down: 23 × 22 design units, 4 units right of the list, the first level with its top,
+  the second right under it. A click at the centre moves the selected service, and the list fires focus
+  and selection on it at its new place; on the first service Move up does nothing.
 - About is the last item of the Help menu (on every top panel); Escape closes it.
 - Encoder information opens with a `TPngSpeedButton` without a window right of the format and extension
   combo boxes of the Audio Converter tab's output panel, at 292, 46 (24 × 24) in the panel as in the
@@ -393,6 +406,16 @@ absolute coordinates, captions in a particular language.
   without the add-on the item is said twice.
 - Without a selection, the first arrow key in a `TCheckListBox` (metadata services in the settings)
   selects the focused item and fires focus on it again.
+- MSAA gives the items of a `TCheckListBox` no check state. VCL keeps the state of an item in an
+  object whose address is the item's data (`LB_GETITEMDATA`): after the pointer to its class and the
+  item's own data (8 bytes each in the 64-bit ezcd) comes the state, a byte, 0 unchecked, 1 checked,
+  2 grayed. Every item of the list of metadata services has such an object; its own data is the
+  service's number, which moves with the item.
+- Space toggles the item's check box without any event; Space on an item that is not selected also
+  selects it and fires focus on it.
+- A `TCheckListBox` with automatic dragging (the list of metadata services) starts a drag on a mouse
+  press: after a posted press and release, VCL's drag window keeps the mouse capture and keys to the
+  list do nothing until a release is posted to that window.
 
 ## Conversion window
 

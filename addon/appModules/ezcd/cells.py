@@ -31,7 +31,7 @@ from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from NVDAObjects.window.edit import Edit
 from scriptHandler import script
 
-from . import file_lists, remote, screen
+from . import commands, file_lists, remote, screen
 from .language import LanguageFiles
 from .windows import parent, root
 
@@ -508,8 +508,7 @@ class CellTable:
 class CellEditor(Edit):
     """The cell editor of the main window's list of files, named by its column."""
 
-    # Translators: The name of this add-on's category in NVDA's Input Gestures dialog.
-    scriptCategory = _("EZ CD Audio Converter")
+    scriptCategory = commands.CATEGORY
     # NVDA takes the editor for one with the text object model, which it lacks.
     editAPIVersion = 0
     # The tree moves the editor to another file; NVDA would read the line of this one as it closes. Not

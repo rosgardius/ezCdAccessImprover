@@ -2,7 +2,11 @@
 # This file is covered by the GNU General Public License.
 # See the file COPYING.txt for more details.
 
-"""The number of converters in the conversion window: an edit between "-" and "+" buttons without windows."""
+"""Counters: an edit between "-" and "+" buttons without windows.
+
+The number of converters in the conversion window; in Settings, the numbers of converters and scanners
+and the limit of metadata results.
+"""
 
 import contextlib
 import ctypes
@@ -18,7 +22,6 @@ import braille
 import controlTypes
 import queueHandler
 import ui
-import windowUtils
 import winUser
 from locationHelper import RectLTWH
 from logHandler import log
@@ -29,12 +32,14 @@ from scriptHandler import script
 from winBindings import user32
 
 from . import remote, screen, windows
+from .names import Captioned
 
 addonHandler.initTranslation()
 
-# The buttons in design units (DFM): squares beside the edit, level with its top.
+# The buttons in design units (DFM): squares beside the edit, level with its top, 1 to 3 units from it
+# by the window; a click goes to a button's centre.
 _BUTTON_SIZE = 23
-_BUTTON_GAP = 3
+_BUTTON_GAP = 2
 
 # While converting, ezcd handles messages seconds late.
 _CLICK_TIMEOUT_MS = 5000
@@ -48,11 +53,18 @@ class Step(enum.Enum):
     MORE = enum.auto()
 
 
-def is_converters_edit(hwnd: int) -> bool:
-    return (
-        winUser.getClassName(windows.parent(hwnd)) == "TPanel"
-        and winUser.getClassName(windows.root(hwnd)) == "TConvertWnd"
-    )
+def is_counter(hwnd: int) -> bool:
+    """Whether the edit is the edit of a counter."""
+    panel = windows.parent(hwnd)
+    if winUser.getClassName(panel) != "TPanel":
+        return False
+    page = winUser.getClassName(windows.parent(panel))
+    if page == "TSettings2AudioConverterForm":
+        return True
+    if page == "TSettings2GeneralInternetDiscDatabaseForm":
+        # The limit of results, under the list of services; the fields of the proxy are in another panel.
+        return bool(windows.child_windows(panel, "TCheckListBox"))
+    return winUser.getClassName(windows.root(hwnd)) == "TConvertWnd"
 
 
 def _button_rect(edit: int, step: Step) -> RECT:
@@ -76,23 +88,8 @@ def click(edit: int, step: Step) -> bool:
     )
 
 
-def read_label(edit: int, binding_handle) -> str:
-    """The caption left of the "-" button, from the display model; empty if it has none."""
-    panel = windows.parent(edit)
-    area = screen.logical_rect(panel, panel)
-    edit_rect = screen.logical_rect(edit, panel)
-    minus = _button_rect(edit, Step.LESS)
-    area.top, area.bottom = edit_rect.top, edit_rect.bottom
-    area.right = windowUtils.physicalToLogicalPoint(panel, minus.left, minus.top)[0]
-    texts = screen.texts(panel, binding_handle, area)
-    if not texts and binding_handle:
-        screen.redraw(panel)
-        texts = screen.texts(panel, binding_handle, area)
-    return screen.joined(sorted(texts, key=lambda t: t.left)).rstrip(" :")
-
-
 class StepAnnouncer:
-    """Presses the buttons in a background thread and says the number of converters after each press.
+    """Presses the buttons in a background thread and says the counter's number after each press.
 
     A press waits while ezcd is busy with the previous one; further presses meanwhile are dropped, so the
     number stops changing soon after the key is released.
@@ -105,7 +102,7 @@ class StepAnnouncer:
 
     def press(self, edit: int, step: Step):
         if self._thread is None:
-            self._thread = threading.Thread(target=self._run, name="ezcdConverterSteps", daemon=True)
+            self._thread = threading.Thread(target=self._run, name="ezcdCounterSteps", daemon=True)
             self._thread.start()
         with contextlib.suppress(queue.Full):
             self._requests.put_nowait((edit, step))
@@ -115,10 +112,10 @@ class StepAnnouncer:
             edit, step = request
             start = time.monotonic()
             if not click(edit, step):
-                log.debugWarning("ezcd did not handle the click on a converters button in time")
+                log.debugWarning("ezcd did not handle the click on a counter button in time")
                 continue
             value = remote.text(edit, _TEXT_LENGTH, _READ_TIMEOUT_MS)
-            log.debug(f"Converters {value}, {time.monotonic() - start:.3f} s")
+            log.debug(f"Counter {value}, {time.monotonic() - start:.3f} s")
             if value:
                 last = self._requests.empty()
                 queueHandler.queueFunction(queueHandler.eventQueue, self._say, edit, value, last)
@@ -129,7 +126,7 @@ class StepAnnouncer:
         ui.message(value)
         # The edit's events are dropped; braille shows the new number once the presses are over.
         focus = api.getFocusObject()
-        if last and isinstance(focus, ConvertersSpinBox) and focus.windowHandle == edit:
+        if last and isinstance(focus, CounterSpinBox) and focus.windowHandle == edit:
             braille.handler.handleUpdate(focus)
 
     def terminate(self):
@@ -143,8 +140,8 @@ class StepAnnouncer:
         self._thread.join(_JOIN_TIMEOUT)
 
 
-class ConvertersSpinBox(IAccessible):
-    """The edit with the number of converters; ezcd makes it read-only and changes it with its buttons."""
+class CounterSpinBox(Captioned):
+    """The edit of a counter, changed by its buttons; ezcd makes some of them read-only."""
 
     role = controlTypes.Role.SPINBUTTON
 
@@ -166,32 +163,29 @@ class ConvertersSpinBox(IAccessible):
     def _get_states(self):
         return super()._get_states() - {controlTypes.State.READONLY}
 
-    def _get_name(self):
-        return read_label(self.windowHandle, self.appModule.helperLocalBindingHandle) or super()._get_name()
-
     def _get_previous(self):
-        return ConverterButton(edit=self.windowHandle, step=Step.LESS)
+        return CounterButton(edit=self.windowHandle, step=Step.LESS)
 
     def _get_next(self):
-        return ConverterButton(edit=self.windowHandle, step=Step.MORE)
+        return CounterButton(edit=self.windowHandle, step=Step.MORE)
 
     @script(gesture="kb:upArrow")
     def script_increase(self, gesture):
-        self.appModule.converter_steps.press(self.windowHandle, Step.MORE)
+        self.appModule.counter_steps.press(self.windowHandle, Step.MORE)
 
     @script(gesture="kb:downArrow")
     def script_decrease(self, gesture):
-        self.appModule.converter_steps.press(self.windowHandle, Step.LESS)
+        self.appModule.counter_steps.press(self.windowHandle, Step.LESS)
 
 
-class ConvertersSpinWindow(IAccessible):
+class CounterWindow(IAccessible):
     """The window object of the edit: in object navigation the buttons are around the edit inside it."""
 
     def _get_firstChild(self):
-        return ConverterButton(edit=self.windowHandle, step=Step.LESS)
+        return CounterButton(edit=self.windowHandle, step=Step.LESS)
 
     def _get_lastChild(self):
-        return ConverterButton(edit=self.windowHandle, step=Step.MORE)
+        return CounterButton(edit=self.windowHandle, step=Step.MORE)
 
     def _get_children(self):
         return [
@@ -210,7 +204,7 @@ class _ButtonTextInfo(NVDAObjectTextInfo):
         self.obj.doAction()
 
 
-class ConverterButton(Window):
+class CounterButton(Window):
     """The "-" or "+" button beside the edit: a speed button without a window, drawn on the panel."""
 
     TextInfo = _ButtonTextInfo
@@ -229,9 +223,11 @@ class ConverterButton(Window):
 
     def _get_name(self):
         if self.step == Step.LESS:
-            # Translators: The button that lowers the number of converters in EZ CD Audio Converter.
+            # Translators: The button that lowers a number in EZ CD Audio Converter, such as the number of
+            # converters.
             return _("Decrease")
-        # Translators: The button that raises the number of converters in EZ CD Audio Converter.
+        # Translators: The button that raises a number in EZ CD Audio Converter, such as the number of
+        # converters.
         return _("Increase")
 
     def _get_states(self):
@@ -254,4 +250,4 @@ class ConverterButton(Window):
         return None
 
     def doAction(self, index=None):
-        self.appModule.converter_steps.press(self.edit, self.step)
+        self.appModule.counter_steps.press(self.edit, self.step)

@@ -222,6 +222,16 @@ Art".
 When a list such as the template history in Filename preview, the metadata services in Settings or the
 cover art in the metadata editor gets focus, its item is read once, not twice.
 
+### Settings
+
+The numbers of parallel converters and scanners on the Audio Converter page and the limit of metadata
+results per service on the Internet disc database page are spin boxes, as the number of converters in
+the conversion window: Up and Down Arrow change the number and report it.
+
+In the list of metadata services, each service is reported as checked or not checked, and Space reports
+its new state. Alt+Up and Alt+Down Arrow move the service up and down in the list, as the arrow buttons
+right of the list do, and report its new position; at the top or the bottom nothing is reported.
+
 ### Text of dialogs
 
 The windows of the application other than the main window and the conversion window are reported as

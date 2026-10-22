@@ -30,7 +30,7 @@ from . import (
     captions,
     cells,
     convert_window,
-    converters,
+    counters,
     dialogs,
     explorer,
     file_lists,
@@ -81,7 +81,7 @@ class AppModule(appModuleHandler.AppModule):
         """The list in focus went to another folder, until the next key: the names of its items are not
         reported."""
         self._conversion_status = convert_window.ConversionStatus()
-        self.converter_steps = converters.StepAnnouncer()
+        self.counter_steps = counters.StepAnnouncer()
         self.page_switcher = burner_pages.PageSwitcher(self.language, self._note_gesture)
         self.closed_editor = file_lists.ClosedEditor()
         self.cells = cells.CellTable(self.language)
@@ -89,7 +89,7 @@ class AppModule(appModuleHandler.AppModule):
 
     def terminate(self):
         inputCore.decide_executeGesture.unregister(self._note_gesture)
-        self.converter_steps.terminate()
+        self.counter_steps.terminate()
         self.page_switcher.terminate()
         super().terminate()
 
@@ -385,8 +385,8 @@ class AppModule(appModuleHandler.AppModule):
         elif window_class == "TProgressBar":
             if convert_window.bar_kind(hwnd) == convert_window.Bar.TOTAL:
                 clsList.insert(0, convert_window.TotalProgressBar)
-        elif window_class == "TEdit" and child_id == 0 and converters.is_converters_edit(hwnd):
-            clsList.insert(0, converters.ConvertersSpinBox if client else converters.ConvertersSpinWindow)
+        elif window_class == "TEdit" and child_id == 0 and counters.is_counter(hwnd):
+            clsList.insert(0, counters.CounterSpinBox if client else counters.CounterWindow)
         elif window_class in metadata.FIELD_CLASSES and client and metadata.is_metadata_field(hwnd):
             clsList.insert(0, metadata.MetadataField)
         elif window_class in names.BUTTON_CLASSES:
@@ -401,7 +401,7 @@ class AppModule(appModuleHandler.AppModule):
             if client:
                 clsList.insert(0, explorer.FolderList if window_class == "TJamShellList" else names.Captioned)
             elif child_id > 0 and window_class in list_items.CLASSES:
-                clsList.insert(0, list_items.ListItem)
+                clsList.insert(0, list_items.item_class(hwnd))
         elif window_class == "TJamShellBreadCrumbBar":
             if client:
                 clsList.insert(0, explorer.PathBar)
