@@ -147,7 +147,9 @@ absolute coordinates, captions in a particular language.
   Selecting the folder's node alone selects no files: the metadata fields stay disabled.
 - Keys of the main window's list: Up, Down, Home, End, Page Up and Page Down select only the node they
   move to, with Shift they extend the selection, with Control they scroll without moving the focus.
-  Control+A selects all nodes. Space and Control+Space do nothing.
+  Control+A selects all nodes. Space and Control+Space do nothing. Numpad Plus and Minus, also sent
+  with `SendMessageTimeout`, expand and collapse the focused folder; `TVM_EXPAND` does nothing.
+  `TVGN_CHILD` gives the first file of a collapsed folder too; `TVGN_PARENT` of a top-level node is 0.
 - `TVM_GETITEMW` with `TVIF_TEXT` gives an empty text.
 
 ### Cell editing in the main window's list
@@ -155,8 +157,8 @@ absolute coordinates, captions in a particular language.
 - The cell editor is a `TVTEdit` child window of the tree (`ES_MULTILINE`), created anew for each
   cell and spanning it. Its text is read with `WM_GETTEXT`; when it opens, the whole text is selected.
   While it is open, the tree still fires focus for its focused node.
-- The tree keeps a focused column and does not tell which one it is. Left and Right Arrow on a file
-  move it to the neighbouring column, only while no editor is open, and open the editor in it if the
+- The tree keeps a focused column and does not tell which one it is. Left and Right Arrow on a file,
+  and on a folder too instead of collapsing and expanding it, move it to the neighbouring column, only while no editor is open, and open the editor in it if the
   column can be edited. A key press sent with `SendMessageTimeout` returns once the editor exists and
   has the focus (25–35 ms); without an editor, in 1–5 ms. At the end of the row the key does nothing.
   Once a column other than the file name has been focused, the tree also opens the editor in it when

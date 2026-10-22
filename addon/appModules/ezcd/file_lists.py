@@ -384,11 +384,32 @@ class MainFileListItem(TreeItem):
             if editor:
                 self.appModule.closed_editor.close(editor)
 
-    @script(gestures=["kb:leftArrow", "kb:rightArrow"])
-    def script_keep_column(self, gesture):
-        # On a file the tree would move its focused column and open the cell editor there; F2 opens it.
-        if self._is_editing() or is_folder(self.windowHandle):
+    def _expand(self, gesture, expand: bool):
+        """Left and Right Arrow as in a tree view.
+
+        The tree would move its focused column and open the cell editor there, on a folder too; F2 opens
+        it. It expands and collapses a folder on Numpad Plus and Minus.
+        """
+        if self._is_editing():
             gesture.send()
+            return
+        folder = is_folder(self.windowHandle)
+        if folder and (controlTypes.State.EXPANDED in self.states) != expand:
+            if remote.press(self.windowHandle, winUser.VK_ADD if expand else winUser.VK_SUBTRACT):
+                self.invalidateCache()
+                eventHandler.executeEvent("stateChange", self)
+        elif not expand:
+            self._move_focus(gesture, TVGN_PARENT, True)
+        elif folder:
+            self._move_focus(gesture, TVGN_CHILD, True)
+
+    @script(gesture="kb:rightArrow")
+    def script_expand(self, gesture):
+        self._expand(gesture, True)
+
+    @script(gesture="kb:leftArrow")
+    def script_collapse(self, gesture):
+        self._expand(gesture, False)
 
     @script(gesture="kb:f2")
     def script_edit_cell(self, gesture):

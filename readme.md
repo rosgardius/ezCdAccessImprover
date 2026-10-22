@@ -78,6 +78,8 @@ that is not selected is reported as "not selected":
 * Up and Down Arrow, Home, End, Page Up and Page Down move to a file and select only it; with Shift
   they extend the selection.
 * Control with Up or Down Arrow, Home or End moves to a file without changing the selection.
+* Right Arrow expands a folder, and on an expanded folder moves to its first file. Left Arrow collapses
+  a folder, and on a file in a folder moves to the folder.
 * Control+Space selects or unselects the file, Space selects only it. On the row of a folder, both act
   on the folder together with all its files.
 * Control+A selects all files, Escape unselects all.
@@ -102,7 +104,8 @@ whose columns are Track artist, Title, Album and the others:
   focus returns to the field of the column it was opened from.
 * Enter keeps the change and returns to the list, Escape discards it. F2 then opens the same column
   again.
-* On a file, Left and Right Arrow do nothing; the application would open the field of another column.
+* In the list, Left and Right Arrow do not open the field of another column, as the application would.
+  F2 on a folder does nothing: a folder has no fields.
 * NVDA+Tab, NVDA's command that reports the focus, says which column the field is in, the file name
   (if NVDA reports object descriptions) and the value.
 
