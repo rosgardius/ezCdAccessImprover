@@ -219,6 +219,8 @@ class AppModule(appModuleHandler.AppModule):
     def event_gainFocus(self, obj, nextHandler):
         if isinstance(obj, cells.CellEditor) and obj.is_closed:
             return
+        if self.window_focus.is_form_passed(obj):
+            return
         previous, self._focus_window = self._focus_window, obj.windowHandle
         tab_key, self._tab_key = self._tab_key, 0
         passing, self._passing = self._passing, 0
@@ -455,11 +457,14 @@ class AppModule(appModuleHandler.AppModule):
         # The client object of the window, not its window object.
         client = child_id == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW
         if child_id == 0 and obj.IAccessibleRole == oleacc.ROLE_SYSTEM_CLIENT and dialogs.is_dialog(hwnd):
-            clsList.insert(
-                0,
-                cover_art.DIALOG_CLASSES.get(window_class)
-                or dialogs.DIALOG_CLASSES.get(window_class, dialogs.EzcdDialog),
-            )
+            if explorer.is_crumb_popup(hwnd):
+                clsList.insert(0, explorer.CrumbPopup)
+            else:
+                clsList.insert(
+                    0,
+                    cover_art.DIALOG_CLASSES.get(window_class)
+                    or dialogs.DIALOG_CLASSES.get(window_class, dialogs.EzcdDialog),
+                )
         elif window_class == "TProgressBar":
             if convert_window.bar_kind(hwnd) == convert_window.Bar.TOTAL:
                 clsList.insert(0, convert_window.TotalProgressBar)
@@ -489,6 +494,11 @@ class AppModule(appModuleHandler.AppModule):
                     clsList.insert(0, cards.CardControl)
             elif child_id > 0 and window_class in list_items.CLASSES:
                 clsList.insert(0, list_items.item_class(hwnd))
+        elif window_class in explorer.CRUMB_LIST_CLASSES:
+            if client:
+                clsList.insert(0, explorer.CrumbList)
+            elif child_id > 0:
+                clsList.insert(0, explorer.CrumbItem)
         elif window_class == "TJamShellBreadCrumbBar":
             if client:
                 clsList.insert(0, explorer.PathBar)

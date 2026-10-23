@@ -103,6 +103,8 @@ absolute coordinates, captions in a particular language.
   toolbar with captions (`ShowCaptions`): Add files..., Add folder..., on the Audio Converter tab also
   Select all, Remove all and Create M3U playlist. The first control below it is the list of files on the
   Audio Converter tab and the page control of the Disc Burner tab, each its tab's first Tab stop.
+  Shown, it has the same top as the hidden row above the explorer. On the Disc Burner tab both rows are
+  children of the tab, as is the top panel, of toolbars alone too, which lies above them.
 - View Explorer hides the button that has the focus: when it hides the explorer, focus goes to the main
   form; when it shows the explorer, to the navigation toolbar above it.
 
@@ -124,9 +126,15 @@ absolute coordinates, captions in a particular language.
   on a folder and Backspace in the list keep focus in the list; the tree fires focus for its new node,
   which NVDA ignores, as the tree has no focus.
 - The arrow keys on the bar move focus to another window of its parent, as VCL does (Down Arrow to the
-  view's toolbar). A Down Arrow posted to the bar opens a popup form (`TForm`) of two list views,
-  `TJamShellOverflowListView` and `TJamShellPopupMenu`, with the folders of a crumb; MSAA shows no
-  focused item in them.
+  view's toolbar).
+- A click on the arrow right of a crumb opens a popup form (`TForm`, made the active window, so the
+  main window leaves the foreground) of two list views: `TJamShellPopupMenu` with the folders in the
+  crumb, shown, and `TJamShellOverflowListView`, hidden, presumably the crumbs the bar has no room for
+  (not seen). Focus goes to the list without a focused item; Down Arrow focuses the first folder. The
+  first column of an item is empty and its header Name; the folder is in the second column, without a
+  header, which MSAA gives as the item's description. Escape closes the form, and Enter after going to
+  the folder: focus goes back to the bar, and NVDA gets a focus event for the main form first, as it
+  comes back to the foreground. A click on a crumb itself goes to its folder.
 - The list of the edit's combo box is the address history of Windows' File Explorer (`TypedPaths` in
   the registry); the arrow keys in the edit go through it.
 - The tree of folders (`TJamShellTree`) and the list of the folder (`TJamShellList`, a list view with a

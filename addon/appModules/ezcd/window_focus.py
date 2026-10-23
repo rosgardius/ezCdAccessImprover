@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 import winUser
 
-from . import top_panel
+from . import explorer, top_panel
 from .windows import root
 
 # ezcd moves focus from the control it gave focus to on to the form within this; 10 to 110 ms seen.
@@ -48,7 +48,8 @@ class WindowFocus:
         self._entry: tuple[int, float] = (0, 0.0)
         """The window that got focus as it came into its top-level window, and when."""
         self._menu_focus = 0
-        """The focus before the menu that has focus now, 0 if no menu has it."""
+        """The focus before the menu that has focus now, 0 if no menu has it. The popup list of the breadcrumb
+        bar is a menu too, but in a window of its own."""
         self._foreground = 0
         """The main window, from its foreground event until the focus event that brought it."""
         self._quiet: tuple[int, int] | None = None
@@ -83,6 +84,14 @@ class WindowFocus:
             return winUser.isDescendantWindow(hwnd, menu_focus)
         return hwnd != form
 
+    def is_form_passed(self, obj) -> bool:
+        """Whether the focus is the form itself on the way back from a menu in a window of its own to the
+        control before it: NVDA gives focus to the form as it comes to the foreground again."""
+        if self._quiet is None:
+            return False
+        form, menu_focus = self._quiet
+        return bool(menu_focus) and obj.windowHandle == form != menu_focus
+
     def note_focus(self, obj, previous: int) -> Return | None:
         """Notes the focus; where it goes back to, if ezcd moved it on to the form or the tab labels as it
         came into the window. ``previous`` is the focus before."""
@@ -90,7 +99,7 @@ class WindowFocus:
         form = root(hwnd)
         foreground, self._foreground = self._foreground, 0
         self._quiet = None
-        if obj.windowClassName == "#32768":
+        if obj.windowClassName == "#32768" or explorer.is_crumb_popup(form):
             # Focus coming back to a menu from its submenu comes from a window already destroyed.
             if not self._menu_focus:
                 self._menu_focus = previous

@@ -26,7 +26,7 @@ from .windows import parent, rect
 addonHandler.initTranslation()
 
 CLASSES = ("TListBox", "TCheckListBox", "TListView", "TJamShellList")
-_LIST_VIEW_CLASSES = ("TListView", "TJamShellList")
+_LIST_VIEW_CLASSES = ("TListView", "TJamShellList", "TJamShellPopupMenu", "TJamShellOverflowListView")
 _REPEAT_WINDOW = 0.1
 """Seconds after an item's focus event within which a focus event for the same item repeats it."""
 _LB_GETITEMDATA = 0x199

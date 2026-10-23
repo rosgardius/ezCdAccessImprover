@@ -10,6 +10,7 @@ of the tab while ezcd hides the filter (``tab_end``). While the explorer is hidd
 takes its place (View Explorer, Add files, ...): one Tab stop right before the control below it.
 
 The breadcrumb bar is the path of the folder, edited in a field that ezcd shows on a click into the bar.
+A click into the arrow of a crumb shows a popup list of the folders in it.
 """
 
 import builtins
@@ -24,10 +25,10 @@ import core
 import ui
 import winUser
 from NVDAObjects.IAccessible import IAccessible
-from NVDAObjects.IAccessible.sysListView32 import LVM_GETITEMCOUNT
+from NVDAObjects.IAccessible.sysListView32 import LVM_GETITEMCOUNT, LVM_GETNEXTITEM
 from scriptHandler import script
 
-from . import captions, names, panels, remote, screen, toolbar, toolbar_stops
+from . import captions, list_items, names, panels, remote, screen, toolbar, toolbar_stops
 from .language import LanguageFiles
 from .top_panel import main_tab
 from .windows import child_windows, descendants, parent, rect, tab_stop_below
@@ -77,14 +78,20 @@ def _shown_toolbars(panel: int) -> list[int]:
 def is_hidden_explorer_row(panel: int) -> bool:
     """Whether the panel is the row of toolbars shown while the explorer is hidden.
 
-    It holds only toolbars and lies next to the row above the explorer.
+    It holds only toolbars and takes the place of the row above the explorer, its sibling. The top panel
+    of the Disc Burner tab, too, holds only toolbars and is a sibling of that row, but lies above it.
     """
     children = child_windows(panel)
-    return (
-        winUser.getClassName(panel) == "TPanel"
-        and bool(children)
-        and all(winUser.getClassName(c) == "TToolBar" for c in children)
-        and any(p != panel and panels.is_explorer_bar(p) for p in child_windows(parent(panel), "TPanel"))
+    if (
+        winUser.getClassName(panel) != "TPanel"
+        or not children
+        or any(winUser.getClassName(c) != "TToolBar" for c in children)
+    ):
+        return False
+    top = rect(panel).top
+    return any(
+        p != panel and panels.is_explorer_bar(p) and rect(p).top <= top
+        for p in child_windows(parent(panel), "TPanel")
     )
 
 
@@ -225,6 +232,8 @@ _FOLDER_FILL_DELAY = 150
 # Seconds from Enter in the field of the path to the moment that ezcd would have left it for the folder.
 _PATH_ENTER_TIME = 0.5
 _MAX_PATH_LENGTH = 32767
+_LVNI_FOCUSED = 0x1
+CRUMB_LIST_CLASSES = ("TJamShellPopupMenu", "TJamShellOverflowListView")
 
 
 def _item_count(folder_list: int) -> str:
@@ -309,6 +318,42 @@ class PathBar(IAccessible):
     def script_stay(self, gesture):
         # VCL would move focus to the next or previous window of the bar's parent.
         pass
+
+
+def is_crumb_popup(hwnd: int) -> bool:
+    """Whether the window is the popup form of the breadcrumb bar, which ezcd shows on a click into the
+    arrow of a crumb."""
+    return winUser.getClassName(hwnd) == "TForm" and bool(child_windows(hwnd, "TJamShellPopupMenu"))
+
+
+class CrumbPopup(IAccessible):
+    """The popup form of the breadcrumb bar: only its list is reported. The form gets focus right before
+    its list."""
+
+    isPresentableFocusAncestor = False
+    shouldAllowIAccessibleFocusEvent = False
+
+
+class CrumbList(IAccessible):
+    """A list of the breadcrumb bar's popup form: the folders in a crumb, or the crumbs the bar has no
+    room for. It opens without a focused item; the first one gets focus, as in a menu opened from the
+    keyboard. Enter goes to the folder, Escape closes the list and focus goes back to the bar."""
+
+    def event_gainFocus(self):
+        super().event_gainFocus()
+        if remote.send(self.windowHandle, LVM_GETNEXTITEM, -1, _LVNI_FOCUSED) < 0:
+            remote.post_press(self.windowHandle, winUser.VK_DOWN)
+
+
+class CrumbItem(list_items.ListItem):
+    """An item of a list of the breadcrumb bar's popup form. Its first column is empty: the folder is in the
+    second one, which MSAA gives as the description."""
+
+    def _get_name(self):
+        return super().name or super().description
+
+    def _get_description(self):
+        return super().description if super().name else None
 
 
 class PathComboBox(IAccessible):

@@ -57,7 +57,9 @@ Enter or Space shows a field in which a path can be typed. Enter goes to that fo
 either way focus comes back to Path. For a path that does not exist, focus stays in the field and the
 current folder is reported. Up and Down Arrow in the field go through the address history of Windows'
 File Explorer, as in the application itself, replacing the typed path; Escape brings back the current
-folder.
+folder. The list of folders that a mouse click on the arrow after a crumb opens is read as a list, with
+its first folder selected; Enter goes to the folder, Escape closes the list, and focus comes back to
+Path.
 
 ### Pages of the Disc Burner tab
 
