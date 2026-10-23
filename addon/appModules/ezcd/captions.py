@@ -205,13 +205,16 @@ class Layout:
         return min(left, key=lambda s: self.siblings[s].left, default=0)
 
     def right_window(self, tab_stop: bool = False) -> int:
-        """The nearest window right of the control on its line, 0 if none; with ``tab_stop``, a Tab stop."""
+        """The nearest window right of the control on its line, the top one of several as near; 0 if none.
+
+        With ``tab_stop``, a Tab stop.
+        """
         right = [
             s
             for s, other in self.siblings.items()
             if self.rect.left < other.left and self._beside(other) and (not tab_stop or is_tab_stop(s))
         ]
-        return min(right, key=lambda s: self.siblings[s].left, default=0)
+        return min(right, key=lambda s: (self.siblings[s].left, self.siblings[s].top), default=0)
 
 
 def from_screen(control: int, binding_handle, read: Callable[[Layout], str]) -> str:

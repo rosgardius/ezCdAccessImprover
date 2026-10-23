@@ -28,6 +28,7 @@ from winBindings import kernel32
 from . import (
     burner_pages,
     captions,
+    cards,
     cells,
     convert_window,
     counters,
@@ -40,7 +41,9 @@ from . import (
     names,
     options,
     rating,
+    sliders,
     tab_end,
+    tab_order,
     toolbar,
     toolbar_stops,
     top_panel,
@@ -408,7 +411,14 @@ class AppModule(appModuleHandler.AppModule):
                 clsList.insert(0, explorer.PathComboBox)
         elif window_class in captions.CLASSES:
             if client:
-                clsList.insert(0, explorer.FolderList if window_class == "TJamShellList" else names.Captioned)
+                if window_class == "TJamShellList":
+                    clsList.insert(0, explorer.FolderList)
+                elif window_class in captions.SLIDER_CLASSES and sliders.value_field(hwnd):
+                    clsList.insert(0, sliders.FieldSlider)
+                else:
+                    clsList.insert(0, names.Captioned)
+                if cards.card_panel_of(hwnd):
+                    clsList.insert(0, cards.CardControl)
             elif child_id > 0 and window_class in list_items.CLASSES:
                 clsList.insert(0, list_items.item_class(hwnd))
         elif window_class == "TJamShellBreadCrumbBar":
@@ -452,7 +462,9 @@ class AppModule(appModuleHandler.AppModule):
             overlay = None if stop is None else toolbar_stops.overlay_class(obj, stop)
             if overlay is not None:
                 clsList.insert(0, overlay)
-        # Added to what the window class gives: Options holds controls of several classes.
+        # Added to what the window class gives: these forms hold controls of several classes.
+        if client and tab_order.form_of(hwnd):
+            clsList.insert(0, tab_order.ScreenOrderControl)
         if client and options.form_of(hwnd):
             clsList.insert(0, options.OptionsControl)
 

@@ -19,7 +19,7 @@ import controlTypes
 import winUser
 from NVDAObjects.IAccessible import IAccessible
 
-from . import captions, panels, remote
+from . import captions, cards, panels, remote, screen
 from .captions import Layout
 from .language import LanguageFiles
 from .windows import child_windows, descendants, parent, root
@@ -146,6 +146,8 @@ _FORMAT = _("Format")
 _EXTENSION = _("Extension")
 # Translators: The name of the filter of the file explorer (All audio files, *.flac, ...).
 _FILE_TYPES = _("File types")
+# Translators: The name of the list of effects in DSP (Gain, Peak normalization, ...).
+_EFFECT = _("Effect")
 
 
 def _codec_parameter(hwnd: int) -> _Name:
@@ -196,6 +198,14 @@ def _main_combo_box(hwnd: int) -> _Name:
     return None
 
 
+def _dsp_combo_box(hwnd: int) -> _Name:
+    """DSP: the effect, and the kind of peak of peak normalization, named by the effect."""
+    card_panels = child_windows(parent(hwnd), "TCardPanel")
+    if not card_panels:
+        return None
+    return _EFFECT if cards.choice(card_panels[0]) == hwnd else cards.card_name(card_panels[0]) or None
+
+
 def _settings_combo_box(hwnd: int) -> _Name:
     """Drive settings: the drive is chosen at the top of the page."""
     if winUser.getClassName(parent(hwnd)) != "TSettings2AudioCDRipperDriveForm":
@@ -230,6 +240,7 @@ _FORMS = {
         "TJamShellList": _FOLDER_CONTENTS,
     },
     "TSettings2Form": {"TTreeView": _CATEGORIES, "TComboBox": _settings_combo_box},
+    "TDSPForm": {"TComboBox": _dsp_combo_box},
     "TNamePreview": {"TEdit": _FILENAMES, "TListBox": _TEMPLATES, "TListView": _FILENAME_PREVIEW},
     "TTMetadata": {
         "TVirtualStringTree": _metadata_tree,
@@ -292,12 +303,16 @@ class Captioned(IAccessible):
     def _get_name(self):
         return self._own_name() or self._screen_name
 
-    @functools.cached_property
-    def _screen_name(self) -> str:
-        window = self.windowHandle
+    def _caption_window(self) -> int:
+        """The window whose caption names the control."""
         if self.windowClassName == "ComboBox":
             # The combo box of a TComboBoxEx, which gets focus, is its child window.
-            window = parent(window)
+            return parent(self.windowHandle)
+        return self.windowHandle
+
+    @functools.cached_property
+    def _screen_name(self) -> str:
+        window = self._caption_window()
         return captions.caption(window, self.appModule.helperLocalBindingHandle) or fixed_name(
             window, self.appModule.language
         )
@@ -329,3 +344,10 @@ class CaptionedButton(IAccessible):
 
     def _get_name(self):
         return self._full_name
+
+    def event_stateChange(self):
+        super().event_stateChange()
+        if self.windowClassName in captions.CHOICE_CLASSES:
+            # ezcd fills the background of the whole parent as a check box enables controls, and draws
+            # again only what changed: the display model loses the other captions and units.
+            screen.redraw(parent(self.windowHandle))

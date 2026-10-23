@@ -2,35 +2,26 @@
 # This file is covered by the GNU General Public License.
 # See the file COPYING.txt for more details.
 
-"""Options of the Audio Converter and Audio CD Ripper tabs: their sections, and Tab in screen order.
+"""Sections of Options of the Audio Converter and Audio CD Ripper tabs.
 
-ezcd's own Tab order there jumps between the sections. A section is headed by a label without a window,
-above its first check box; NVDA presents it as a grouping between the form and the section's controls.
+A section is headed by a label without a window, above its first check box; NVDA presents it as a
+grouping between the form and the section's controls.
 """
 
 import controlTypes
 import winUser
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from NVDAObjects.window import Window
-from scriptHandler import script
 
-from . import screen, toolbar
-from .windows import parent, root, tab_stop_rows
+from . import screen, windows
+from .windows import parent, tab_stop_rows
 
 _FORMS = frozenset(("TConverterOptions", "TRipperOptions"))
 
 
 def form_of(hwnd: int) -> int:
     """The Options form holding the window, 0 if it is in none."""
-    form = root(hwnd)
-    return form if form != hwnd and winUser.getClassName(form) in _FORMS else 0
-
-
-def _form_child(hwnd: int, form: int) -> int:
-    """The child window of the form that is the window or holds it."""
-    while hwnd and (up := parent(hwnd)) != form:
-        hwnd = up
-    return hwnd
+    return windows.form_of(hwnd, _FORMS)
 
 
 def _dialog_buttons(rows: list[list[int]]) -> list[int]:
@@ -85,18 +76,3 @@ class OptionsControl(IAccessible):
         if not heading:
             return super()._get_container()
         return Section(chooseBestAPI=False, windowHandle=form, heading=heading)
-
-    def _move_focus(self, gesture, step: int):
-        form = form_of(self.windowHandle)
-        stops = [stop for row in tab_stop_rows(form) for stop in row]
-        control = _form_child(self.windowHandle, form)
-        if control not in stops or not toolbar.set_focus(stops[(stops.index(control) + step) % len(stops)]):
-            gesture.send()
-
-    @script(gesture="kb:tab")
-    def script_next_control(self, gesture):
-        self._move_focus(gesture, 1)
-
-    @script(gesture="kb:shift+tab")
-    def script_previous_control(self, gesture):
-        self._move_focus(gesture, -1)

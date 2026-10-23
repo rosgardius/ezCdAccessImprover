@@ -200,8 +200,10 @@ add a star, Left and Down Arrow take one away, Home sets none and End all five.
 Fields, lists, combo boxes and sliders that the application leaves without a name, in the main window
 and in its dialogs (Settings, Options, DSP and the others), are named by their captions on the screen,
 in the language of the application: the text left of the field, or the check box left of or above it,
-or the text above it. A field next to a slider has the slider's name. A unit right of the field is
-added after a comma, as in "Threshold, dB FS [ -80 ... -20 ]". A caption that is a single character,
+or the text above it. A unit right of the field is added after a comma, as in "Threshold, dB FS [ -80
+... -20 ]". A slider and the field right next to it showing its value have one name, and the slider
+says the value as the field shows it, on every arrow key, Page Up, Page Down, Home and End: "Fade In,
+s, slider, 3.00" rather than a percentage of its range. A caption that is a single character,
 as in the replacements of characters not allowed in file names, is read by NVDA's name for it, such as
 "colon".
 
@@ -214,6 +216,11 @@ results of Search for CD metadata. Otherwise it gets a name of this add-on: Cate
 Settings, Templates for the template history, Picture type in the metadata editor, Release code and
 Results in the manual search of metadata and in Download Cover Art. Fields not named in either way stay
 without a name.
+
+In DSP, the list of effects is named Effect, a name of this add-on. The slider and the fields of the
+chosen effect, which show only scales and units, are named by the effect in the language of the
+application, before their unit, as "Gain, dB"; so is the choice between sample peak and true peak of
+peak normalization.
 
 The format and the codec's parameters on the output panels get short names of this add-on, all of
 them, whichever format is chosen: Format, Extension, and for each parameter by what it offers, Rate
@@ -245,6 +252,12 @@ In Options of the Audio Converter and Audio CD Ripper tabs, Tab and Shift+Tab mo
 in the order of the screen, section by section, from left to right on each row, with OK last; the
 application's own order jumps between the sections. The section (Files, Metadata, Cover Art, …) is
 reported as a grouping when focus enters it, as a group box in other dialogs.
+
+### DSP
+
+Tab and Shift+Tab in DSP move through the controls in the order of the screen too, round: the effect,
+its slider and fields, the peak limit, then the silence and fade settings row by row, and Close last. A
+field showing a slider's value comes right after the slider.
 
 ### Settings
 

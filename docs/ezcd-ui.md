@@ -324,6 +324,12 @@ absolute coordinates, captions in a particular language.
 - Some controls are captioned only by a check box above them: the fade and silence sliders of the DSP
   dialog, the sound file in General settings, the file name pattern on the Audio Converter tab.
 - The scales of sliders are numbers drawn as labels above and below them (`-30 … -6`, `0 … 10`).
+- MSAA gives a slider (`TMyTrackBar`, a `msctls_trackbar32`) the position as a percentage of its range,
+  rounded. The field right of it shows the value and follows every key at once; a value typed in the
+  field moves the slider when the field loses focus. DSP sliders: silence 0–500 and fades 0–1000
+  (0.01 s, arrows and pages 1 s), gain 0–240 (−12…+12 dB), peak 0–200 (−20…0 dB FS) and loudness
+  770–1010 (−30…−6 LUFS), all three 0.1 a step and 1 a page; on these three the percentage repeats on
+  half of the arrow keys or more.
 - The Filename preview dialog has a one-line explanation of the template syntax above its list of
   templates, longer than any caption.
 - The fields replacing characters on the File name settings page are captioned only by the character
@@ -340,7 +346,18 @@ absolute coordinates, captions in a particular language.
 - The tag buttons of Filename preview are `TButton`s outside the tab order; the one inserting a space
   has a space as its caption.
 - The check box of DSP that switches the effect on has no caption; it lies left of the combo box
-  choosing the effect (Gain, Loudness normalization, …), overlapping it by a few pixels.
+  choosing the effect (Gain, Loudness normalization, …), overlapping it by a few pixels. The
+  effect's settings are on cards of a `TCardPanel` right below that combo box, one card shown
+  (`TCard`): gain, peak (a slider and a field), loudness (a slider and three fields one above the
+  other at its right edge: LUFS, dB Δ, dB SPL; its scales are those of LUFS above and dB SPL below).
+  Both modes of loudness, "Loudness normalization | Integrated" and "| Top of Loudness Range", share
+  its card. The cards have only scales and units on screen. With Peak normalization, a combo box
+  without caption (Sample peak, True peak) takes the place of the Peak limit check box below the cards.
+  ezcd's Tab order in DSP jumps around: Close, the effect's check box, the card's controls (loudness:
+  dB SPL, the slider, dB Δ, LUFS), the effect, Peak limit, then the silence panel from the bottom up.
+- When a check box or radio button of DSP changes, ezcd fills the background of its whole parent and
+  draws again only what changed, so the display model loses the other labels (units, scales) until the
+  parent is painted again with `RedrawWindow`.
 - No caption on screen at all: the tree of pages in Settings (`TTreeView`), the list of profiles in
   Edit profiles, the file name template (`TEdit`), the template history (`TListBox`) and the preview
   (`TListView`) in Filename preview, and in the metadata editor (`TTMetadata`) the list of files, the

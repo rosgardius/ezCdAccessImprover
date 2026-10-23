@@ -25,6 +25,12 @@ def root(hwnd: int) -> int:
     return winUser.getAncestor(hwnd, winUser.GA_ROOT)
 
 
+def form_of(hwnd: int, classes: frozenset[str]) -> int:
+    """The form of one of the classes holding the window, 0 if the window is not inside one."""
+    form = root(hwnd)
+    return form if form != hwnd and winUser.getClassName(form) in classes else 0
+
+
 def rect(hwnd: int) -> RECT:
     """The window's rectangle on the screen, in physical coordinates."""
     result = RECT()
@@ -59,9 +65,8 @@ def descendants(hwnd: int) -> Iterator[int]:
 
 
 def tab_stop_rows(hwnd: int) -> list[list[int]]:
-    """The Tab stops among the window's child windows by rows of the screen, top to bottom, each row from
-    left to right."""
-    stops = {child: rect(child) for child in child_windows(hwnd) if is_tab_stop(child)}
+    """The Tab stops inside the window by rows of the screen, top to bottom, each row from left to right."""
+    stops = _tab_stops(hwnd)
     rows: list[list[int]] = []
     row_bottom = 0
     for child in sorted(stops, key=lambda c: stops[c].top + stops[c].bottom):
