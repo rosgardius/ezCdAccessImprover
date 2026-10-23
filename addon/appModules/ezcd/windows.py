@@ -58,6 +58,23 @@ def descendants(hwnd: int) -> Iterator[int]:
         yield from descendants(child)
 
 
+def tab_stop_rows(hwnd: int) -> list[list[int]]:
+    """The Tab stops among the window's child windows by rows of the screen, top to bottom, each row from
+    left to right."""
+    stops = {child: rect(child) for child in child_windows(hwnd) if is_tab_stop(child)}
+    rows: list[list[int]] = []
+    row_bottom = 0
+    for child in sorted(stops, key=lambda c: stops[c].top + stops[c].bottom):
+        edge = stops[child]
+        # A control is on the row whose first control its middle lies beside.
+        if rows and (edge.top + edge.bottom) // 2 < row_bottom:
+            rows[-1].append(child)
+        else:
+            rows.append([child])
+            row_bottom = edge.bottom
+    return [sorted(row, key=lambda c: stops[c].left) for row in rows]
+
+
 def _tab_stops(hwnd: int) -> dict[int, RECT]:
     return {window: rect(window) for window in descendants(hwnd) if is_tab_stop(window)}
 

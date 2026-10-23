@@ -239,6 +239,13 @@ Art".
 When a list such as the template history in Filename preview, the metadata services in Settings or the
 cover art in the metadata editor gets focus, its item is read once, not twice.
 
+### Options
+
+In Options of the Audio Converter and Audio CD Ripper tabs, Tab and Shift+Tab move through the controls
+in the order of the screen, section by section, from left to right on each row, with OK last; the
+application's own order jumps between the sections. The section (Files, Metadata, Cover Art, …) is
+reported as a grouping when focus enters it, as a group box in other dialogs.
+
 ### Settings
 
 The numbers of parallel converters and scanners on the Audio Converter page and the limit of metadata

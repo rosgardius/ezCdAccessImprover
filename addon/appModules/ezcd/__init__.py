@@ -38,6 +38,7 @@ from . import (
     list_items,
     metadata,
     names,
+    options,
     rating,
     tab_end,
     toolbar,
@@ -451,6 +452,9 @@ class AppModule(appModuleHandler.AppModule):
             overlay = None if stop is None else toolbar_stops.overlay_class(obj, stop)
             if overlay is not None:
                 clsList.insert(0, overlay)
+        # Added to what the window class gives: Options holds controls of several classes.
+        if client and options.form_of(hwnd):
+            clsList.insert(0, options.OptionsControl)
 
     def _choose_list_classes(self, obj, clsList):
         role = obj.IAccessibleRole

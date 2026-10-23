@@ -402,8 +402,13 @@ absolute coordinates, captions in a particular language.
   model has them when NVDA announces the dialog.
 - The pages of Settings are forms (`TSettings2GeneralForm`, …) embedded as child windows in a `TPanel`
   of `TSettings2Form`.
-- The section headings of Options (Files, Metadata, …) are labels above the first check box of the
-  section, with a `TBevel` line right of them.
+- The section headings of Options of the Audio Converter and Audio CD Ripper tabs (`TConverterOptions`,
+  `TRipperOptions`: Files, Metadata, Cover Art, and in the converter's one for tracks as separate
+  files) are labels above the first check box of the section, with a `TBevel` line under them across
+  the form; they are the only texts the form itself draws. A section runs down to the next heading;
+  OK, alone on the bottom row, is in none. ezcd's Tab order there jumps between the sections
+  (Overwrite, OK, Cue Sheets, …), and the forms open with focus on the first check box (converter) or
+  on OK (ripper). Options of the Disc Burner tab (`TAudioCDOptions`) has no sections.
 - In Encoder information, version and date values have the form of scale numbers (`13.2.1.1`,
   `24.09.2026`); the scales of sliders lie over or under the slider, within its height.
 - The window shown while file names are checked before a conversion (Checking filenames...) has a label
