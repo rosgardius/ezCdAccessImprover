@@ -8,10 +8,12 @@ The tree also answers some TreeView messages; a node handle there is VirtualTree
 """
 
 import ctypes
+import functools
 import re
 import time
 from collections.abc import Callable, Iterable, Iterator
 
+import addonHandler
 import api
 import braille
 import controlTypes
@@ -31,9 +33,27 @@ from scriptHandler import script
 from . import convert_window, names, remote, top_panel
 from .windows import parent, root
 
+addonHandler.initTranslation()
+
 _FILES_STRING = 494
 _CONVERTING_STRING = 476
-_CONVERTER_PAGE_STRING = 9
+_TRACKLIST_STRING = 137
+_FILELIST_STRING = 141
+_DISC_STRING = 486
+# The string naming a list of the main window, by the string of the caption of the page holding it: the
+# Audio Converter and Audio CD Ripper tabs, the Audio CD, MP3 disc and Data disc pages of the Disc Burner tab.
+_LIST_NAMES = {
+    9: _FILES_STRING,
+    8: _TRACKLIST_STRING,
+    470: _TRACKLIST_STRING,
+    471: _FILELIST_STRING,
+    472: _FILELIST_STRING,
+}
+# The pages whose list holds the disc as its only top-level node.
+_DISC_PAGE_STRINGS = (471, 472)
+# Translators: Said before the label of the disc, the top item of the list of files to burn to an MP3 or
+# data disc.
+_DISC = _("Disc")
 
 TVM_GETNEXTITEM = 0x110A
 TVM_GETITEMW = 0x113E
@@ -91,6 +111,19 @@ def is_main_window_list(hwnd: int) -> bool:
 
 def is_main_list_editor(hwnd: int) -> bool:
     return winUser.getClassName(hwnd) == "TVTEdit" and is_main_window_list(parent(hwnd))
+
+
+def _burner_page(hwnd: int) -> int:
+    """The page of the Disc Burner tab holding a list of the main window; 0 for the lists of other tabs."""
+    page = parent(hwnd)
+    # The tabs of the main window hold their lists in panels.
+    return page if winUser.getClassName(page) == "TTabSheet" else 0
+
+
+def _page_caption(hwnd: int) -> str:
+    """The caption of the page holding a list of the main window: its page of the Disc Burner tab, else its
+    tab."""
+    return winUser.getWindowText(_burner_page(hwnd) or top_panel.main_tab(hwnd))
 
 
 def _is_client_event_with_focus(obj, focus, role: controlTypes.Role) -> bool:
@@ -268,10 +301,16 @@ class ClosedEditor:
         return False
 
 
+def _is_focused_node(item: IAccessible) -> bool:
+    """Whether the tree's item is a node: without a focused node, it has no name, or VirtualTrees' default
+    text if the tree has nodes."""
+    return bool(item.name) and bool(next_node(item.windowHandle, TVGN_CARET))
+
+
 def focused_file(hwnd: int) -> IAccessible | None:
     """The tree's focused file; ``None`` if no file has focus."""
     obj = getNVDAObjectFromEvent(hwnd, winUser.OBJID_CLIENT, 0)
-    if obj is None or obj.role != controlTypes.Role.TREEVIEWITEM or not obj.name:
+    if obj is None or obj.role != controlTypes.Role.TREEVIEWITEM or not _is_focused_node(obj):
         return None
     return obj
 
@@ -295,13 +334,18 @@ class TreeItem(IAccessible):
     """The focused node of a ``TVirtualStringTree``, the only node its MSAA implementation shows."""
 
     def _get_focusRedirect(self):
-        # Without a focused node, the tree reports an item without a name.
-        if self.name:
+        # Without a focused node, the tree reports an item all the same.
+        if _is_focused_node(self):
             return None
         parent = self.parent
         if parent is not None and parent.role == controlTypes.Role.TREEVIEW:
             return parent
         return None
+
+    def _get_name(self):
+        # An empty first column leaves the separator in front.
+        name = super()._get_name()
+        return name.removeprefix(_COLUMN_SEPARATOR) if name else name
 
     def _get_description(self):
         # The description repeats the name without its first column.
@@ -320,6 +364,27 @@ class MainFileListItem(TreeItem):
             winUser.getGUIThreadInfo(self.windowThreadID).hwndFocus == self.windowHandle
             and super().shouldAllowIAccessibleFocusEvent
         )
+
+    @functools.cached_property
+    def _disc(self) -> str:
+        """The word for the disc, the only top-level node of the lists of the MP3 disc and Data disc pages,
+        named by its label; empty for other lists."""
+        page = _burner_page(self.windowHandle)
+        if not page:
+            return ""
+        strings = names.window_strings(self.windowHandle, self.appModule.language)
+        if winUser.getWindowText(page) not in (strings.get(n) for n in _DISC_PAGE_STRINGS):
+            return ""
+        return strings.get(_DISC_STRING) or _DISC
+
+    def _get_name(self):
+        name = super()._get_name()
+        if not name or not self._disc:
+            return name
+        node = next_node(self.windowHandle, TVGN_CARET)
+        if not node or next_node(self.windowHandle, TVGN_PARENT, node):
+            return name
+        return f"{self._disc} {name}"
 
     def _focused_node_selected(self) -> tuple[int, bool | None]:
         node = next_node(self.windowHandle, TVGN_CARET)
@@ -517,10 +582,19 @@ class MainFileListItem(TreeItem):
 class MainWindowList(IAccessible):
     """A list on a tab of the main window; ezcd names it in English or by its class name."""
 
+    @functools.cached_property
+    def _name(self) -> str:
+        # The captions of the pages repeat across languages, as Audio CD in Russian and Bulgarian.
+        strings = names.window_strings(self.windowHandle, self.appModule.language)
+        caption = _page_caption(self.windowHandle)
+        name = next(
+            (strings.get(n, "") for shown, n in _LIST_NAMES.items() if strings.get(shown) == caption), ""
+        )
+        # Some languages have Filelist in small letters.
+        return name[:1].upper() + name[1:]
+
     def _get_name(self):
-        # Of the lists, only the converter's has a name among ezcd's strings; the tab names the others.
-        tab = winUser.getWindowText(top_panel.main_tab(self.windowHandle))
-        return self.appModule.language.text_in_language_of(_FILES_STRING, _CONVERTER_PAGE_STRING, tab) or ""
+        return self._name
 
 
 class ConversionFileList(IAccessible):

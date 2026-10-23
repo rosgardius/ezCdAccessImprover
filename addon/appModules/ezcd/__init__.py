@@ -481,6 +481,8 @@ class AppModule(appModuleHandler.AppModule):
         elif window_class == "Edit":
             if client and explorer.is_path_field(hwnd):
                 clsList.insert(0, explorer.PathEdit)
+            elif client and names.is_combo_box_edit(hwnd):
+                clsList.insert(0, names.ComboBoxEdit)
         elif window_class == cover_art.COVER_CLASS:
             if client:
                 clsList.insert(0, cover_art.CoverArt)

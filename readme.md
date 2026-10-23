@@ -108,9 +108,11 @@ side of the spin box; NVDA+Numpad Enter presses them.
 
 In the lists of files of the main window and of the conversion window, each file is read once, with
 all its columns, and the first arrow key after entering a list reports the file it moves to. When no
-file of a list has focus, focus stays on the list itself. The lists of files of the main window and of
-the conversion window are named Files, in the language of the application. The lists of tracks of the
-CD Ripper and Disc Burner tabs are named by their tab page alone, instead of by internal English names.
+file of a list has focus, focus stays on the list itself. The lists are named in the language of the
+application instead of by internal English names: Files on the Audio Converter tab and in the
+conversion window, Tracklist on the Audio CD Ripper tab and the Audio CD page of the Disc Burner tab,
+Filelist on the MP3 disc and Data disc pages. The top item of the last two, the disc itself, is read as
+"Disc" before its label, as in "Disc 20261023".
 
 In the list of files of the main window, files are selected as in other Windows lists, and a file
 that is not selected is reported as "not selected":
@@ -206,6 +208,10 @@ says the value as the field shows it, on every arrow key, Page Up, Page Down, Ho
 s, slider, 3.00" rather than a percentage of its range. A caption that is a single character,
 as in the replacements of characters not allowed in file names, is read by NVDA's name for it, such as
 "colon".
+
+A combo box where a value can be typed, as the file name template on the output panels or the file name
+of the cover art in Options, is read as one editable combo box with its name and text, as in "File name,
+combo box, editable, Folder.jpg", also by NVDA+Tab; the text is read and edited as in any field.
 
 A field or list without any caption on the screen is named by the application's own word for it, in
 its language, where it has one: Profile on the output panels of the Audio Converter and Audio CD

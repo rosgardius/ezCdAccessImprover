@@ -17,7 +17,7 @@ import re
 import addonHandler
 import controlTypes
 import winUser
-from NVDAObjects.IAccessible import IAccessible
+from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 
 from . import captions, cards, panels, remote, screen
 from .captions import Layout
@@ -260,14 +260,18 @@ def fixed_name(hwnd: int, language: LanguageFiles) -> str:
     return ezcd_string(hwnd, name, language) if isinstance(name, int) else name or ""
 
 
-def ezcd_string(hwnd: int, number: int, language: LanguageFiles) -> str:
-    """The string of the language files in the language of the control's window; empty if it has none."""
+def window_strings(hwnd: int, language: LanguageFiles) -> dict[int, str]:
+    """The strings of the language files in the language of the control's window; empty if none fits."""
     window = root(hwnd)
     shown = {winUser.getWindowText(window)}
     shown.update(winUser.getWindowText(w) for w in descendants(window) if winUser.isWindowVisible(w))
-    strings = language.strings_of(shown)
+    return language.strings_of(shown) or {}
+
+
+def ezcd_string(hwnd: int, number: int, language: LanguageFiles) -> str:
+    """The string of the language files in the language of the control's window; empty if it has none."""
     # Some strings are captions of labels: "Disc writer :".
-    return strings.get(number, "").rstrip(" :") if strings else ""
+    return window_strings(hwnd, language).get(number, "").rstrip(" :")
 
 
 def _repeats(hwnd: int, caption: str) -> bool:
@@ -294,6 +298,12 @@ def is_combo_box_ex_child(hwnd: int) -> bool:
     return winUser.getClassName(parent(hwnd)) == "TComboBoxEx"
 
 
+def is_combo_box_edit(hwnd: int) -> bool:
+    """Whether the window is the edit of a combo box where a value is typed, which has focus in place of the
+    combo box."""
+    return winUser.getClassName(parent(hwnd)) == "TComboBox"
+
+
 class Captioned(IAccessible):
     """A control without an MSAA name, named by the caption ezcd draws beside it or else by a string."""
 
@@ -316,6 +326,32 @@ class Captioned(IAccessible):
         return captions.caption(window, self.appModule.helperLocalBindingHandle) or fixed_name(
             window, self.appModule.language
         )
+
+
+class ComboBoxEdit(IAccessible):
+    """The edit of a combo box where a value is typed, presented as the combo box.
+
+    NVDA would report the combo box as an ancestor of the edit, and the edit without a name.
+    """
+
+    role = controlTypes.Role.COMBOBOX
+
+    @functools.cached_property
+    def _combo_box(self) -> IAccessible | None:
+        return getNVDAObjectFromEvent(parent(self.windowHandle), winUser.OBJID_CLIENT, 0)
+
+    def _get_name(self):
+        return self._combo_box.name if self._combo_box is not None else super()._get_name()
+
+    def _get_states(self):
+        # NVDA reads the text of an object that is not an edit only if it is editable.
+        states = super()._get_states() | {controlTypes.State.EDITABLE}
+        if self._combo_box is not None:
+            states |= self._combo_box.states & {controlTypes.State.EXPANDED, controlTypes.State.COLLAPSED}
+        return states
+
+    def _get_container(self):
+        return self._combo_box.container if self._combo_box is not None else super()._get_container()
 
 
 class CaptionedButton(IAccessible):

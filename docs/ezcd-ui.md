@@ -180,16 +180,24 @@ absolute coordinates, captions in a particular language.
 
 - The lists of files and tracks are `TVirtualStringTree` windows (VirtualTrees) with their own MSAA
   implementation: the tree and its focused node, nothing else. Without a focused node the item has no
-  name, also while the list has files.
+  name, also while the list has files, or, in some lists with nodes, VirtualTrees' default text Node
+  (the MP3 disc and Data disc pages, Replace text on the Filename generation page of Settings).
 - The name of the item is the text of the visible columns that have text, `value; header: value; …` in
-  column order; its description repeats the name without the first column, the file name.
+  column order; its description repeats the name without the first column, the file name. An empty
+  first column leaves `; ` in front, as in the result of Search for CD metadata without a match.
 - When the focused node changes, the tree fires name change, value change, state change, selection and
   focus, all on (tree window, `OBJID_CLIENT`, 0). The focus event comes last. A change of the focused
   node's text alone, such as the progress in the conversion window, fires nothing.
 - The tree's own name is not translated: List of files on the converter tab, List of tracks on the CD
-  Ripper tab, its class name CDW_VirtualStringTree on the Audio CD page of the Disc Burner tab, Format in
-  the conversion window. String `[494]` of the language files is Files. The converter's tab page is a
-  `TTabSheet` captioned with string `[9]` (Convert audio files).
+  Ripper tab, its class name CDW_VirtualStringTree on the Audio CD page of the Disc Burner tab, Files to
+  burn on the MP3 disc and Data disc pages, Format in the conversion window. The language files have
+  Files `[494]`, Tracklist `[137]` and Filelist `[141]` (in Russian in small letters). The tabs are
+  `TTabSheet`s captioned with strings `[9]` (Convert audio files) and `[8]` (Rip audio CDs); the lists
+  of the burner's pages are children of the pages, those of the tabs lie in panels. The captions repeat
+  across languages: Audio CD `[470]` is the same in Russian and Bulgarian.
+- The lists of the MP3 disc and Data disc pages hold the disc as their only top-level node, captioned
+  with its label (the date by default, `20261023`), also when empty. `accSelect` with
+  `SELFLAG_TAKEFOCUS` on it opens the cell editor of the label; Down Arrow does not.
 - Dialogs (metadata editor, Edit profiles, Settings, …) use the same tree for their lists. Unless ezcd
   gives it a name (Path in the overwrite prompt), its MSAA name is the component name, such as
   VirtualStringTree1.
@@ -384,7 +392,9 @@ absolute coordinates, captions in a particular language.
   list of fields, the combo box naming a field to add, the value of a field (`TMemo`), the combo box
   of picture types and the list of pictures (`TListView`). In the metadata editor the list of files is
   in a panel of the form, the list of fields in a panel inside a panel; the combo box of field names
-  can be typed in (it has an `Edit` child), that of picture types cannot. The language files have
+  can be typed in (it has an `Edit` child), that of picture types cannot. So can the file name
+  template on the output panels and the file name of the cover art in Options: focus is in the
+  `Edit`, and NVDA leaves an edit in a named combo box without a name. The language files have
   Profile `[582]`, Filenames `[180]`, Filename preview `[266]`, Files `[494]`, Metadata `[101]`, Name
   `[834]`, Value `[835]`, Cover Art `[349]`, Tracklist `[137]`.
 - The output panels of the Audio Converter and Audio CD Ripper tabs have no caption for the profile,
