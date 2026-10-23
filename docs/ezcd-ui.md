@@ -192,7 +192,8 @@ absolute coordinates, captions in a particular language.
   Ripper tab, its class name CDW_VirtualStringTree on the Audio CD page of the Disc Burner tab, Files to
   burn on the MP3 disc and Data disc pages, Format in the conversion window. The language files have
   Files `[494]`, Tracklist `[137]` and Filelist `[141]` (in Russian in small letters). The tabs are
-  `TTabSheet`s captioned with strings `[9]` (Convert audio files) and `[8]` (Rip audio CDs); the lists
+  `TTabSheet`s captioned with strings `[172]` (Audio Converter) and `[171]` (Audio CD Ripper), in Russian
+  the same as `[9]` and `[8]` (Convert audio files, Rip audio CDs), in English not; the lists
   of the burner's pages are children of the pages, those of the tabs lie in panels. The captions repeat
   across languages: Audio CD `[470]` is the same in Russian and Bulgarian.
 - The lists of the MP3 disc and Data disc pages hold the disc as their only top-level node, captioned
@@ -436,8 +437,8 @@ absolute coordinates, captions in a particular language.
 - The hidden tab pages of the main window keep their windows with the visible style: their buttons
   repeat the captions of the active tab's (Options », DSP »), and only `IsWindowVisible` tells them
   apart.
-- ezcd's current language is not in the registry while it runs (see Language files below); the
-  language of a window shows in its captions, which are strings of one language file.
+- A language switched while ezcd runs is not in the registry until later (see Language files below);
+  the language of a window shows in its captions, which are strings of one language file.
 
 ## Dialogs
 
@@ -574,5 +575,13 @@ absolute coordinates, captions in a particular language.
   text line. Some entries are empty (`[580]` in Croatian): an empty string matches any window
   without text, so it tells nothing about the language.
 - The active language is `HKCU\Software\Poikosoft\EZ CD Audio Converter`, value `k82`, equal to
-  string `[0]` of the active file. When the language is switched in the running application, the
-  captions change at once but `k82` keeps the old value, so it cannot tell the current language.
+  string `[0]` of the active file (unique among the files, as `Russian (ру́сский)`). When the language
+  is switched in the running application, the captions change at once but `k82` keeps the old value.
+- The language is switched in View > Language: its items are named by string `[0]` of each file, after
+  a first item English that has no file. With that built-in English, `k82` keeps the previous language
+  also after a restart; its captions are those of `english.uni`. Within about 10 ms of the switch ezcd fires name changes on
+  the three tabs of the main window (`TTabSheet`), then on buttons and check boxes, and makes its
+  toolbars anew; nothing else tells of it.
+  A window shows few strings of its language (the main window 4 of 12 texts, About 2 of 3), and
+  languages share many (Audio CD in Russian and Bulgarian), so a count of them alone can pick another
+  language.

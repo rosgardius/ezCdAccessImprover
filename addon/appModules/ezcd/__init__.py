@@ -54,7 +54,7 @@ from . import (
     windowless,
 )
 from .language import LanguageFiles
-from .windows import parent, root
+from .windows import child_windows, parent, root, top_level_windows
 
 _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 # Seconds from pressing View Explorer to the focus ezcd moves as it hides the button.
@@ -68,7 +68,7 @@ _MAX_PATH_LENGTH = 32767
 class AppModule(appModuleHandler.AppModule):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.language = LanguageFiles(self._executable_path())
+        self.language = LanguageFiles(self._executable_path(), self._main_window_texts)
         self.remembered_buttons: dict[Hashable, tuple[int, int]] = {}
         """``StopButton.key`` of the last focused button of each toolbar stop, by ``ToolbarStop.key``."""
         self._focus_window = 0
@@ -98,6 +98,8 @@ class AppModule(appModuleHandler.AppModule):
         self.tag_stop = filename_preview.TagStop()
         self.window_focus = window_focus.WindowFocus()
         inputCore.decide_executeGesture.register(self._note_gesture)
+        # Also while ezcd is in the background: a switch of its language captions the tabs anew.
+        eventHandler.requestEvents("nameChange", self.processID, "TTabSheet")
 
     def terminate(self):
         inputCore.decide_executeGesture.unregister(self._note_gesture)
@@ -121,6 +123,16 @@ class AppModule(appModuleHandler.AppModule):
             winKernel.closeHandle(handle)
         log.debugWarning(f"appPath unavailable, ezcd path from a limited process handle: {buffer.value}")
         return buffer.value
+
+    def _main_window_texts(self) -> tuple[set[str], set[str]]:
+        """The captions of the main window's tabs and the texts the window shows; empty if it has no tabs
+        yet."""
+        for form in top_level_windows(self.processID, "TMainform"):
+            for labels in child_windows(form, "TPageControl"):
+                captions = {winUser.getWindowText(t) for t in child_windows(labels, "TTabSheet")} - {""}
+                if captions:
+                    return captions, names.shown_texts(form)
+        return set(), set()
 
     def tab_menu_opened(self, tab: int):
         """The menu that switches the main window's tab is opening on the tab's top panel."""
@@ -311,6 +323,8 @@ class AppModule(appModuleHandler.AppModule):
         return True
 
     def event_nameChange(self, obj, nextHandler):
+        if obj.windowClassName == "TTabSheet" and top_panel.is_main_window_tab(obj.windowHandle):
+            self.language.tabs_captioned()
         # The new path: the list in focus is going to another folder.
         if obj.windowClassName == "TJamShellBreadCrumbBar" and explorer.is_folder_list_focus(
             obj.windowHandle

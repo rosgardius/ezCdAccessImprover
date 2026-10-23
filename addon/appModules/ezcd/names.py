@@ -260,12 +260,17 @@ def fixed_name(hwnd: int, language: LanguageFiles) -> str:
     return ezcd_string(hwnd, name, language) if isinstance(name, int) else name or ""
 
 
-def window_strings(hwnd: int, language: LanguageFiles) -> dict[int, str]:
-    """The strings of the language files in the language of the control's window; empty if none fits."""
+def shown_texts(hwnd: int) -> set[str]:
+    """The texts of the control's top-level window and of its visible windows."""
     window = root(hwnd)
     shown = {winUser.getWindowText(window)}
     shown.update(winUser.getWindowText(w) for w in descendants(window) if winUser.isWindowVisible(w))
-    return language.strings_of(shown) or {}
+    return shown
+
+
+def window_strings(hwnd: int, language: LanguageFiles) -> dict[int, str]:
+    """The strings of the language files in the language of the control's window; empty if none fits."""
+    return language.strings(shown_texts(hwnd))
 
 
 def ezcd_string(hwnd: int, number: int, language: LanguageFiles) -> str:

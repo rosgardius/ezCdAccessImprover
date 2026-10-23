@@ -36,15 +36,14 @@ from .windows import parent, root
 addonHandler.initTranslation()
 
 _FILES_STRING = 494
-_CONVERTING_STRING = 476
 _TRACKLIST_STRING = 137
 _FILELIST_STRING = 141
 _DISC_STRING = 486
 # The string naming a list of the main window, by the string of the caption of the page holding it: the
 # Audio Converter and Audio CD Ripper tabs, the Audio CD, MP3 disc and Data disc pages of the Disc Burner tab.
 _LIST_NAMES = {
-    9: _FILES_STRING,
-    8: _TRACKLIST_STRING,
+    172: _FILES_STRING,
+    171: _TRACKLIST_STRING,
     470: _TRACKLIST_STRING,
     471: _FILELIST_STRING,
     472: _FILELIST_STRING,
@@ -601,9 +600,7 @@ class ConversionFileList(IAccessible):
     """The list of the conversion window, named Format by ezcd."""
 
     def _get_name(self):
-        name = self.appModule.language.text_in_language_of(
-            _FILES_STRING, _CONVERTING_STRING, winUser.getWindowText(root(self.windowHandle))
-        )
+        name = names.window_strings(self.windowHandle, self.appModule.language).get(_FILES_STRING)
         return name or super()._get_name()
 
 

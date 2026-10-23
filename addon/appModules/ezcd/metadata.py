@@ -46,7 +46,7 @@ def _caption_of(layout: captions.Layout, language: LanguageFiles) -> str:
     if caption and neighbour and not any(c.isalnum() for c in caption):
         # The total right of a track or disc number is captioned only by "/" between the two.
         number = screen.joined(captions.Layout(neighbour, texts=layout.texts).left()[0])
-        strings = language.strings_of({t.text for t in layout.texts}, _CAPTION_STRINGS) or {}
+        strings = language.strings({t.text for t in layout.texts}, _CAPTION_STRINGS)
         for number_string, total_string in _TOTALS:
             if strings.get(number_string) == number and strings.get(total_string):
                 return strings[total_string].strip("<>")

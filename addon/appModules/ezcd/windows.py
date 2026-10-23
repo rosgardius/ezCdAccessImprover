@@ -57,6 +57,15 @@ def child_windows(hwnd: int, class_name: str | None = None) -> list[int]:
     return children
 
 
+def top_level_windows(process_id: int, class_name: str) -> list[int]:
+    """The process's top-level windows of the class, in z-order."""
+    return [
+        w
+        for w in child_windows(winUser.getDesktopWindow(), class_name)
+        if winUser.getWindowThreadProcessID(w)[0] == process_id
+    ]
+
+
 def descendants(hwnd: int) -> Iterator[int]:
     """All windows inside the window, each followed by its own."""
     for child in child_windows(hwnd):

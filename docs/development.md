@@ -55,7 +55,7 @@ The app module is a few thousand lines. These rules keep it from growing copies 
   - `vcl.py`: VCL objects in ezcd's memory, such as controls without windows;
   - `captions.py`: captions found by position;
   - `panels.py`: panels of the main window, recognised by the windows they hold;
-  - `language.py`: ezcd's strings;
+  - `language.py`: ezcd's strings and the choice of the language ezcd shows;
   - `commands.py`: the category of the add-on's commands in Input Gestures.
 
   A second copy of a helper, even a one-line one such as `parent(hwnd)`, is a defect. A helper
