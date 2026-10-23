@@ -64,20 +64,25 @@ def descendants(hwnd: int) -> Iterator[int]:
         yield from descendants(child)
 
 
+def rows(controls: list[int]) -> list[list[int]]:
+    """The windows by rows of the screen, top to bottom, each row from left to right."""
+    edges = {control: rect(control) for control in controls}
+    found: list[list[int]] = []
+    row_bottom = 0
+    for control in sorted(edges, key=lambda c: edges[c].top + edges[c].bottom):
+        edge = edges[control]
+        # A control is on the row whose first control its middle lies beside.
+        if found and (edge.top + edge.bottom) // 2 < row_bottom:
+            found[-1].append(control)
+        else:
+            found.append([control])
+            row_bottom = edge.bottom
+    return [sorted(row, key=lambda c: edges[c].left) for row in found]
+
+
 def tab_stop_rows(hwnd: int) -> list[list[int]]:
     """The Tab stops inside the window by rows of the screen, top to bottom, each row from left to right."""
-    stops = _tab_stops(hwnd)
-    rows: list[list[int]] = []
-    row_bottom = 0
-    for child in sorted(stops, key=lambda c: stops[c].top + stops[c].bottom):
-        edge = stops[child]
-        # A control is on the row whose first control its middle lies beside.
-        if rows and (edge.top + edge.bottom) // 2 < row_bottom:
-            rows[-1].append(child)
-        else:
-            rows.append([child])
-            row_bottom = edge.bottom
-    return [sorted(row, key=lambda c: stops[c].left) for row in rows]
+    return rows(list(_tab_stops(hwnd)))
 
 
 def _tab_stops(hwnd: int) -> dict[int, RECT]:

@@ -343,8 +343,16 @@ absolute coordinates, captions in a particular language.
   sound file (`TEdit`) on the General page of Settings; Move up and Move down (strings `[241]`,
   `[242]`) one above the other right of the list in Edit profiles. They have no hint; the language
   files have Filename preview (`[266]`) but no Browse.
-- The tag buttons of Filename preview are `TButton`s outside the tab order; the one inserting a space
-  has a space as its caption.
+- The tag buttons of Filename preview are 27 `TButton`s in three rows between the template field
+  (`TEdit`) and the template history (`TListBox`), three of them children of the form, the others of
+  the panel holding the field; all but Number and Sequence are outside the tab order. The one inserting
+  a space has a space as its caption. A tag inserts its text into the field at the caret, replacing the
+  selection (the field keeps it while unfocused), and moves focus to the field. Six are split buttons
+  (Year, Disc Number, Total Discs, Total Tracks, Number, Sequence): Down on one, also posted, opens its
+  menu of variants; a variant is inserted the same way, but focus stays on the button. The template
+  changes the output panel's template at once, so closing the window by its close box keeps it.
+- Right of Add in Filename preview, a gear without a window (`TPngSpeedButton` of the panel holding the
+  template field) opens Settings at the Filename generation page (string `[576]`); it has no hint.
 - The check box of DSP that switches the effect on has no caption; it lies left of the combo box
   choosing the effect (Gain, Loudness normalization, …), overlapping it by a few pixels. The
   effect's settings are on cards of a `TCardPanel` right below that combo box, one card shown

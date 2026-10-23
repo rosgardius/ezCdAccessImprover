@@ -330,6 +330,8 @@ class CaptionedButton(IAccessible):
         name = super()._get_name() or ""
         if not name.strip():
             return fixed_name(self.windowHandle, self.appModule.language)
+        # A tag of Filename preview inserting a separator, as \ or -.
+        name = captions.spoken(name)
         if self.role == controlTypes.Role.SPLITBUTTON:
             row = captions.choice_caption(Layout(self.windowHandle).row_start())
         elif _repeats(self.windowHandle, winUser.getWindowText(self.windowHandle)):

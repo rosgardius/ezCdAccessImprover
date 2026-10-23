@@ -231,8 +231,9 @@ the compression level of FLAC.
 
 Buttons that show only an image are named: Browse next to the output folder and next to the sound file
 in Settings, Filename preview next to the file name template, Move up and Move down in Edit profiles.
-The tag button in Filename preview that inserts a space is named by NVDA's word for the space. The
-check box without a caption in DSP is named by the mode chosen right of it, such as Gain.
+The tag buttons in Filename preview that insert a space or a separator (`\`, `.`, `-`, `<`, `>`) are
+named by NVDA's words for them, such as "backslash", which NVDA would not say at its default punctuation
+level. The check box without a caption in DSP is named by the mode chosen right of it, such as Gain.
 
 Buttons and check boxes whose caption repeats in the window get the caption of their row after a
 comma: "Search, Barcode" in the manual search of metadata, "Keep aspect ratio, Resize embedded Cover
@@ -258,6 +259,24 @@ reported as a grouping when focus enters it, as a group box in other dialogs.
 Tab and Shift+Tab in DSP move through the controls in the order of the screen too, round: the effect,
 its slider and fields, the peak limit, then the silence and fade settings row by row, and Close last. A
 field showing a slider's value comes right after the slider.
+
+### Filename preview
+
+Tab and Shift+Tab in Filename preview move through the controls in the order of the screen, round: the
+file name template, Add, Filename generation, the tags, the template history, the preview and Close.
+
+* Filename generation is the gear button right of Add, which the application lets you press only with
+  the mouse. It opens Settings at the Filename generation page.
+* The 27 tag buttons, which the application leaves out of the Tab order but for Number and Sequence,
+  are one stop. Focus comes to the tag that had it last. Left and Right Arrow move along a row, Up and
+  Down Arrow to the row above and below, Home and End to the first and the last tag of the row.
+* Enter or Space inserts the tag into the template at its cursor, replacing the selected text, and
+  reads the new template. Focus stays on the tag, so the template can be put together tag by tag.
+* Alt+Down Arrow on a tag with variants (Year, Disc Number, Total Discs, Total Tracks, Number and
+  Sequence) opens their menu, such as Number ## for a number of two digits. Choosing a variant inserts it
+  and reads the template.
+
+The application keeps a changed template even when the window is closed with Escape or its close button.
 
 ### Settings
 

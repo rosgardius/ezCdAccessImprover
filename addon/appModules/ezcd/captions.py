@@ -224,7 +224,7 @@ def from_screen(control: int, binding_handle, read: Callable[[Layout], str]) -> 
     return read(Layout(control, binding_handle)) or read(Layout(control, binding_handle, repaint=True))
 
 
-def _spoken(caption: str) -> str:
+def spoken(caption: str) -> str:
     """The caption, with a caption of symbols alone, as ``/``, given by the names of the symbols."""
     if not caption or any(c.isalnum() for c in caption):
         return caption
@@ -242,7 +242,7 @@ def _caption(layout: Layout, unit: bool = True) -> str:
     if not text:
         texts, neighbour = layout.above()
         text = joined(texts) or choice_caption(neighbour)
-    text = _spoken(text.rstrip(" :") or text.strip())
+    text = spoken(text.rstrip(" :") or text.strip())
     return _UNIT_SEPARATOR.join(part for part in (text, joined(layout.right()) if unit else "") if part)
 
 

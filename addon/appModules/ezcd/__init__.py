@@ -36,6 +36,7 @@ from . import (
     dialogs,
     explorer,
     file_lists,
+    filename_preview,
     list_items,
     metadata,
     names,
@@ -91,6 +92,7 @@ class AppModule(appModuleHandler.AppModule):
         self.page_switcher = burner_pages.PageSwitcher(self.language, self._note_gesture)
         self.closed_editor = file_lists.ClosedEditor()
         self.cells = cells.CellTable(self.language)
+        self.tag_stop = filename_preview.TagStop()
         inputCore.decide_executeGesture.register(self._note_gesture)
 
     def terminate(self):
@@ -207,6 +209,9 @@ class AppModule(appModuleHandler.AppModule):
         self._tab_kept = False
         if passing and obj.windowHandle == passing:
             return
+        back = self.tag_stop.focus_back(obj)
+        if back and toolbar.set_focus(back):
+            return
         if self._returns_focus(obj.windowHandle) and toolbar.set_focus(self._focus_return):
             self._tab_kept = True
             return
@@ -309,6 +314,8 @@ class AppModule(appModuleHandler.AppModule):
                 return
             if kind == convert_window.Bar.TOTAL:
                 self._conversion_status.sample_speed(obj.windowHandle, self.helperLocalBindingHandle)
+        else:
+            self.tag_stop.note_change(obj)
         nextHandler()
 
     def event_selection(self, obj, nextHandler):
@@ -367,6 +374,9 @@ class AppModule(appModuleHandler.AppModule):
     def event_focusEntered(self, obj, nextHandler):
         if self.cells.is_coming_back(obj):
             return
+        # Focus comes back to a tag from its menu: only the template is reported.
+        if self.tag_stop.returned:
+            return
         # Focus stayed in the tab: the tab labels or the main form in between were not announced.
         if self._tab_kept and obj.windowClassName in ("TTabSheet", "TPageControl"):
             return
@@ -404,6 +414,8 @@ class AppModule(appModuleHandler.AppModule):
         elif window_class in names.BUTTON_CLASSES:
             if client:
                 clsList.insert(0, names.CaptionedButton)
+                if filename_preview.is_tag(hwnd):
+                    clsList.insert(0, filename_preview.TagButton)
         elif window_class == "ComboBox":
             if client and names.is_combo_box_ex_child(hwnd):
                 clsList.insert(0, names.Captioned)
@@ -449,6 +461,8 @@ class AppModule(appModuleHandler.AppModule):
         elif window_class == "TPanel" and child_id == 0:
             if client and rating.is_stop(hwnd):
                 clsList.insert(0, rating.RatingSlider)
+            elif client and filename_preview.is_settings_stop(hwnd):
+                clsList.insert(0, filename_preview.SettingsButton)
             elif top_panel.read_top_panel(hwnd, obj.processHandle, self.language) is not None:
                 clsList.insert(0, top_panel.TopPanelWindow)
             elif explorer.is_hidden_explorer_row(hwnd):
@@ -463,7 +477,8 @@ class AppModule(appModuleHandler.AppModule):
             if overlay is not None:
                 clsList.insert(0, overlay)
         # Added to what the window class gives: these forms hold controls of several classes.
-        if client and tab_order.form_of(hwnd):
+        # The items of a list have focus in place of the list.
+        if (client or child_id > 0) and tab_order.form_of(hwnd):
             clsList.insert(0, tab_order.ScreenOrderControl)
         if client and options.form_of(hwnd):
             clsList.insert(0, options.OptionsControl)
