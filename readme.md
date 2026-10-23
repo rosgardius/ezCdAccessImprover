@@ -296,6 +296,21 @@ the version, the home page and the copyright; in Encoder information, the encode
 NVDA+B reads it again. Captions of fields, headings of sections, the numbers of slider scales and a
 line repeating the title are not part of the text, so Settings, Options, DSP and Edit profiles open with their name alone.
 
+Encoder information and the results of Search for CD metadata, which the application does not close
+with Escape, close with Escape as with their close button.
+
+### Focus after dialogs and menus
+
+When a dialog or the conversion window closes, focus goes back to the control it was on before the
+window opened, such as DSP » or Options », and NVDA says the name of the main window and that control.
+When a menu closes with Escape, NVDA says only the button it returns to. Switching to the application
+with Alt+Tab also reports the main window and the focused control, without the panels around it. The
+manual search of metadata opens with focus in its first field.
+
+The tab labels of the main window, the Tab stop between the top buttons and the first control of the
+tab, are reported with the name of the active tab, such as Convert audio files. They do not switch the
+tab: the menu of the first top button does.
+
 ## Commands
 
 Commands of this add-on are listed in NVDA's Input Gestures dialog, under the

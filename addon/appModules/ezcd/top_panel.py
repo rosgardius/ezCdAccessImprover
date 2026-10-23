@@ -66,11 +66,13 @@ def _image_key(image: int) -> int:
     return _SAME_IMAGES.get(image, image)
 
 
+def is_main_tab_labels(hwnd: int) -> bool:
+    """Whether the window is the page control of the main window's tabs."""
+    return winUser.getClassName(hwnd) == "TPageControl" and winUser.getClassName(parent(hwnd)) == "TMainform"
+
+
 def is_main_window_tab(hwnd: int) -> bool:
-    return (
-        winUser.getClassName(hwnd) == "TTabSheet"
-        and winUser.getClassName(parent(parent(hwnd))) == "TMainform"
-    )
+    return winUser.getClassName(hwnd) == "TTabSheet" and is_main_tab_labels(parent(hwnd))
 
 
 def main_tab(hwnd: int) -> int:
@@ -200,7 +202,16 @@ class MenuButton(toolbar_stops.ToolbarMenuButton, TopPanelButton):
 
 
 class TabLabels(IAccessible):
-    """The tab labels of the main window: Shift+Tab goes back to the tab's top panel."""
+    """The tab labels of the main window, a Tab stop without labels or keys of its own: named after the active
+    tab, without a role, so it is not taken for tabs to switch. Shift+Tab goes back to the tab's top panel."""
+
+    role = controlTypes.Role.PANE
+    # The tab itself is reported with its name.
+    isPresentableFocusAncestor = False
+
+    def _get_name(self):
+        tab = active_tab(self.windowHandle)
+        return "" if tab is None else winUser.getWindowText(tab)
 
     @script(gesture="kb:shift+tab")
     def script_previous_control(self, gesture):

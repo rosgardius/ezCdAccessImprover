@@ -15,12 +15,11 @@ from scriptHandler import script
 from winBindings import user32
 
 from . import screen
-from .dialogs import EzcdDialog
+from .dialogs import ClosedByEscape
 from .windows import child_windows, parent, rect
 
 COVER_CLASS = "TDropPanel"
 _WM_CONTEXTMENU = 0x7B
-_WM_CLOSE = 0x10
 _MENU_GESTURES = ("kb:applications", "kb:shift+f10")
 
 
@@ -71,18 +70,7 @@ class CoverArt(IAccessible):
         open_menu(self.windowHandle)
 
 
-class _CoverWindow(EzcdDialog):
-    """A window of the cover art that ezcd does not close with Escape; focus may be on a control in it."""
-
-    def close(self):
-        user32.PostMessage(self.windowHandle, _WM_CLOSE, 0, 0)
-
-    @script(gesture="kb:escape", canPropagate=True)
-    def script_close(self, gesture):
-        self.close()
-
-
-class CoverView(_CoverWindow):
+class CoverView(ClosedByEscape):
     """The view of the cover art (``TCoverArtWnd2``): its actions are in the menu of the picture."""
 
     @script(gestures=_MENU_GESTURES, canPropagate=True)
@@ -98,7 +86,7 @@ class CoverView(_CoverWindow):
         )
 
 
-class CoverPanel(_CoverWindow):
+class CoverPanel(ClosedByEscape):
     """The panel that shows over the cover art while the mouse pointer rests on it (``TCoverArtWnd``).
 
     It is modal and has no close box; with the pointer still on the cover art it shows again, so Escape

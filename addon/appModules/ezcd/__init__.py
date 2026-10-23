@@ -49,9 +49,10 @@ from . import (
     toolbar_stops,
     top_panel,
     tray,
+    window_focus,
 )
 from .language import LanguageFiles
-from .windows import root
+from .windows import parent, root
 
 _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 # Seconds from pressing View Explorer to the focus ezcd moves as it hides the button.
@@ -93,6 +94,7 @@ class AppModule(appModuleHandler.AppModule):
         self.closed_editor = file_lists.ClosedEditor()
         self.cells = cells.CellTable(self.language)
         self.tag_stop = filename_preview.TagStop()
+        self.window_focus = window_focus.WindowFocus()
         inputCore.decide_executeGesture.register(self._note_gesture)
 
     def terminate(self):
@@ -207,7 +209,12 @@ class AppModule(appModuleHandler.AppModule):
         tab_key, self._tab_key = self._tab_key, 0
         passing, self._passing = self._passing, 0
         self._tab_kept = False
+        window_return = self.window_focus.note_focus(obj, previous)
         if passing and obj.windowHandle == passing:
+            return
+        # VCL moves focus to the form as the Cancel of a status window, such as Adding files, is disabled at
+        # the end; the window was reported already.
+        if obj.windowClassName == "TTStatusWindow" and root(previous) == obj.windowHandle:
             return
         back = self.tag_stop.focus_back(obj)
         if back and toolbar.set_focus(back):
@@ -244,6 +251,8 @@ class AppModule(appModuleHandler.AppModule):
             return
         if self.cells.handle_focus(obj, self.helperLocalBindingHandle):
             return
+        if window_return is not None and self._go_back(obj, window_return, nextHandler):
+            return
         if self._tab_menu_tab and obj.windowClassName != "#32768":
             # Whichever tab was chosen, VCL puts focus on the tab's first control.
             panel = top_panel.panel_after_tab_menu(self._tab_menu_tab, obj.processHandle, self.language)
@@ -273,6 +282,21 @@ class AppModule(appModuleHandler.AppModule):
         ):
             return
         nextHandler()
+
+    def _go_back(self, obj, back: window_focus.Return, nextHandler) -> bool:
+        """Moves focus back from the form or the tab labels; ``False`` if it did not move and the focus was
+        not reported."""
+        if back.silent:
+            self.pass_focus(back.target)
+            return self._passing == back.target
+        # The main form as the first focus in the main window, its title not reported yet.
+        reported = obj.windowHandle == root(obj.windowHandle)
+        if reported:
+            nextHandler()
+        if not toolbar.set_focus(back.target):
+            return reported
+        self.window_focus.going_back(back)
+        return True
 
     def _enter_stop(self, stop: toolbar_stops.ToolbarStop | None) -> bool:
         """Moves focus to the stop's remembered button; ``False`` if it did not move.
@@ -325,6 +349,12 @@ class AppModule(appModuleHandler.AppModule):
         nextHandler()
 
     def event_stateChange(self, obj, nextHandler):
+        # The main form is disabled while a dialog is open; a status window disables its Cancel at the end.
+        if (
+            obj.windowClassName == "TMainform"
+            or winUser.getClassName(root(obj.windowHandle)) == "TTStatusWindow"
+        ):
+            return
         # View Explorer changes its state as ezcd hides it; the state of the other one comes with the focus.
         if (
             obj.windowClassName == "TToolBar"
@@ -369,6 +399,7 @@ class AppModule(appModuleHandler.AppModule):
     def event_foreground(self, obj, nextHandler):
         if self.cells.is_coming_back(obj):
             return
+        self.window_focus.note_foreground(obj)
         nextHandler()
 
     def event_focusEntered(self, obj, nextHandler):
@@ -376,6 +407,11 @@ class AppModule(appModuleHandler.AppModule):
             return
         # Focus comes back to a tag from its menu: only the template is reported.
         if self.tag_stop.returned:
+            return
+        if self.window_focus.is_quiet_ancestor(obj):
+            return
+        # The tab labels, named after the tab, are left for a control of the tab.
+        if top_panel.is_main_window_tab(obj.windowHandle) and parent(obj.windowHandle) == self._focus_window:
             return
         # Focus stayed in the tab: the tab labels or the main form in between were not announced.
         if self._tab_kept and obj.windowClassName in ("TTabSheet", "TPageControl"):
@@ -403,7 +439,11 @@ class AppModule(appModuleHandler.AppModule):
         # The client object of the window, not its window object.
         client = child_id == 0 and obj.IAccessibleRole != oleacc.ROLE_SYSTEM_WINDOW
         if child_id == 0 and obj.IAccessibleRole == oleacc.ROLE_SYSTEM_CLIENT and dialogs.is_dialog(hwnd):
-            clsList.insert(0, cover_art.DIALOG_CLASSES.get(window_class, dialogs.EzcdDialog))
+            clsList.insert(
+                0,
+                cover_art.DIALOG_CLASSES.get(window_class)
+                or dialogs.DIALOG_CLASSES.get(window_class, dialogs.EzcdDialog),
+            )
         elif window_class == "TProgressBar":
             if convert_window.bar_kind(hwnd) == convert_window.Bar.TOTAL:
                 clsList.insert(0, convert_window.TotalProgressBar)
@@ -450,11 +490,11 @@ class AppModule(appModuleHandler.AppModule):
         elif window_class == "TMainform":
             if child_id == 0:
                 clsList.insert(0, cells.BetweenEditors)
-        elif window_class == "TPageControl":
-            if not burner_pages.is_pages(hwnd):
-                clsList.insert(0, top_panel.TabLabels)
-            elif client:
+        elif window_class == "TPageControl" and client:
+            if burner_pages.is_pages(hwnd):
                 clsList.insert(0, burner_pages.BurnerPages)
+            elif top_panel.is_main_tab_labels(hwnd):
+                clsList.insert(0, top_panel.TabLabels)
         elif window_class == "TTabSheet":
             if top_panel.is_main_window_tab(hwnd):
                 clsList.insert(0, top_panel.MainWindowTab)

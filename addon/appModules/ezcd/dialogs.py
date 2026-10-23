@@ -12,10 +12,13 @@ import controlTypes
 import winUser
 from NVDAObjects.behaviors import Dialog
 from NVDAObjects.IAccessible import IAccessible
+from scriptHandler import script
+from winBindings import user32
 
 from . import captions, convert_window, screen
 from .windows import child_windows, root
 
+_WM_CLOSE = 0x10
 _NOT_DIALOG_CLASSES = frozenset(("TMainform", "TApplication", "THintWindow", "#32768", "#32770"))
 # Windows that hold labels; the texts of other windows are their own content.
 _CONTAINER_CLASSES = frozenset(
@@ -86,3 +89,19 @@ class EzcdDialog(Dialog, IAccessible):
 
     def _get_description(self):
         return dialog_text(self.windowHandle, self.appModule.helperLocalBindingHandle)
+
+
+class ClosedByEscape(EzcdDialog):
+    """A dialog that ezcd does not close with Escape; focus may be on a control in it."""
+
+    def close(self):
+        """Closes the dialog as its close box does."""
+        user32.PostMessage(self.windowHandle, _WM_CLOSE, 0, 0)
+
+    @script(gesture="kb:escape", canPropagate=True)
+    def script_close(self, gesture):
+        self.close()
+
+
+DIALOG_CLASSES = {"TEncoderInfo": ClosedByEscape, "TFC_GetMetadata": ClosedByEscape}
+"""Overlay classes of dialogs other than ``EzcdDialog``, by form class."""

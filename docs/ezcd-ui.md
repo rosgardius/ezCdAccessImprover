@@ -155,6 +155,8 @@ absolute coordinates, captions in a particular language.
 - The main window's `TPageControl` is a direct child of `TMainform`; each tab is a `TTabSheet` child of
   it, the active one visible. The Disc Burner tab holds another `TPageControl`. The order of the
   `TTabSheet` windows changes as the tabs are switched.
+- The main window's `TPageControl` (the tab labels) is a Tab stop between the top panel and the tab's
+  first control. MSAA gives it the tab control role without children; the arrow keys do nothing on it.
 - MSAA gives `TTabSheet` the property page role. NVDA treats it as a dialog and, on every focus entry
   into the tab, collects dialog text from all its panels: about 250 ms in the main window, with an
   empty result.
@@ -452,6 +454,18 @@ absolute coordinates, captions in a particular language.
   the second right under it. A click at the centre moves the selected service, and the list fires focus
   and selection on it at its new place; on the first service Move up does nothing.
 - About is the last item of the Help menu (on every top panel); Escape closes it.
+- When a dialog closes, VCL gives focus back to the control that had it before. After Options, DSP and
+  Edit profiles, ezcd moves it on to the main form 10–110 ms later; Tab from the main form goes to the
+  tab labels. After the conversion window and after a window opened by the mouse, focus goes to the tab
+  labels. Settings and About (opened from the Help menu) leave it on their button.
+- While a modal window is open, the main form is disabled: a state change for it comes when the window
+  opens with focus on the form.
+- A menu item that opens a dialog (Manual search) gives focus to the main window's list before the
+  dialog gets it. Escape from a top panel menu returns focus to its button.
+- The manual search (`TMBManual`) and Download Cover Art (`TAmazon`) give focus to their first field and
+  some 10 ms later to the form.
+- The status window shown while files are added (`TTStatusWindow`, Adding files... `[397]`) disables its
+  Cancel at the end, and focus goes to its form before the window closes.
 - Encoder information opens with a `TPngSpeedButton` without a window right of the format and extension
   combo boxes of the Audio Converter tab's output panel, at 292, 46 (24 × 24) in the panel as in the
   form's DFM; a posted click at its centre opens it. It has only an OK button and does not close on Escape.
