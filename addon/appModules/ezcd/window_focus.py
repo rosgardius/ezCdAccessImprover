@@ -52,17 +52,19 @@ class WindowFocus:
         self._foreground = 0
         """The main window, from its foreground event until the focus event that brought it."""
         self._quiet: tuple[int, int] | None = None
-        """The main window whose containers of the focus are not reported, and the focus before the menu
-        focus came back from (0 if it came from another window), until the next focus."""
+        """The top-level window whose containers of the focus are not reported, and the focus before the
+        menu focus came back from (0 if it came to the main window from another window), until the next
+        focus."""
 
     def note_foreground(self, obj):
-        """The main window comes to the foreground: from another window of ezcd, another application or a
+        """A top-level window comes to the foreground: from another window of ezcd, another application or a
         menu."""
         form = root(obj.windowHandle)
-        if winUser.getClassName(form) != "TMainform":
-            return
-        self._foreground = form
         menu_focus = self._menu_focus if root(self._menu_focus) == form else 0
+        if winUser.getClassName(form) == "TMainform":
+            self._foreground = form
+        elif not menu_focus:
+            return
         self._quiet = (form, menu_focus)
 
     def is_quiet_ancestor(self, obj) -> bool:
@@ -89,7 +91,8 @@ class WindowFocus:
         foreground, self._foreground = self._foreground, 0
         self._quiet = None
         if obj.windowClassName == "#32768":
-            if winUser.getClassName(previous) != "#32768":
+            # Focus coming back to a menu from its submenu comes from a window already destroyed.
+            if not self._menu_focus:
                 self._menu_focus = previous
             return None
         self._menu_focus = 0

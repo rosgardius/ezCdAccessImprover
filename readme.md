@@ -317,11 +317,20 @@ line repeating the title are not part of the text, so Settings, Options, DSP and
 Encoder information and the results of Search for CD metadata, which the application does not close
 with Escape, close with Escape as with their close button.
 
+### Menus
+
+A menu opened by a button, by Applications on the cover art or by Alt+Down on a tag of Filename preview
+opens with its first item selected, as menus opened from the keyboard do, so Enter chooses it at once.
+Items are numbered without the separators, items with a submenu too, such as "Manual search, submenu,
+3 of 4"; the number is said whenever NVDA reports the position of objects. A key that would choose an
+item but is a sign rather than a letter, such as "<" before every variant of a tag, is not reported.
+
 ### Focus after dialogs and menus
 
 When a dialog or the conversion window closes, focus goes back to the control it was on before the
 window opened, such as DSP » or Options », and NVDA says the name of the main window and that control.
-When a menu closes with Escape, NVDA says only the button it returns to. Switching to the application
+When a menu closes with Escape, NVDA says only the control it returns to, also after a submenu and in a
+dialog. Switching to the application
 with Alt+Tab also reports the main window and the focused control, without the panels around it. The
 manual search of metadata opens with focus in its first field.
 

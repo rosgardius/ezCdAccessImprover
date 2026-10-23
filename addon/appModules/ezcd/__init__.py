@@ -38,6 +38,7 @@ from . import (
     file_lists,
     filename_preview,
     list_items,
+    menus,
     metadata,
     names,
     options,
@@ -508,6 +509,12 @@ class AppModule(appModuleHandler.AppModule):
                 clsList.insert(0, top_panel.TopPanelWindow)
             elif explorer.is_hidden_explorer_row(hwnd):
                 clsList.insert(0, explorer.HiddenExplorerRow)
+        elif window_class == "#32768":
+            role = obj.IAccessibleRole
+            if client and role == oleacc.ROLE_SYSTEM_MENUPOPUP:
+                clsList.insert(0, menus.Menu)
+            elif child_id > 0 or role == oleacc.ROLE_SYSTEM_MENUITEM:
+                clsList.insert(0, menus.MenuItem)
         elif window_class == "TToolBar":
             stop = (
                 top_panel.panel_of(hwnd, obj.processHandle, self.language)

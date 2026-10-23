@@ -498,6 +498,21 @@ absolute coordinates, captions in a particular language.
   press: after a posted press and release, VCL's drag window keeps the mouse capture and keys to the
   list do nothing until a release is posted to that window.
 
+## Menus
+
+- ezcd's menus are popup menus (`#32768`) of `TPopupMenu`s. Opened by a click (the menu buttons of the
+  top panels and View of the explorer, a split button on Down, `WM_CONTEXTMENU`), a menu has no item
+  selected, and NVDA gets focus on the menu itself. Down posted to the menu window selects the first
+  item, as a real key does.
+- MSAA numbers the separators among the items (child IDs), and gives an item with a submenu as an
+  object of its own, with child ID 0; its place is found by its location among the menu's children.
+- The menus of the top panels have their items drawn by ezcd (`MFT_OWNERDRAW`, no text in the menu;
+  MSAA has the names) and no mnemonics. Other menus have plain text without `&`: an item is then
+  chosen by its first character, which MSAA gives as its keyboard shortcut ("с" for List in the view
+  menu of the explorer, "<" for every variant of a tag in Filename preview).
+- Escape from a submenu fires focus on the parent menu from the submenu's window, which is destroyed by
+  then.
+
 ## Conversion window
 
 - A top-level `TConvertWnd` window, shown while files are converted and kept open after the end.
