@@ -23,11 +23,7 @@ import controlTypes
 import queueHandler
 import ui
 import winUser
-from locationHelper import RectLTWH
 from logHandler import log
-from NVDAObjects import NVDAObjectTextInfo
-from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
-from NVDAObjects.window import Window
 from scriptHandler import script
 from winBindings import user32
 
@@ -75,6 +71,30 @@ def _button_rect(edit: int, step: Step) -> RECT:
     gap = round(_BUTTON_GAP * scale)
     left = rect.left - gap - size if step == Step.LESS else rect.right + gap
     return RECT(left, rect.top, left + size, rect.top + size)
+
+
+def button_of(panel: int, edge: RECT) -> tuple[int, Step] | None:
+    """The counter's edit and the step of the button with the rectangle on the screen; ``None`` if it is
+    no button of a counter."""
+    x, y = (edge.left + edge.right) // 2, (edge.top + edge.bottom) // 2
+    for edit in windows.child_windows(panel, "TEdit"):
+        if not is_counter(edit):
+            continue
+        for step in Step:
+            button = _button_rect(edit, step)
+            if button.left <= x < button.right and button.top <= y < button.bottom:
+                return edit, step
+    return None
+
+
+def step_name(step: Step) -> str:
+    if step == Step.LESS:
+        # Translators: The button that lowers a number in EZ CD Audio Converter, such as the number of
+        # converters.
+        return _("Decrease")
+    # Translators: The button that raises a number in EZ CD Audio Converter, such as the number of
+    # converters.
+    return _("Increase")
 
 
 def click(edit: int, step: Step) -> bool:
@@ -163,12 +183,6 @@ class CounterSpinBox(Captioned):
     def _get_states(self):
         return super()._get_states() - {controlTypes.State.READONLY}
 
-    def _get_previous(self):
-        return CounterButton(edit=self.windowHandle, step=Step.LESS)
-
-    def _get_next(self):
-        return CounterButton(edit=self.windowHandle, step=Step.MORE)
-
     @script(gesture="kb:upArrow")
     def script_increase(self, gesture):
         self.appModule.counter_steps.press(self.windowHandle, Step.MORE)
@@ -176,78 +190,3 @@ class CounterSpinBox(Captioned):
     @script(gesture="kb:downArrow")
     def script_decrease(self, gesture):
         self.appModule.counter_steps.press(self.windowHandle, Step.LESS)
-
-
-class CounterWindow(IAccessible):
-    """The window object of the edit: in object navigation the buttons are around the edit inside it."""
-
-    def _get_firstChild(self):
-        return CounterButton(edit=self.windowHandle, step=Step.LESS)
-
-    def _get_lastChild(self):
-        return CounterButton(edit=self.windowHandle, step=Step.MORE)
-
-    def _get_children(self):
-        return [
-            self.firstChild,
-            getNVDAObjectFromEvent(self.windowHandle, winUser.OBJID_CLIENT, 0),
-            self.lastChild,
-        ]
-
-    def _get_childCount(self):
-        return len(self.children)
-
-
-class _ButtonTextInfo(NVDAObjectTextInfo):
-    def activate(self):
-        # The base class clicks with the real mouse at the start of the text.
-        self.obj.doAction()
-
-
-class CounterButton(Window):
-    """The "-" or "+" button beside the edit: a speed button without a window, drawn on the panel."""
-
-    TextInfo = _ButtonTextInfo
-    role = controlTypes.Role.BUTTON
-    firstChild = None
-    lastChild = None
-    actionCount = 1
-
-    def __init__(self, edit: int, step: Step):
-        self.edit = edit
-        self.step = step
-        super().__init__(windowHandle=windows.parent(edit))
-
-    def _isEqual(self, other):
-        return super()._isEqual(other) and other.edit == self.edit and other.step == self.step
-
-    def _get_name(self):
-        if self.step == Step.LESS:
-            # Translators: The button that lowers a number in EZ CD Audio Converter, such as the number of
-            # converters.
-            return _("Decrease")
-        # Translators: The button that raises a number in EZ CD Audio Converter, such as the number of
-        # converters.
-        return _("Increase")
-
-    def _get_states(self):
-        return set()
-
-    def _get_location(self):
-        return RectLTWH.fromCompatibleType(_button_rect(self.edit, self.step))
-
-    def _get_parent(self):
-        return getNVDAObjectFromEvent(self.edit, winUser.OBJID_WINDOW, 0)
-
-    def _get_next(self):
-        if self.step == Step.LESS:
-            return getNVDAObjectFromEvent(self.edit, winUser.OBJID_CLIENT, 0)
-        return None
-
-    def _get_previous(self):
-        if self.step == Step.MORE:
-            return getNVDAObjectFromEvent(self.edit, winUser.OBJID_CLIENT, 0)
-        return None
-
-    def doAction(self, index=None):
-        self.appModule.counter_steps.press(self.edit, self.step)

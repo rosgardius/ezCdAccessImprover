@@ -8,7 +8,7 @@ The offsets are those of ezcd 13.2.1.1, a 64-bit VCL program; another version ma
 """
 
 import ctypes
-from ctypes.wintypes import HANDLE, HWND, LPCWSTR
+from ctypes.wintypes import HANDLE, HWND, LPCWSTR, RECT
 from dataclasses import dataclass
 
 import winUser
@@ -33,9 +33,11 @@ _CONTROLS = 0x398
 # TList: the pointer to the array of items, then their count.
 _LIST_ITEMS = 8
 _LIST_COUNT = 16
-# TControl: FLeft, FTop, FWidth, FHeight in the parent's client pixels; FVisible, then FEnabled.
+# TControl: FLeft, FTop, FWidth, FHeight in the parent's client pixels; FVisible, then FEnabled; the code
+# pointer of FOnClick, nil without a handler.
 _BOUNDS = 0x90
 _VISIBLE_ENABLED = 0xA9
+_ON_CLICK = 0x1F8
 
 
 class _Bounds(ctypes.Structure):
@@ -52,6 +54,7 @@ class Control:
     """A control without a window."""
 
     address: int
+    class_name: str
     left: int
     """In the client pixels of the window holding it, as ``top``."""
     top: int
@@ -59,6 +62,8 @@ class Control:
     height: int
     visible: bool
     enabled: bool
+    on_click: bool
+    """Whether the control has a handler of clicks."""
 
 
 def window_object(hwnd: int) -> int:
@@ -84,14 +89,17 @@ def _class_name(process_handle: int, address: int) -> str:
     return text.raw.decode("latin-1")
 
 
-def controls(hwnd: int, process_handle: int, class_name: str) -> list[Control]:
-    """The window's controls without windows of the VCL class; none if ezcd's memory cannot be read."""
+def controls(hwnd: int, process_handle: int, class_names: frozenset[str]) -> list[Control]:
+    """The window's controls without windows of the VCL classes; none if ezcd's memory cannot be read."""
     window = window_object(hwnd)
     if not window:
         return []
     found = []
     try:
         control_list = _pointer(process_handle, window + _CONTROLS)
+        # VCL makes the list with the first control.
+        if not control_list:
+            return []
         count = (ctypes.c_int32 * 1)()
         remote.read(process_handle, control_list + _LIST_COUNT, count)
         if count[0] <= 0:
@@ -99,17 +107,35 @@ def controls(hwnd: int, process_handle: int, class_name: str) -> list[Control]:
         items = (ctypes.c_uint64 * count[0])()
         remote.read(process_handle, _pointer(process_handle, control_list + _LIST_ITEMS), items)
         for address in items:
-            if _class_name(process_handle, address) != class_name:
+            class_name = _class_name(process_handle, address)
+            if class_name not in class_names:
                 continue
             bounds = _Bounds()
             remote.read(process_handle, address + _BOUNDS, bounds)
             flags = (ctypes.c_ubyte * 2)()
             remote.read(process_handle, address + _VISIBLE_ENABLED, flags)
             visible, enabled = (bool(flag) for flag in flags)
+            on_click = bool(_pointer(process_handle, address + _ON_CLICK))
             found.append(
-                Control(address, bounds.left, bounds.top, bounds.width, bounds.height, visible, enabled)
+                Control(
+                    address,
+                    class_name,
+                    bounds.left,
+                    bounds.top,
+                    bounds.width,
+                    bounds.height,
+                    visible,
+                    enabled,
+                    on_click,
+                )
             )
     except OSError:
         log.debugWarning("Controls of a VCL window of ezcd not read", exc_info=True)
         return []
     return found
+
+
+def screen_rect(hwnd: int, control: Control) -> RECT:
+    """The rectangle on the screen of the window's control."""
+    left, top = winUser.ClientToScreen(hwnd, control.left, control.top)
+    return RECT(left, top, left + control.width, top + control.height)

@@ -5,7 +5,7 @@
 """Walking ezcd's window tree."""
 
 import ctypes
-from collections.abc import Iterator
+from collections.abc import Callable, Hashable, Iterator
 from ctypes.wintypes import RECT
 
 import winUser
@@ -64,10 +64,11 @@ def descendants(hwnd: int) -> Iterator[int]:
         yield from descendants(child)
 
 
-def rows(controls: list[int]) -> list[list[int]]:
-    """The windows by rows of the screen, top to bottom, each row from left to right."""
-    edges = {control: rect(control) for control in controls}
-    found: list[list[int]] = []
+def rows[T: Hashable](controls: list[T], edge_of: Callable[[T], RECT] = rect) -> list[list[T]]:
+    """The controls, windows by default, by rows of the screen, top to bottom, each row from left to
+    right."""
+    edges = {control: edge_of(control) for control in controls}
+    found: list[list[T]] = []
     row_bottom = 0
     for control in sorted(edges, key=lambda c: edges[c].top + edges[c].bottom):
         edge = edges[control]

@@ -24,9 +24,9 @@ from .names import ezcd_string
 from .windows import descendants, parent, rect, root, rows
 
 FORM = "TNamePreview"
-_SETTINGS_CLASS = "TPngSpeedButton"
+_SETTINGS_CLASSES = frozenset(("TPngSpeedButton",))
 # "Filename generation", the page of Settings the button opens.
-_SETTINGS_CAPTION = 576
+SETTINGS_CAPTION = 576
 
 
 def _shown(form: int, class_name: str) -> int:
@@ -76,7 +76,7 @@ def is_tag(hwnd: int) -> bool:
 
 def _settings_button(panel: int, process_handle: int) -> vcl.Control | None:
     return next(
-        (c for c in vcl.controls(panel, process_handle, _SETTINGS_CLASS) if c.visible and c.enabled), None
+        (c for c in vcl.controls(panel, process_handle, _SETTINGS_CLASSES) if c.visible and c.enabled), None
     )
 
 
@@ -259,7 +259,7 @@ class SettingsButton(IAccessible):
 
     @functools.cached_property
     def _caption(self) -> str:
-        return ezcd_string(self.windowHandle, _SETTINGS_CAPTION, self.appModule.language)
+        return ezcd_string(self.windowHandle, SETTINGS_CAPTION, self.appModule.language)
 
     def _get_name(self):
         return self._caption

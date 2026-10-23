@@ -242,6 +242,24 @@ button of each service with what the service is doing while metadata is download
 Options that show the size of the cover art are named the same way: "500x500, Resize embedded Cover
 Art".
 
+### Buttons without windows
+
+The application draws some buttons and links without windows of their own, so NVDA does not find
+them. In object navigation they are among the other controls of their panel, all in the order they
+appear on screen, and NVDA+Numpad Enter presses them. They are not in the Tab order; those that need
+the keyboard have keys of their own, described in their sections.
+
+* Encoder information, right of the format on the output panels of the Audio Converter and Audio CD
+  Ripper tabs.
+* The links of About: the home page of the application and Fraunhofer's page, which open in the
+  browser.
+* The page buttons of the Disc Burner tab, Move up and Move down right of the metadata services in
+  Settings, the Filename generation gear in Filename preview, and the Decrease and Increase buttons of
+  the counters, which report the new number.
+* The picture of the panel that the mouse brings up over the cover art.
+* On the Audio CD Ripper tab, the captions of the metadata fields that the application lets you click,
+  and the icons of the player. They have not been tried with a disc; the icons have no names yet.
+
 ### Lists in dialogs
 
 When a list such as the template history in Filename preview, the metadata services in Settings or the

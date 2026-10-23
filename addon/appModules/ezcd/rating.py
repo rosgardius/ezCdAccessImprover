@@ -12,7 +12,6 @@ on a star.
 import builtins
 import ctypes
 import functools
-from ctypes.wintypes import RECT
 
 import controlTypes
 import eventHandler
@@ -26,7 +25,7 @@ from .cover_art import COVER_CLASS
 from .names import ezcd_string
 from .windows import child_windows, parent, tab_stop_below
 
-_RATING_CLASS = "TRating"
+_RATING_CLASSES = frozenset(("TRating",))
 _STARS = 5
 # A star in design units; a click at the rating's left edge sets no stars.
 _STAR_WIDTH = 16
@@ -40,19 +39,14 @@ def _rating(panel: int, process_handle: int) -> vcl.Control | None:
     if not child_windows(panel, COVER_CLASS):
         return None
     return next(
-        (c for c in vcl.controls(panel, process_handle, _RATING_CLASS) if c.visible and c.enabled), None
+        (c for c in vcl.controls(panel, process_handle, _RATING_CLASSES) if c.visible and c.enabled), None
     )
-
-
-def _screen_rect(panel: int, rating: vcl.Control) -> RECT:
-    left, top = winUser.ClientToScreen(panel, rating.left, rating.top)
-    return RECT(left, top, left + rating.width, top + rating.height)
 
 
 def next_control(panel: int, process_handle: int) -> int:
     """The control after the rating's stop in the Tab order, the Tab stop below it; 0 if none."""
     rating = _rating(panel, process_handle)
-    return tab_stop_below(panel, _screen_rect(panel, rating)) if rating else 0
+    return tab_stop_below(panel, vcl.screen_rect(panel, rating)) if rating else 0
 
 
 def stop_target(window: int, previous: int, tab_key: int, process_handle: int) -> int:

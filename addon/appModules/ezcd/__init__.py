@@ -50,6 +50,7 @@ from . import (
     top_panel,
     tray,
     window_focus,
+    windowless,
 )
 from .language import LanguageFiles
 from .windows import parent, root
@@ -447,8 +448,8 @@ class AppModule(appModuleHandler.AppModule):
         elif window_class == "TProgressBar":
             if convert_window.bar_kind(hwnd) == convert_window.Bar.TOTAL:
                 clsList.insert(0, convert_window.TotalProgressBar)
-        elif window_class == "TEdit" and child_id == 0 and counters.is_counter(hwnd):
-            clsList.insert(0, counters.CounterSpinBox if client else counters.CounterWindow)
+        elif window_class == "TEdit" and client and counters.is_counter(hwnd):
+            clsList.insert(0, counters.CounterSpinBox)
         elif window_class in metadata.FIELD_CLASSES and client and metadata.is_metadata_field(hwnd):
             clsList.insert(0, metadata.MetadataField)
         elif window_class in names.BUTTON_CLASSES:
@@ -522,6 +523,9 @@ class AppModule(appModuleHandler.AppModule):
             clsList.insert(0, tab_order.ScreenOrderControl)
         if client and options.form_of(hwnd):
             clsList.insert(0, options.OptionsControl)
+        # Any window may hold controls without windows.
+        if child_id == 0:
+            clsList.insert(0, windowless.Holder if client else windowless.Sibling)
 
     def _choose_list_classes(self, obj, clsList):
         role = obj.IAccessibleRole

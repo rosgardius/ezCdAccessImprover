@@ -170,7 +170,8 @@ absolute coordinates, captions in a particular language.
 - The pages are switched only by three `TPngSpeedButton`s without windows, captioned with the same
   strings, in the `TPanel` right above the page control (its bottom one pixel above the page control's
   top; it has no child windows): 100 × 24 design units, at left 3, 108 and 213, top 0, scaled by the
-  window's DPI / 96. A posted click at a button's centre shows its page.
+  window's DPI / 96, in the DFM; at runtime each is as wide as its caption (in Russian at 120 DPI 127,
+  150 and 197 pixels, 5 apart, from 4). A posted click at a button's centre shows its page.
 - ezcd handles the click in 0.2–0.55 s, sent messages and MSAA calls waiting meanwhile; the new page
   may be visible after the first 50 ms of it. With focus on the page control, focus stays there; with
   focus on a control of the old page, it goes to the first control of the new one (its list).
@@ -311,7 +312,16 @@ absolute coordinates, captions in a particular language.
   `FControls`, the `TList` of the controls without windows (at 8 the pointer to the items, at 16 their
   count). A class name is a short string pointed to from 136 bytes before the virtual method table the
   object points to. A control has `FLeft`, `FTop`, `FWidth`, `FHeight` at 0x90 (parent's client
-  pixels), `FVisible` at 0xA9 and `FEnabled` at 0xAA; `TRating` has its number of stars at 0x340.
+  pixels), `FVisible` at 0xA9 and `FEnabled` at 0xAA, and the code pointer of `FOnClick` at 0x1F8,
+  nil without a handler; `TRating` has its number of stars at 0x340. `FVisible` stays set inside a
+  hidden window, as on a hidden tab.
+- Controls without windows that take clicks: `TSpeedButton`s and `TPngSpeedButton`s (counters, pages
+  of the Disc Burner tab, metadata services, Encoder information, the gear of Filename preview), the
+  links of About (`TLabel`s with `OnClick`: the home page and Fraunhofer's page, opened in the
+  browser), the captions of the CD Ripper's metadata fields (`TLabel`s with `OnClick`), the icons of its
+  player and the picture of the panel over the cover art (`TImage`s with `OnClick`). The pictures of
+  the cover art in the metadata panel (`TImage`s of the `TDropPanel`) take clicks too. Other labels,
+  rating and bevels have no handler. MSAA shows a window's child windows in z-order, not by place.
 
 ## Captions in all windows
 

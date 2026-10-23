@@ -38,10 +38,14 @@ class Text:
 
 def logical_rect(hwnd: int, reference: int) -> RECT:
     """The window's rectangle in the logical coordinates of the reference window."""
-    rect = window_rect(hwnd)
-    rect.left, rect.top = windowUtils.physicalToLogicalPoint(reference, rect.left, rect.top)
-    rect.right, rect.bottom = windowUtils.physicalToLogicalPoint(reference, rect.right, rect.bottom)
-    return rect
+    return to_logical(window_rect(hwnd), reference)
+
+
+def to_logical(edge: RECT, reference: int) -> RECT:
+    """The rectangle on the screen in the logical coordinates of the reference window."""
+    left, top = windowUtils.physicalToLogicalPoint(reference, edge.left, edge.top)
+    right, bottom = windowUtils.physicalToLogicalPoint(reference, edge.right, edge.bottom)
+    return RECT(left, top, right, bottom)
 
 
 def client_rect(hwnd: int) -> RECT:
