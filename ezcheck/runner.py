@@ -12,11 +12,12 @@ def _in_dialog(context: Context, opener: windows.Opener, checks: list[Check], re
     try:
         with windows.opened(context, opener) as dialog:
             context.dialog, context.dialog_classes = dialog, opener.classes
+            context.dialog_tab = opener.tab
             results.extend(run(c, context, opener.name) for c in checks)
     except Skip as skip:
         results.extend(skipped(c, opener.name, str(skip)) for c in checks)
     finally:
-        context.dialog, context.dialog_classes = 0, frozenset()
+        context.dialog, context.dialog_classes, context.dialog_tab = 0, frozenset(), None
 
 
 def _openers(context: Context, tab: Tab) -> list[windows.Opener]:
@@ -26,12 +27,12 @@ def _openers(context: Context, tab: Tab) -> list[windows.Opener]:
     extra = {Tab.CONVERTER: windows.encoder_information_opener, Tab.RIPPER: windows.filename_preview_opener}
     if tab in extra:
         with contextlib.suppress(Skip):
-            found.append(extra[tab](context))
+            found.append(extra[tab](context, tab))
     return found
 
 
 def run_checks(context: Context, chosen: list[Check]) -> list[Result]:
-    by_scope = {scope: [c for c in chosen if c.scope == scope] for scope in Scope}
+    by_scope = {scope: [c for c in chosen if c.scope & scope] for scope in Scope}
     results = [run(c, context) for c in by_scope[Scope.ONCE]]
     if not (by_scope[Scope.TAB] or by_scope[Scope.DIALOG] or by_scope[Scope.SETTINGS]):
         return results
@@ -49,13 +50,14 @@ def run_checks(context: Context, chosen: list[Check]) -> list[Result]:
             if by_scope[Scope.DIALOG]:
                 for opener in _openers(context, tab):
                     _in_dialog(context, opener, by_scope[Scope.DIALOG], results)
-        if by_scope[Scope.SETTINGS] or by_scope[Scope.DIALOG]:
+        in_settings = [c for c in chosen if c.scope & (Scope.DIALOG | Scope.SETTINGS)]
+        if in_settings:
             try:
                 opener = windows.settings_opener(context)
             except Skip as skip:
-                results.extend(skipped(c, "Settings", str(skip)) for c in by_scope[Scope.SETTINGS])
+                results.extend(skipped(c, "Settings", str(skip)) for c in in_settings)
             else:
-                _in_dialog(context, opener, by_scope[Scope.DIALOG] + by_scope[Scope.SETTINGS], results)
+                _in_dialog(context, opener, in_settings, results)
     finally:
         if start is not None:
             try:

@@ -36,6 +36,8 @@ class Opener:
     """The form classes the add-on expects of it."""
     open: Callable[[], object]
     """Clicks what opens it, without waiting."""
+    tab: Tab | None = None
+    """The tab it is opened from, if what it shows depends on the tab."""
 
 
 def _dialogs(context: Context) -> set[int]:
@@ -150,7 +152,9 @@ def button_openers(context: Context, tab: Tab) -> list[Opener]:
         Tab.BURNER: frozenset(("TAudioCDOptions",)),
     }[tab]
     return [
-        Opener(f"{win.text(b)!r} of the {tab.name.lower()} tab", expected, lambda b=b: win.post(b, BM_CLICK))
+        Opener(
+            f"{win.text(b)!r} of the {tab.name.lower()} tab", expected, lambda b=b: win.post(b, BM_CLICK), tab
+        )
         for b in win.descendants(parts.tab)
         if win.class_name(b) == "TButton"
         and win.is_visible(b)
@@ -168,11 +172,11 @@ def settings_opener(context: Context) -> Opener:
     return Opener("Settings", frozenset(("TSettings2Form",)), lambda: _click_button(button))
 
 
-def filename_preview_opener(context: Context) -> Opener:
+def filename_preview_opener(context: Context, tab: Tab) -> Opener:
     """Filename preview: the button with only an image right next to the template of the file names, a combo
     box where the template is typed."""
-    tab = main_window.active_tab(context.ezcd)
-    for combo in win.descendants(tab):
+    sheet = main_window.active_tab(context.ezcd)
+    for combo in win.descendants(sheet):
         if (
             win.class_name(combo) != "TComboBox"
             or not win.children(combo, "Edit")
@@ -185,16 +189,23 @@ def filename_preview_opener(context: Context) -> Opener:
             beside = 0 <= other.left - edge.right <= 10 and abs(other.top - edge.top) <= 4
             if beside and not win.text(button) and win.is_visible(button) and win.is_enabled(button):
                 return Opener(
-                    "Filename preview", frozenset(("TNamePreview",)), lambda b=button: win.post(b, BM_CLICK)
+                    "Filename preview",
+                    frozenset(("TNamePreview",)),
+                    lambda b=button: win.post(b, BM_CLICK),
+                    tab,
                 )
     raise Skip("no enabled button of Filename preview on the active tab")
 
 
-def encoder_information_opener(context: Context) -> Opener:
+def encoder_information_opener(context: Context, tab: Tab) -> Opener:
     """Encoder information: the speed button without a window in the output panel, the panel of the format."""
-    tab = main_window.active_tab(context.ezcd)
+    sheet = main_window.active_tab(context.ezcd)
     panel = next(
-        (p for p in win.descendants(tab) if win.class_name(p) == "TPanel" and win.children(p, "TComboBoxEx")),
+        (
+            p
+            for p in win.descendants(sheet)
+            if win.class_name(p) == "TPanel" and win.children(p, "TComboBoxEx")
+        ),
         0,
     )
     controls = context.ezcd.controls(panel, _SPEED_BUTTONS, context.facts.vcl) if panel else []
@@ -208,7 +219,7 @@ def encoder_information_opener(context: Context) -> Opener:
         win.post(panel, WM_LBUTTONDOWN, MK_LBUTTON, point)
         win.post(panel, WM_LBUTTONUP, 0, point)
 
-    return Opener("Encoder information", frozenset(("TEncoderInfo",)), click)
+    return Opener("Encoder information", frozenset(("TEncoderInfo",)), click, tab)
 
 
 _TVM_GETNEXTITEM, _TVM_SELECTITEM = 0x110A, 0x110B

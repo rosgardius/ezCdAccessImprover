@@ -17,6 +17,8 @@ uv run python -m ezcheck
 - `--list`: the checks, with what each one checks.
 - `--only ID ...`: only these checks; a group name such as `strings` takes all of its checks.
 - `--json`: the report as JSON.
+- `--write-baseline`: run only the audit and keep what it finds as the baseline of this version of ezcd,
+  in `ezcheck/baselines/<version>.json`.
 
 ezcd running as administrator can only be checked by a checker running as administrator too.
 
@@ -41,3 +43,16 @@ Notes under a check tell what does not fail it, such as strings missing from a t
 
 Exit codes: 0 every fact holds, 1 some do not, 2 ezcd could not be checked (not running, a dialog
 open, no access to its memory).
+
+## The audit
+
+Besides the facts the add-on relies on, the checks `audit.*` look in every tab and dialog for what a
+screen reader does not get from ezcd by itself: windows in the Tab order without an MSAA name, controls
+without windows that take clicks (speed buttons, labels and images with a handler), and toolbars,
+sliders and buttons that Tab does not reach. What is found is compared with the baseline of the nearest
+version of ezcd (the newest not newer than the one checked): a new finding fails the check, a finding of
+the baseline no longer there is a note. An element is named by its form (or the tab of the main window)
+and the classes of the windows down to it with their indexes, so the names hold in every language.
+
+Some findings depend on the settings shown, such as the fields of the effect chosen in DSP: on another
+computer they may differ from the baseline without any change in ezcd.

@@ -6,7 +6,7 @@ Exit codes: 0 every fact holds, 1 some do not, 2 ezcd could not be checked.
 import argparse
 import sys
 
-from . import report, win
+from . import audit, report, win
 from .checks import CHECKS
 from .core import Context, Status
 from .ezcd import Ezcd, Unavailable
@@ -24,6 +24,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--list", action="store_true", help="list the checks and exit")
     parser.add_argument("--only", nargs="+", metavar="ID", help="run only these checks or groups (strings)")
     parser.add_argument("--json", action="store_true", help="print the report as JSON")
+    parser.add_argument(
+        "--write-baseline",
+        action="store_true",
+        help="run the audit only and write what it finds as the baseline of this version of ezcd",
+    )
     return parser
 
 
@@ -34,9 +39,10 @@ def main() -> int:
         for found in CHECKS:
             print(f"{found.id:24} {found.part:16} {found.description}")
         return EXIT_PASSED
-    chosen = [c for c in CHECKS if not args.only or any(c.matches(wanted) for wanted in args.only)]
+    wanted = ["audit"] if args.write_baseline else args.only
+    chosen = [c for c in CHECKS if not wanted or any(c.matches(w) for w in wanted)]
     if not chosen:
-        print(f"No check matches {' '.join(args.only)}; see --list.", file=sys.stderr)
+        print(f"No check matches {' '.join(wanted)}; see --list.", file=sys.stderr)
         return EXIT_UNAVAILABLE
     win.be_dpi_aware()
     try:
@@ -46,12 +52,18 @@ def main() -> int:
         return EXIT_UNAVAILABLE
     try:
         context = Context(ezcd)
+        context.cache["writing baseline"] = args.write_baseline
         results = run_checks(context, chosen)
     except KeyboardInterrupt:
         print("Interrupted; the windows the checker opened are closed.", file=sys.stderr)
         return EXIT_UNAVAILABLE
     finally:
         ezcd.close()
+    if args.write_baseline:
+        if not ezcd.version:
+            print("ezcd.exe has no version to name the baseline by.", file=sys.stderr)
+            return EXIT_UNAVAILABLE
+        print(f"Baseline written: {audit.write_baseline(ezcd.version, context.cache.get('audit', {}))}")
     code = EXIT_FAILED if any(r.status == Status.FAILED for r in results) else EXIT_PASSED
     print(report.as_json(context, results, code) if args.json else report.text(context, results))
     return code

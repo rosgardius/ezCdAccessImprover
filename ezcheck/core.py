@@ -10,8 +10,8 @@ from .addon import facts
 from .ezcd import Ezcd
 
 
-class Scope(enum.Enum):
-    """Where a check runs."""
+class Scope(enum.Flag):
+    """Where a check runs; a check may run in several of them."""
 
     ONCE = enum.auto()
     """Once, with the main window as it is."""
@@ -102,6 +102,8 @@ class Context:
         """The dialog open for the checks of dialogs, 0 for the others."""
         self.dialog_classes: frozenset[str] = frozenset()
         """The form classes the add-on expects of that dialog."""
+        self.dialog_tab = None
+        """The ``main_window.Tab`` the dialog was opened from, if what it shows depends on the tab."""
         self.cache: dict[str, object] = {}
         """What the run learns once, by name."""
 
@@ -165,6 +167,10 @@ def run(found: Check, context: Context, where: str = "") -> Result:
         found.run(context, findings)
     except Skip as skip:
         return Result(found, where, Status.SKIPPED, str(skip), findings)
+    except OSError as error:
+        return Result(
+            found, where, Status.SKIPPED, f"ezcd's memory or windows did not answer: {error}", findings
+        )
     status = Status.FAILED if findings.discrepancies else Status.PASSED
     return Result(found, where, status, "", findings)
 
