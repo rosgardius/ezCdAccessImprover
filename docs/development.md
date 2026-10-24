@@ -41,8 +41,14 @@ changes are picked up with NVDA+Ctrl+F3. Log: `%TEMP%\nvda.log`.
 ## Code style
 
 PEP 8, 4-space indentation, snake_case; names dictated by NVDA (`AppModule`,
-`script_`, `event_`, `_get_*`) stay as they are. User-visible strings go through
-`_()` with a `# Translators:` comment.
+`script_`, `event_`, `_get_*`) stay as they are.
+
+The add-on's own names and words for ezcd's controls are said in the language ezcd shows, not in
+NVDA's: they are `OwnString("key")` in the code and `key = text` lines in
+`addon/appModules/ezcd/strings/english.txt`, with a `#` note for translators above each. A
+translation is a file named as ezcd's language file (`Language\russian.uni` → `russian.txt`); a missing
+file or key falls back to English. Only what belongs to NVDA's own UI (descriptions of commands and
+their category in Input Gestures) goes through `_()` with a `# Translators:` comment.
 
 ## Code rules
 
@@ -55,7 +61,8 @@ The app module is a few thousand lines. These rules keep it from growing copies 
   - `vcl.py`: VCL objects in ezcd's memory, such as controls without windows;
   - `captions.py`: captions found by position;
   - `panels.py`: panels of the main window, recognised by the windows they hold;
-  - `language.py`: ezcd's strings and the choice of the language ezcd shows;
+  - `language.py`: ezcd's strings, the add-on's own strings and the choice of the language ezcd shows
+    (also of one window);
   - `commands.py`: the category of the add-on's commands in Input Gestures.
 
   A second copy of a helper, even a one-line one such as `parent(hwnd)`, is a defect. A helper

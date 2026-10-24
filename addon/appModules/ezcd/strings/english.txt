@@ -1,0 +1,68 @@
+# The add-on's own names and words for EZ CD Audio Converter, said in the language the application shows.
+#
+# One string per line: key = text. Lines starting with # are notes for translators.
+# A translation is a copy of this file named as the application's language file, in UTF-8:
+# Language\russian.uni next to ezcd.exe -> russian.txt. Keys stay as they are; a key missing from a
+# translation is said in English.
+
+# The name of a button that opens a dialog to choose a folder or a file.
+browse = Browse
+# The name of the list of picture types (front cover, back cover, ...) in the metadata editor.
+picture_type = Picture type
+# The short name of the list of sample rates of a codec (44100 Hz, ...).
+rate = Rate
+# The short name of the list of bit rates of a codec (~128 kbit/s, ...).
+bitrate = Bitrate
+# The short name of the list of channel layouts of a codec (Stereo, Mono, 5.1, ...).
+channels = Channels
+# The short name of the list of bit depths of a codec (16-bit, 24-bit, ...).
+bits = Bits
+# The short name of the list of bit rate modes of a codec (VBR, CBR, ...).
+mode = Mode
+# The short name of any other list of a codec's parameters: compression level, encoder quality, kind of
+# signal.
+level = Level
+# The name of the list of output formats (MP3 | LAME, FLAC, ...).
+format = Format
+# The name of the list of file name extensions of the output format (.m4a, .aac, ...).
+extension = Extension
+# The name of the button beside the output format that shows information about the format's encoder.
+encoder_information = Encoder information
+# The button that lowers a number, such as the number of converters.
+decrease = Decrease
+# The button that raises a number, such as the number of converters.
+increase = Increase
+# The name of the filter of the file explorer (All audio files, *.flac, ...).
+file_types = File types
+# The name of the breadcrumb bar of the file explorer, which shows the folder's path, and of the field
+# in which the path is edited.
+path = Path
+# The name of the list of files and folders in the folder chosen in the file explorer.
+folder_contents = Folder contents
+# The name of the picture of a quiet loudspeaker left of the volume of the player on the Audio CD Ripper
+# tab.
+quiet = Quiet
+# The name of the picture of a loud loudspeaker right of the volume of the player on the Audio CD Ripper
+# tab.
+loud = Loud
+# The name of the slider of the position in the track that the player of the Audio CD Ripper tab plays.
+position = Position
+# Said before the label of the disc, the top item of the list of files to burn to an MP3 or data disc.
+disc = Disc
+# The name of the list of effects in DSP (Gain, Peak normalization, ...).
+effect = Effect
+# The name of the list of settings pages.
+categories = Categories
+# The name of the list of file name templates used before.
+templates = Templates
+# The name of the field for the release code (catalogue number) in the manual search of metadata.
+release_code = Release code
+# The name of the list of releases found by the manual search of metadata, and of the list of pictures
+# found by Download Cover Art.
+results = Results
+# The name of the progress bar of the whole conversion.
+total_progress = Total progress
+# Said first in the status of a paused conversion.
+paused = Paused
+# Said first in the status of a finished conversion.
+finished = Finished

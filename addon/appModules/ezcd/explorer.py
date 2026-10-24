@@ -21,7 +21,6 @@ import time
 from collections.abc import Hashable
 from dataclasses import dataclass
 
-import addonHandler
 import api
 import controlTypes
 import core
@@ -32,15 +31,11 @@ from NVDAObjects.IAccessible.sysListView32 import LVM_GETITEMCOUNT, LVM_GETNEXTI
 from scriptHandler import script
 
 from . import captions, list_items, names, panels, remote, screen, toolbar, toolbar_stops
-from .language import LanguageFiles
+from .language import LanguageFiles, OwnString
 from .top_panel import main_tab
 from .windows import child_windows, descendants, parent, rect, tab_stop_below
 
-addonHandler.initTranslation()
-
-# Translators: The name of the breadcrumb bar of the file explorer, which shows the folder's path,
-# and of the field in which the path is edited.
-_PATH = _("Path")
+_PATH = OwnString("path")
 
 # ezcd's strings for the buttons, by image.
 _VIEW_EXPLORER = 29
@@ -313,11 +308,17 @@ def is_path_field(hwnd: int) -> bool:
     )
 
 
-class PathBar(IAccessible):
+class _Path(IAccessible):
+    """The breadcrumb bar or the field of the path, both named Path."""
+
+    def _get_name(self):
+        return self.appModule.language.own_string(self.windowHandle, _PATH)
+
+
+class PathBar(_Path):
     """The breadcrumb bar, presented as a button named Path whose value is the folder: pressing it shows
     the field of the path."""
 
-    name = _PATH
     role = controlTypes.Role.BUTTON
 
     def _get_value(self):
@@ -388,7 +389,7 @@ class PathComboBox(IAccessible):
     isPresentableFocusAncestor = False
 
 
-class PathEdit(IAccessible):
+class PathEdit(_Path):
     """The field of the path. Enter goes to the path, Escape cancels; ezcd then hides the field and moves
     focus elsewhere in the main window, so focus goes back to the bar.
 
@@ -396,7 +397,6 @@ class PathEdit(IAccessible):
     which ezcd opened the field, is reported instead of the selection.
     """
 
-    name = _PATH
     _entered_at = 0.0
     _opened_path = ""
 

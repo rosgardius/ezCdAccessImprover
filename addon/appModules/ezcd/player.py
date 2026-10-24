@@ -15,18 +15,15 @@ from collections.abc import Hashable
 from ctypes.wintypes import RECT
 from dataclasses import dataclass
 
-import addonHandler
 import winUser
 from NVDAObjects.IAccessible import IAccessible
 from scriptHandler import script
 
 from . import panels, toolbar, toolbar_stops
 from .captions import SLIDER_CLASSES
-from .language import LanguageFiles
+from .language import LanguageFiles, OwnString
 from .top_panel import main_tab
 from .windows import child_windows, descendants, parent, rect
-
-addonHandler.initTranslation()
 
 # ezcd's strings for the buttons, by image: the buttons' hints.
 _NAMES = {
@@ -38,12 +35,8 @@ _NAMES = {
     5: 189,  # Stop
     6: 190,  # Pause
 }
-# Translators: The name of the picture of a quiet loudspeaker left of the volume of the player on the
-# Audio CD Ripper tab of EZ CD Audio Converter.
-_QUIET = _("Quiet")
-# Translators: The name of the picture of a loud loudspeaker right of the volume of the player on the
-# Audio CD Ripper tab of EZ CD Audio Converter.
-_LOUD = _("Loud")
+_QUIET = OwnString("quiet")
+_LOUD = OwnString("loud")
 
 
 @dataclass(frozen=True)
@@ -107,7 +100,7 @@ def stop_target(window: int, previous: int, tab_key: int) -> int:
     return found[0] if tab_key > 0 else found[-1]
 
 
-def icon_name(holder: int, edge: RECT) -> str:
+def icon_name(holder: int, edge: RECT) -> OwnString | str:
     """The name of the player's picture at the rectangle on the screen; empty if the window is not the
     player."""
     volume = child_windows(holder, "TTrackBar") if panels.is_player_panel(holder) else []

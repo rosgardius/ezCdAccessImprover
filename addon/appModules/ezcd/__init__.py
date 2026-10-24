@@ -57,7 +57,7 @@ from . import (
     windowless,
 )
 from .language import LanguageFiles
-from .windows import child_windows, parent, root, top_level_windows
+from .windows import child_windows, parent, root, shown_texts, top_level_windows
 
 _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 # Seconds from pressing View Explorer to the focus ezcd moves as it hides the button.
@@ -138,7 +138,7 @@ class AppModule(appModuleHandler.AppModule):
             for labels in child_windows(form, "TPageControl"):
                 captions = {winUser.getWindowText(t) for t in child_windows(labels, "TTabSheet")} - {""}
                 if captions:
-                    return captions, names.shown_texts(form)
+                    return captions, shown_texts(form)
         return set(), set()
 
     def tab_menu_opened(self, tab: int):

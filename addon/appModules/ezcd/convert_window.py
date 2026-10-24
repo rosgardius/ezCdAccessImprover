@@ -10,19 +10,17 @@ import re
 import time
 from dataclasses import dataclass
 
-import addonHandler
 import winUser
 from logHandler import log
 from NVDAObjects.IAccessible import IAccessible
 
 from . import screen
-from .language import LanguageFiles
+from .language import LanguageFiles, OwnString
 from .windows import child_windows, parent, root
-
-addonHandler.initTranslation()
 
 _WINDOW_CLASSES = ("TConvertWnd", "TConvertWnd_Single")
 _RESUME_STRING = 145
+_TOTAL_PROGRESS = OwnString("total_progress")
 
 # The summary panel in design units (DFM): the row of the total bar and the percentage right of it, and
 # the grid of label and value pairs under it.
@@ -56,6 +54,10 @@ class State(enum.Enum):
     RUNNING = enum.auto()
     PAUSED = enum.auto()
     FINISHED = enum.auto()
+
+
+# Said first in the status of the conversion.
+_STATE_WORDS = {State.PAUSED: OwnString("paused"), State.FINISHED: OwnString("finished")}
 
 
 def is_conversion_window(window: int) -> bool:
@@ -169,14 +171,8 @@ class SpeedAverage:
         return speed_text[: match.start()] + number + speed_text[match.end() :]
 
 
-def _compose(summary: Summary, current: State, speed: SpeedAverage) -> str:
-    parts = []
-    if current == State.PAUSED:
-        # Translators: Reported first in the status of a paused conversion in EZ CD Audio Converter.
-        parts.append(_("Paused"))
-    elif current == State.FINISHED:
-        # Translators: Reported first in the status of a finished conversion in EZ CD Audio Converter.
-        parts.append(_("Finished"))
+def _compose(summary: Summary, current: State, speed: SpeedAverage, state_word: str) -> str:
+    parts = [state_word]
     if current != State.FINISHED:
         parts.append(summary.percent)
     fields = [Field.CONVERTED, Field.ERRORS, Field.SKIPPED]
@@ -227,7 +223,9 @@ class ConversionStatus:
         if summary is None:
             log.debugWarning("No text in the summary panel of the conversion window")
             return ""
-        text = _compose(summary, state(window, language), self._speed)
+        current = state(window, language)
+        word = language.own_string(window, _STATE_WORDS[current]) if current in _STATE_WORDS else ""
+        text = _compose(summary, current, self._speed, word)
         self._last = (panel, time.monotonic(), text)
         return text
 
@@ -235,5 +233,5 @@ class ConversionStatus:
 class TotalProgressBar(IAccessible):
     """The progress of the whole conversion; its caption is a label without a window."""
 
-    # Translators: The name of the progress bar of the whole conversion in EZ CD Audio Converter.
-    name = _("Total progress")
+    def _get_name(self):
+        return self.appModule.language.own_string(self.windowHandle, _TOTAL_PROGRESS)

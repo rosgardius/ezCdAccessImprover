@@ -73,6 +73,14 @@ def descendants(hwnd: int) -> Iterator[int]:
         yield from descendants(child)
 
 
+def shown_texts(hwnd: int) -> set[str]:
+    """The texts of the control's top-level window and of its visible windows."""
+    window = root(hwnd)
+    shown = {winUser.getWindowText(window)}
+    shown.update(winUser.getWindowText(w) for w in descendants(window) if winUser.isWindowVisible(w))
+    return shown
+
+
 def rows[T: Hashable](controls: list[T], edge_of: Callable[[T], RECT] = rect) -> list[list[T]]:
     """The controls, windows by default, by rows of the screen, top to bottom, each row from left to
     right."""

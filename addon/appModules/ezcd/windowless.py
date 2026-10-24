@@ -12,7 +12,6 @@ They are not Tab stops: those that need the keyboard have their own stops and ke
 import functools
 from ctypes.wintypes import RECT
 
-import addonHandler
 import controlTypes
 import winUser
 from locationHelper import RectLTWH
@@ -22,10 +21,9 @@ from NVDAObjects.window import Window
 
 from . import captions, counters, filename_preview, player, remote, screen, vcl
 from .cover_art import COVER_CLASS
-from .names import ezcd_string
+from .language import OwnString
+from .names import Name, name_text
 from .windows import child_windows, parent, rect, root, rows
-
-addonHandler.initTranslation()
 
 _BUTTON_CLASSES = frozenset(("TSpeedButton", "TPngSpeedButton"))
 # Only with a handler of clicks: other labels and images are text and pictures.
@@ -34,9 +32,7 @@ _CLASSES = _BUTTON_CLASSES | _CLICKED_CLASSES
 _MOVE_UP = 241
 _MOVE_DOWN = 242
 _COVER_ART = 349
-# Translators: The name of the button beside the output format in EZ CD Audio Converter that shows
-# information about the format's encoder.
-_ENCODER_INFORMATION = _("Encoder information")
+_ENCODER_INFORMATION = OwnString("encoder_information")
 
 type _Item = int | vcl.Control
 """A child window or a control without a window."""
@@ -164,15 +160,13 @@ class DrawnControl(Window):
 
     @functools.cached_property
     def _name(self) -> str:
-        if self._counter:
-            return counters.step_name(self._counter[1])
-        name = self._known_name()
-        if isinstance(name, int):
-            return ezcd_string(self.holder, name, self.appModule.language)
-        # A picture has no text on it.
-        return name if name or self.control.class_name == "TImage" else self._drawn_text()
+        name = counters.step_name(self._counter[1]) if self._counter else self._known_name()
+        if isinstance(name, str):
+            # A picture has no text on it.
+            return name if name or self.control.class_name == "TImage" else self._drawn_text()
+        return name_text(self.holder, name, self.appModule.language)
 
-    def _known_name(self) -> int | str:
+    def _known_name(self) -> Name:
         """The name of a control without a caption; empty if none is known for it."""
         form = winUser.getClassName(root(self.holder))
         if self.control.class_name == "TImage":

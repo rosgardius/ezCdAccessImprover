@@ -8,6 +8,10 @@ Improves accessibility of EZ CD Audio Converter with NVDA.
 
 ## Features
 
+The names and words this add-on gives to the application's controls, such as Path, Browse or Encoder
+information, are said in the language of the application, not in NVDA's, where the add-on has a
+translation for that language; otherwise in English.
+
 ### Top buttons of the main window's tabs
 
 The large buttons at the top of the Audio Converter, Audio CD Ripper and Disc Burner tabs (Convert,

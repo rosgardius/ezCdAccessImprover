@@ -16,7 +16,6 @@ import threading
 import time
 from ctypes.wintypes import POINT, RECT
 
-import addonHandler
 import api
 import braille
 import controlTypes
@@ -28,9 +27,8 @@ from scriptHandler import script
 from winBindings import user32
 
 from . import remote, screen, windows
+from .language import OwnString
 from .names import Captioned
-
-addonHandler.initTranslation()
 
 # The buttons in design units (DFM): squares beside the edit, level with its top, 1 to 3 units from it
 # by the window; a click goes to a button's centre.
@@ -87,14 +85,8 @@ def button_of(panel: int, edge: RECT) -> tuple[int, Step] | None:
     return None
 
 
-def step_name(step: Step) -> str:
-    if step == Step.LESS:
-        # Translators: The button that lowers a number in EZ CD Audio Converter, such as the number of
-        # converters.
-        return _("Decrease")
-    # Translators: The button that raises a number in EZ CD Audio Converter, such as the number of
-    # converters.
-    return _("Increase")
+def step_name(step: Step) -> OwnString:
+    return OwnString("decrease") if step == Step.LESS else OwnString("increase")
 
 
 def click(edit: int, step: Step) -> bool:

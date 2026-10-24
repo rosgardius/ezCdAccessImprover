@@ -12,7 +12,6 @@ import re
 import time
 from collections.abc import Callable, Iterable, Iterator
 
-import addonHandler
 import api
 import braille
 import controlTypes
@@ -30,6 +29,7 @@ from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from scriptHandler import script
 
 from . import convert_window, names, remote, top_panel
+from .language import OwnString
 from .remote import (
     TVGN_CARET,
     TVGN_CHILD,
@@ -49,8 +49,6 @@ from .remote import (
 )
 from .windows import parent, root
 
-addonHandler.initTranslation()
-
 _FILES_STRING = 494
 _TRACKLIST_STRING = 137
 _FILELIST_STRING = 141
@@ -66,9 +64,7 @@ _LIST_NAMES = {
 }
 # The pages whose list holds the disc as its only top-level node.
 _DISC_PAGE_STRINGS = (471, 472)
-# Translators: Said before the label of the disc, the top item of the list of files to burn to an MP3 or
-# data disc.
-_DISC = _("Disc")
+_DISC = OwnString("disc")
 
 _SELECT_ALL_POLL_MS = 50
 _SELECT_ALL_POLLS = 10
@@ -347,10 +343,10 @@ class MainFileListItem(TreeItem):
         page = _burner_page(self.windowHandle)
         if not page:
             return ""
-        strings = names.window_strings(self.windowHandle, self.appModule.language)
+        strings = self.appModule.language.window_strings(self.windowHandle)
         if winUser.getWindowText(page) not in (strings.get(n) for n in _DISC_PAGE_STRINGS):
             return ""
-        return strings.get(_DISC_STRING) or _DISC
+        return strings.get(_DISC_STRING) or self.appModule.language.own_string(self.windowHandle, _DISC)
 
     def _get_name(self):
         name = super()._get_name()
@@ -560,7 +556,7 @@ class MainWindowList(IAccessible):
     @functools.cached_property
     def _name(self) -> str:
         # The captions of the pages repeat across languages, as Audio CD in Russian and Bulgarian.
-        strings = names.window_strings(self.windowHandle, self.appModule.language)
+        strings = self.appModule.language.window_strings(self.windowHandle)
         caption = _page_caption(self.windowHandle)
         name = next(
             (strings.get(n, "") for shown, n in _LIST_NAMES.items() if strings.get(shown) == caption), ""
@@ -576,7 +572,7 @@ class ConversionFileList(IAccessible):
     """The list of the conversion window, named Format by ezcd."""
 
     def _get_name(self):
-        name = names.window_strings(self.windowHandle, self.appModule.language).get(_FILES_STRING)
+        name = self.appModule.language.window_strings(self.windowHandle).get(_FILES_STRING)
         return name or super()._get_name()
 
 

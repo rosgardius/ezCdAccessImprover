@@ -14,17 +14,14 @@ import ctypes
 import functools
 import re
 
-import addonHandler
 import controlTypes
 import winUser
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 
 from . import captions, cards, panels, remote, screen
 from .captions import Layout
-from .language import LanguageFiles
+from .language import LanguageFiles, OwnString
 from .windows import child_windows, descendants, parent, root
-
-addonHandler.initTranslation()
 
 BUTTON_CLASSES = frozenset(("TButton", "TBitBtn", "TPngBitBtn", "TCheckBox", "TRadioButton"))
 _CB_GETCOUNT = 0x146
@@ -52,11 +49,11 @@ _WRITE_SPEED = 236
 _FOLDERS = 380
 _VOLUME_CONTROL = 109
 
-# A name is a string number of the language files or the add-on's own string.
-type _Name = int | str | None
+type Name = int | OwnString | str | None
+"""A string number of the language files, the add-on's own string or the name itself."""
 
 
-def _image_button(hwnd: int) -> _Name:
+def _image_button(hwnd: int) -> Name:
     """A button with only an image, right next to the field it serves."""
     layout = Layout(hwnd)
     _texts, neighbour = layout.left()
@@ -64,14 +61,13 @@ def _image_button(hwnd: int) -> _Name:
         return None
     neighbour_class = winUser.getClassName(neighbour)
     if neighbour_class == "TEdit":
-        # Translators: The name of a button that opens a dialog to choose a folder or a file.
-        return _("Browse")
+        return OwnString("browse")
     if neighbour_class == "TComboBox":
         return _FILENAME_PREVIEW
     return None
 
 
-def _button(hwnd: int) -> _Name:
+def _button(hwnd: int) -> Name:
     text = winUser.getWindowText(hwnd)
     if text and not text.strip():
         # A tag button of the file name template that inserts a space.
@@ -79,7 +75,7 @@ def _button(hwnd: int) -> _Name:
     return _image_button(hwnd)
 
 
-def _check_box(hwnd: int) -> _Name:
+def _check_box(hwnd: int) -> Name:
     """A check box that switches on the effect chosen in the combo box right of it, as in DSP."""
     combo_box = Layout(hwnd).right_window()
     if winUser.getClassName(combo_box) != "TComboBox":
@@ -87,7 +83,7 @@ def _check_box(hwnd: int) -> _Name:
     return remote.text(combo_box, _TEXT_LENGTH) or None
 
 
-def _move_button(hwnd: int) -> _Name:
+def _move_button(hwnd: int) -> Name:
     """Edit profiles: two buttons with only an image right of the list, one above the other."""
     layout = Layout(hwnd)
     for sibling, rect in layout.siblings.items():
@@ -96,18 +92,16 @@ def _move_button(hwnd: int) -> _Name:
     return None
 
 
-def _metadata_tree(hwnd: int) -> _Name:
+def _metadata_tree(hwnd: int) -> Name:
     """Metadata editor: the list of files lies in a panel of the form, the list of fields deeper."""
     return _FILES if parent(parent(hwnd)) == root(hwnd) else _METADATA
 
 
-def _metadata_combo_box(hwnd: int) -> _Name:
+def _metadata_combo_box(hwnd: int) -> Name:
     """Metadata editor: the name of a field to add is typed, the type of a picture is chosen."""
     if child_windows(hwnd, "Edit"):
         return _FIELD_NAME
-    # Translators: The name of the list of picture types (front cover, back cover, ...)
-    # in the metadata editor.
-    return _("Picture type")
+    return OwnString("picture_type")
 
 
 def _combo_box_items(hwnd: int) -> list[str]:
@@ -125,33 +119,22 @@ def _combo_box_items(hwnd: int) -> list[str]:
 # The items of a codec's parameters are the codec's own, not translated: values with units, modes,
 # levels. The first kind that any of its items has names the parameter.
 _CODEC_PARAMETERS = (
-    # Translators: The short name of the list of sample rates of a codec (44100 Hz, ...).
-    (re.compile(r"\d\s*Hz$|^DSD\d+$"), _("Rate")),
-    # Translators: The short name of the list of bit rates of a codec (~128 kbit/s, ...).
-    (re.compile("kbit/s"), _("Bitrate")),
-    # Translators: The short name of the list of channel layouts of a codec (Stereo, Mono, 5.1, ...).
-    (re.compile("^(Joint )?Stereo$|^Mono$"), _("Channels")),
-    # Translators: The short name of the list of bit depths of a codec (16-bit, 24-bit, ...).
-    (re.compile(r"^\d+-bit"), _("Bits")),
-    # Translators: The short name of the list of bit rate modes of a codec (VBR, CBR, ...).
-    (re.compile("^C?[ACV]BR$"), _("Mode")),
+    (re.compile(r"\d\s*Hz$|^DSD\d+$"), OwnString("rate")),
+    (re.compile("kbit/s"), OwnString("bitrate")),
+    (re.compile("^(Joint )?Stereo$|^Mono$"), OwnString("channels")),
+    (re.compile(r"^\d+-bit"), OwnString("bits")),
+    (re.compile("^C?[ACV]BR$"), OwnString("mode")),
 )
-# Translators: The short name of any other list of a codec's parameters: compression level,
-# encoder quality, kind of signal.
-_CODEC_LEVEL = _("Level")
+_CODEC_LEVEL = OwnString("level")
 # The format and its extension are named alike the parameters of the codec next to them, not by
 # ezcd's "Format".
-# Translators: The name of the list of output formats (MP3 | LAME, FLAC, ...).
-_FORMAT = _("Format")
-# Translators: The name of the list of file name extensions of the output format (.m4a, .aac, ...).
-_EXTENSION = _("Extension")
-# Translators: The name of the filter of the file explorer (All audio files, *.flac, ...).
-_FILE_TYPES = _("File types")
-# Translators: The name of the list of effects in DSP (Gain, Peak normalization, ...).
-_EFFECT = _("Effect")
+_FORMAT = OwnString("format")
+_EXTENSION = OwnString("extension")
+_FILE_TYPES = OwnString("file_types")
+_EFFECT = OwnString("effect")
 
 
-def _codec_parameter(hwnd: int) -> _Name:
+def _codec_parameter(hwnd: int) -> Name:
     items = _combo_box_items(hwnd)
     if not items:
         return None
@@ -161,7 +144,7 @@ def _codec_parameter(hwnd: int) -> _Name:
     return _CODEC_LEVEL
 
 
-def _output_combo_box(hwnd: int) -> _Name:
+def _output_combo_box(hwnd: int) -> Name:
     """The output panel: the format, with its extension right next to it."""
     layout = Layout(hwnd)
     _texts, left = layout.left()
@@ -173,7 +156,7 @@ def _output_combo_box(hwnd: int) -> _Name:
     return None
 
 
-def _drive_combo_box(hwnd: int) -> _Name:
+def _drive_combo_box(hwnd: int) -> Name:
     """The drive and its speed: side by side on the ripper's tab, one above the other on the burner's."""
     layout = Layout(hwnd)
     others = [s for s in layout.siblings if winUser.getClassName(s) == "TComboBox"]
@@ -185,7 +168,7 @@ def _drive_combo_box(hwnd: int) -> _Name:
     return _DISC_WRITER if layout.rect.top < other.top else _WRITE_SPEED
 
 
-def _main_combo_box(hwnd: int) -> _Name:
+def _main_combo_box(hwnd: int) -> Name:
     panel = parent(hwnd)
     if child_windows(panel, "TComboBoxEx"):
         return _output_combo_box(hwnd)
@@ -199,7 +182,7 @@ def _main_combo_box(hwnd: int) -> _Name:
     return None
 
 
-def _dsp_combo_box(hwnd: int) -> _Name:
+def _dsp_combo_box(hwnd: int) -> Name:
     """DSP: the effect, and the kind of peak of peak normalization, named by the effect."""
     card_panels = child_windows(parent(hwnd), "TCardPanel")
     if not card_panels:
@@ -207,7 +190,7 @@ def _dsp_combo_box(hwnd: int) -> _Name:
     return _EFFECT if cards.choice(card_panels[0]) == hwnd else cards.card_name(card_panels[0]) or None
 
 
-def _settings_combo_box(hwnd: int) -> _Name:
+def _settings_combo_box(hwnd: int) -> Name:
     """Drive settings: the drive is chosen at the top of the page."""
     if winUser.getClassName(parent(hwnd)) != "TSettings2AudioCDRipperDriveForm":
         return None
@@ -216,21 +199,12 @@ def _settings_combo_box(hwnd: int) -> _Name:
 
 
 _ANY_FORM = {"TButton": _button, "TCheckBox": _check_box}
-# Translators: The name of the list of settings pages.
-_CATEGORIES = _("Categories")
-# Translators: The name of the list of file name templates used before.
-_TEMPLATES = _("Templates")
-# Translators: The name of the field for the release code (catalogue number) in the manual search of
-# metadata.
-_RELEASE_CODE = _("Release code")
-# Translators: The name of the list of releases found by the manual search of metadata, and of the list
-# of pictures found by Download Cover Art.
-_RESULTS = _("Results")
-# Translators: The name of the list of files and folders in the folder chosen in the file explorer.
-_FOLDER_CONTENTS = _("Folder contents")
-# Translators: The name of the slider of the position in the track that the player of the Audio CD
-# Ripper tab plays.
-_POSITION = _("Position")
+_CATEGORIES = OwnString("categories")
+_TEMPLATES = OwnString("templates")
+_RELEASE_CODE = OwnString("release_code")
+_RESULTS = OwnString("results")
+_FOLDER_CONTENTS = OwnString("folder_contents")
+_POSITION = OwnString("position")
 _FORMS = {
     "TProfile_Editor": {"TVirtualStringTree": _PROFILE, "TButton": _move_button},
     # The caption of the last field lies below the edge of its panel and is not drawn.
@@ -263,27 +237,22 @@ def fixed_name(hwnd: int, language: LanguageFiles) -> str:
     control_class = winUser.getClassName(hwnd)
     form_rules = _FORMS.get(winUser.getClassName(root(hwnd)), {})
     rule = form_rules.get(control_class) or _ANY_FORM.get(control_class)
-    name = rule(hwnd) if callable(rule) else rule
-    return ezcd_string(hwnd, name, language) if isinstance(name, int) else name or ""
-
-
-def shown_texts(hwnd: int) -> set[str]:
-    """The texts of the control's top-level window and of its visible windows."""
-    window = root(hwnd)
-    shown = {winUser.getWindowText(window)}
-    shown.update(winUser.getWindowText(w) for w in descendants(window) if winUser.isWindowVisible(w))
-    return shown
-
-
-def window_strings(hwnd: int, language: LanguageFiles) -> dict[int, str]:
-    """The strings of the language files in the language of the control's window; empty if none fits."""
-    return language.strings(shown_texts(hwnd))
+    return name_text(hwnd, rule(hwnd) if callable(rule) else rule, language)
 
 
 def ezcd_string(hwnd: int, number: int, language: LanguageFiles) -> str:
     """The string of the language files in the language of the control's window; empty if it has none."""
     # Some strings are captions of labels: "Disc writer :".
-    return window_strings(hwnd, language).get(number, "").rstrip(" :")
+    return language.window_strings(hwnd).get(number, "").rstrip(" :")
+
+
+def name_text(hwnd: int, name: Name, language: LanguageFiles) -> str:
+    """The name in the language of the control's window; empty if there is none."""
+    if isinstance(name, int):
+        return ezcd_string(hwnd, name, language)
+    if isinstance(name, OwnString):
+        return language.own_string(hwnd, name)
+    return name or ""
 
 
 def _repeats(hwnd: int, caption: str) -> bool:
