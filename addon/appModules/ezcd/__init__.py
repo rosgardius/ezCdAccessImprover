@@ -45,6 +45,7 @@ from . import (
     player,
     rating,
     sliders,
+    styles,
     tab_end,
     tab_order,
     toolbar,
@@ -550,6 +551,9 @@ class AppModule(appModuleHandler.AppModule):
                 clsList.insert(0, top_panel.TopPanelWindow)
             elif explorer.is_hidden_explorer_row(hwnd):
                 clsList.insert(0, explorer.HiddenExplorerRow)
+        elif window_class in styles.SCROLL_BAR_COVER_CLASSES:
+            if child_id == 0:
+                clsList.insert(0, styles.ScrollBarCover)
         elif window_class == "#32768":
             role = obj.IAccessibleRole
             if client and role == oleacc.ROLE_SYSTEM_MENUPOPUP:

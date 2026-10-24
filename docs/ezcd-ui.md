@@ -179,6 +179,19 @@ absolute coordinates, captions in a particular language.
   metadata panel at the bottom; for Left and Right, see Layouts of the metadata panel.
 - A click on the quiet loudspeaker without a disc changed nothing on the screen.
 
+## Themes
+
+- View on the top panel has Theme (`[813]`) ▸: Auto (`[836]`, the default, after the mode of Windows),
+  Light (`[837]`), Dark (`[838]`), a separator, Light ▸ (Blue `[814]`, Titanium `[967]`, Windows) and
+  Dark ▸ (Black `[976]`, Dark gray `[977]`). The tabs have their own View with other command IDs, but
+  one setting. Choosing a variant changes the theme only while its mode is shown.
+- Switching between light and dark makes all windows of the main form anew, with new handles: focus
+  goes to the form, and the explorer forgets its history (Back is disabled).
+- The dark themes are VCL styles. They add, over each scroll bar of a list, a tree or a scroll box, a
+  window of class `TScrollingStyleHook.TScrollWindow` or `TVclStyleScrollBarsHook.TScrollWindow` that
+  draws the bar; NVDA's simple review would stop at it as an unknown object. Names, states, captions,
+  toolbars, menus and the dialogs read the same in every theme.
+
 ## Tabs of the main window
 
 - The main window's `TPageControl` is a direct child of `TMainform`; each tab is a `TTabSheet` child of
