@@ -9,7 +9,7 @@ App module in `addon/appModules/ezcd/`, built with nvda-addon-kit (`addon.toml`)
 - Before writing or reviewing code, read "Code rules" and "Comments" in `docs/development.md`: look for
   an existing helper in its home module first, and remove what a change leaves unused.
 - Keep this file short. Personal, machine-specific instructions go to `CLAUDE.local.md` (git-ignored).
-- Before handing over code: `uv run ruff format addon`, `uv run ruff check addon`, `uv run nvaddon check`, `uv run nvaddon build`.
+- Before handing over code: `uv run ruff format addon ezcheck`, `uv run ruff check addon ezcheck`, `uv run nvaddon check`, `uv run nvaddon build`.
 
 ## Writing
 

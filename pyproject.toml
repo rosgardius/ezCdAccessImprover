@@ -11,8 +11,13 @@ dependencies = [
 lint = [
     "ruff==0.16.5",
 ]
+# What the checker in ezcheck/ needs: MSAA.
+check = [
+    "comtypes>=1.4.17",
+]
 dev = [
     { include-group = "lint" },
+    { include-group = "check" },
 ]
 
 [tool.ruff]

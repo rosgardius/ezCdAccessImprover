@@ -19,6 +19,7 @@ The `ezCdAccessImprover` NVDA add-on is an app module for EZ CD Audio Converter
 | `readme.md` | User documentation, rendered to `addon/doc/en/readme.html` |
 | `changelog.md` | Change history, used as the GitHub release description |
 | `docs/` | Development documentation (this file and notes on the application's UI) |
+| `ezcheck/` | The checker of the facts in the running ezcd, without NVDA ([its readme](../ezcheck/readme.md)); not part of the add-on |
 | `.github/` | CI: ruff, `nvaddon check`, build; on a tag, a release and add-on store submission |
 
 Generated files (`addon/manifest.ini`, `addon/doc/`, `*.nvda-addon`, `*.pot`, `*.mo`)
@@ -27,12 +28,13 @@ are git-ignored and must not be edited by hand.
 ## Commands
 
 ```sh
-uv sync                        # development environment
-uv run ruff format addon       # formatting
-uv run ruff check addon        # linting
-uv run nvaddon check           # validate addon.toml against add-on store rules
-uv run nvaddon build           # build ezCdAccessImprover-<version>.nvda-addon
-uv run nvaddon install --link  # link addon/ into the installed NVDA (once)
+uv sync                           # development environment
+uv run ruff format addon ezcheck  # formatting
+uv run ruff check addon ezcheck   # linting
+uv run nvaddon check              # validate addon.toml against add-on store rules
+uv run nvaddon build              # build ezCdAccessImprover-<version>.nvda-addon
+uv run nvaddon install --link     # link addon/ into the installed NVDA (once)
+uv run python -m ezcheck          # check the facts in the running ezcd
 ```
 
 After the first `install --link`, NVDA has to be restarted; after that, app module

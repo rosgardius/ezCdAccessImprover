@@ -27,7 +27,7 @@ jobs:
       run: uv sync
 
     - name: Lint
-      run: uv run ruff check addon
+      run: uv run ruff check addon ezcheck
 
     - name: Validate addon.toml
       run: uv run nvaddon check
