@@ -50,6 +50,7 @@ _READ_SPEED = 463
 _DISC_WRITER = 235
 _WRITE_SPEED = 236
 _FOLDERS = 380
+_VOLUME_CONTROL = 109
 
 # A name is a string number of the language files or the add-on's own string.
 type _Name = int | str | None
@@ -227,6 +228,9 @@ _RELEASE_CODE = _("Release code")
 _RESULTS = _("Results")
 # Translators: The name of the list of files and folders in the folder chosen in the file explorer.
 _FOLDER_CONTENTS = _("Folder contents")
+# Translators: The name of the slider of the position in the track that the player of the Audio CD
+# Ripper tab plays.
+_POSITION = _("Position")
 _FORMS = {
     "TProfile_Editor": {"TVirtualStringTree": _PROFILE, "TButton": _move_button},
     # The caption of the last field lies below the edge of its panel and is not drawn.
@@ -238,6 +242,9 @@ _FORMS = {
         "TComboBox": _main_combo_box,
         "TJamShellTree": _FOLDERS,
         "TJamShellList": _FOLDER_CONTENTS,
+        # The player's volume and position: the only sliders of the main window.
+        "TTrackBar": _VOLUME_CONTROL,
+        "TMyTrackBar": _POSITION,
     },
     "TSettings2Form": {"TTreeView": _CATEGORIES, "TComboBox": _settings_combo_box},
     "TDSPForm": {"TComboBox": _dsp_combo_box},

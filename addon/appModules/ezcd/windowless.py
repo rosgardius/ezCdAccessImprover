@@ -20,7 +20,7 @@ from NVDAObjects import NVDAObjectTextInfo
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from NVDAObjects.window import Window
 
-from . import captions, counters, filename_preview, remote, screen, vcl
+from . import captions, counters, filename_preview, player, remote, screen, vcl
 from .cover_art import COVER_CLASS
 from .names import ezcd_string
 from .windows import child_windows, parent, rect, root, rows
@@ -177,7 +177,7 @@ class DrawnControl(Window):
         form = winUser.getClassName(root(self.holder))
         if self.control.class_name == "TImage":
             # The picture of the panel over the cover art.
-            return _COVER_ART if form == "TCoverArtWnd" else ""
+            return _COVER_ART if form == "TCoverArtWnd" else player.icon_name(self.holder, self._rect)
         if not self._is_button:
             return ""
         if child_windows(self.holder, "TComboBoxEx"):

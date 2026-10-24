@@ -15,3 +15,8 @@ def is_drive_panel(panel: int) -> bool:
 def is_explorer_bar(panel: int) -> bool:
     """Whether the panel is the row above the explorer, with the breadcrumb bar."""
     return bool(child_windows(panel, "TJamShellBreadCrumbBar"))
+
+
+def is_player_panel(panel: int) -> bool:
+    """Whether the panel is the player of the Audio CD Ripper tab, with the volume and the position."""
+    return bool(child_windows(panel, "TTrackBar")) and bool(child_windows(panel, "TMyTrackBar"))

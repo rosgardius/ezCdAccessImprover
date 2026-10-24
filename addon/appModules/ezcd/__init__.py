@@ -42,6 +42,7 @@ from . import (
     metadata,
     names,
     options,
+    player,
     rating,
     sliders,
     tab_end,
@@ -97,6 +98,7 @@ class AppModule(appModuleHandler.AppModule):
         self.cells = cells.CellTable(self.language)
         self.tag_stop = filename_preview.TagStop()
         self.window_focus = window_focus.WindowFocus()
+        self.tray_pair = tray.PairFocus()
         inputCore.decide_executeGesture.register(self._note_gesture)
         # Also while ezcd is in the background: a switch of its language captions the tabs anew.
         eventHandler.requestEvents("nameChange", self.processID, "TTabSheet")
@@ -105,6 +107,7 @@ class AppModule(appModuleHandler.AppModule):
         inputCore.decide_executeGesture.unregister(self._note_gesture)
         self.counter_steps.terminate()
         self.page_switcher.terminate()
+        self.tray_pair.terminate()
         super().terminate()
 
     def _executable_path(self) -> str | None:
@@ -253,9 +256,11 @@ class AppModule(appModuleHandler.AppModule):
                 # Focus may have left the tab for the main form in between.
                 self._tab_kept = True
                 return
-        # VCL skips the cover art and the rating; stop at them.
-        stop = cover_art.stop_target(obj.windowHandle, previous, tab_key) or rating.stop_target(
-            obj.windowHandle, previous, tab_key, obj.processHandle
+        # VCL skips the cover art, the rating and the player; stop at them.
+        stop = (
+            cover_art.stop_target(obj.windowHandle, previous, tab_key)
+            or rating.stop_target(obj.windowHandle, previous, tab_key, obj.processHandle)
+            or player.stop_target(obj.windowHandle, previous, tab_key)
         )
         if stop and toolbar.set_focus(stop):
             return
@@ -490,6 +495,8 @@ class AppModule(appModuleHandler.AppModule):
                     clsList.insert(0, sliders.FieldSlider)
                 else:
                     clsList.insert(0, names.Captioned)
+                if player.is_player_slider(hwnd):
+                    clsList.insert(0, player.PlayerSlider)
                 if cards.card_panel_of(hwnd):
                     clsList.insert(0, cards.CardControl)
             elif child_id > 0 and window_class in list_items.CLASSES:
@@ -546,6 +553,7 @@ class AppModule(appModuleHandler.AppModule):
                 top_panel.panel_of(hwnd, obj.processHandle, self.language)
                 or explorer.stop_of(hwnd, obj.processHandle, self.language)
                 or tray.stop_of(hwnd, obj.processHandle, self.language)
+                or player.stop_of(hwnd, obj.processHandle, self.language)
             )
             overlay = None if stop is None else toolbar_stops.overlay_class(obj, stop)
             if overlay is not None:

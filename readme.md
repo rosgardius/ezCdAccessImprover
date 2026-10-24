@@ -87,7 +87,20 @@ a stop at the end of the tab, right before the top buttons (after the view toolb
 Its buttons are named by the application's own hints: Open tray,
 Close tray and, on the Audio CD Ripper tab, Drive settings. On the Disc Burner tab, with Open tray
 alone, it is read as a button without the toolbar. Without a disc drive the buttons are unavailable.
-Arrows, Home, End, Enter and Space work as in the toolbars of the file explorer.
+Arrows, Home, End, Enter and Space work as in the toolbars of the file explorer. After Open tray or
+Close tray, focus goes on to the other one once the application shows it in its place.
+
+### Player of the Audio CD Ripper tab
+
+The player below the metadata fields of the Audio CD Ripper tab is in the Tab order right before
+Options: its toolbar, then the volume and the position in the track, which the application otherwise
+leaves to the mouse. The buttons are named by the application's own hints: Previous track, Rewind,
+Play, Forward, Next track, Stop and Pause; arrows, Home, End, Enter and Space work as in the other
+toolbars. The volume is named Volume Control by the application's own string, the position Position;
+both are read in percent of their range. Without a disc the buttons are unavailable.
+
+The player and the tray's Open tray and Close tray have not been tried with a disc drive; please report
+what does not work.
 
 ### Conversion window
 
@@ -268,7 +281,8 @@ the keyboard have keys of their own, described in their sections.
   the counters, which report the new number.
 * The picture of the panel that the mouse brings up over the cover art.
 * On the Audio CD Ripper tab, the captions of the metadata fields that the application lets you click,
-  and the icons of the player. They have not been tried with a disc; the icons have no names yet.
+  and the pictures Quiet and Loud on both sides of the player's volume. They have not been tried with a
+  disc.
 
 ### Lists in dialogs
 

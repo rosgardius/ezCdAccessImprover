@@ -155,12 +155,28 @@ absolute coordinates, captions in a particular language.
 - Buttons, without text: Open tray (image 8, hint `[191]`) and Close tray (image 7, hint `[192]`,
   hidden); on the Audio CD Ripper tab also a hidden separator and a gear (image 9) without a hint,
   whose purpose is not known. Without a disc drive the combo boxes and the buttons are disabled.
+- Open tray and Close tray are two buttons of the same toolbar window, one of them hidden; they
+  presumably take turns as the tray moves (not tried: no disc drive).
 - The toolbar is not a tab stop, and Tab skips the disabled combo boxes: Tab goes from the tab labels
   to the list of tracks on the Audio CD Ripper tab, and from the breadcrumb bar to Options on the Disc
   Burner tab.
 - On the MP3 disc and Data disc pages of the Disc Burner tab, Options (`Опции (1) »`, the button right of
   the tray) and the filter of file types are hidden. The filter stays hidden on Audio CD afterwards, until
   the explorer is hidden and shown again. Tab then goes from the breadcrumb bar to the tab labels.
+
+## Player of the Audio CD Ripper tab
+
+- Below the metadata panel, a `TPanel` (the only one with a `TTrackBar` and a `TMyTrackBar`): from the
+  left, an empty `TPanel` (the time, presumably), a `TPanel` with the toolbar, the volume (`TTrackBar`,
+  0–65535) between a quiet and a loud loudspeaker (`TImage`s, one `OnClick` handler for both), and the
+  position in the track (`TMyTrackBar`). It is there without a disc, the buttons disabled; MSAA gives
+  the sliders their position as a percentage of the range.
+- The toolbar's seven buttons have neither text nor a hint MSAA gives; by image: 1 Previous track
+  `[185]`, 2 Rewind `[186]`, 0 Play `[184]`, 3 Forward `[187]`, 4 Next track `[188]`, 5 Stop `[189]`,
+  6 Pause `[190]` (their design-time hints). The volume has `[109]` Volume Control; the position no string.
+- Neither the toolbar nor the sliders are Tab stops. Tab goes from Filename preview, the last control
+  of the output panel above, to Options right of the player, which lie on its row.
+- A click on the quiet loudspeaker without a disc changed nothing on the screen.
 
 ## Tabs of the main window
 
