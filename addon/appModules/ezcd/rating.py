@@ -20,10 +20,9 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible
 from scriptHandler import script
 
-from . import remote, screen, toolbar, vcl
-from .cover_art import COVER_CLASS
+from . import panels, remote, screen, toolbar, vcl
 from .names import ezcd_string
-from .windows import child_windows, parent, tab_stop_below
+from .windows import parent, tab_stop_below
 
 _RATING_CLASSES = frozenset(("TRating",))
 _STARS = 5
@@ -36,7 +35,7 @@ _CAPTION = 592
 
 def _rating(panel: int, process_handle: int) -> vcl.Control | None:
     """The shown rating of the metadata panel, if it can be set."""
-    if not child_windows(panel, COVER_CLASS):
+    if not panels.is_metadata_panel(panel):
         return None
     return next(
         (c for c in vcl.controls(panel, process_handle, _RATING_CLASSES) if c.visible and c.enabled), None
@@ -64,7 +63,7 @@ def stop_target(window: int, previous: int, tab_key: int, process_handle: int) -
 def is_stop(panel: int) -> bool:
     """Whether the window is the metadata panel with ezcd's focus, which only the rating's stop gives it."""
     _process_id, thread_id = winUser.getWindowThreadProcessID(panel)
-    return winUser.getGUIThreadInfo(thread_id).hwndFocus == panel and bool(child_windows(panel, COVER_CLASS))
+    return winUser.getGUIThreadInfo(thread_id).hwndFocus == panel and panels.is_metadata_panel(panel)
 
 
 class RatingSlider(IAccessible):

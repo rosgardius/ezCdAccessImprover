@@ -5,8 +5,10 @@
 """The player of the Audio CD Ripper tab: a toolbar, the volume and the position in the track.
 
 ezcd leaves them to the mouse: neither the toolbar nor the sliders are Tab stops. They are stops right
-before the Tab stop right of the player, Options: the toolbar, then the sliders from left to right.
-Without a disc the buttons are disabled and the stops stay.
+before the Tab stop right of the player, Options: the toolbar, then the sliders from left to right. While
+the metadata panel is left or right of the list, the player is at the bottom with no Tab stop right of it
+or below it, and its stops are at the end of the tab (``tab_end``). Without a disc the buttons are
+disabled and the stops stay.
 """
 
 from collections.abc import Hashable
@@ -22,7 +24,7 @@ from . import panels, toolbar, toolbar_stops
 from .captions import SLIDER_CLASSES
 from .language import LanguageFiles
 from .top_panel import main_tab
-from .windows import child_windows, descendants, parent, rect, tab_stop_below, tab_stop_right
+from .windows import child_windows, descendants, parent, rect
 
 addonHandler.initTranslation()
 
@@ -74,7 +76,7 @@ def stop_of(hwnd: int, process_handle: int, language: LanguageFiles) -> PlayerTo
     return PlayerToolbar(buttons) if buttons else None
 
 
-def _stops(panel: int) -> list[int]:
+def stops(panel: int) -> list[int]:
     """The player's stops in the Tab order: its toolbar, then its sliders from left to right."""
     toolbars = [t for holder in child_windows(panel, "TPanel") for t in child_windows(holder, "TToolBar")]
     sliders = sorted(
@@ -84,14 +86,11 @@ def _stops(panel: int) -> list[int]:
     return [w for w in (*toolbars, *sliders) if winUser.isWindowVisible(w)]
 
 
-def _next_control(panel: int) -> int:
+def next_control(panel: int) -> int:
     """The control after the player's stops in the Tab order: the Tab stop right of the player or below
     it; 0 if none."""
     tab = main_tab(panel)
-    if not tab:
-        return 0
-    edge = rect(panel)
-    return tab_stop_right(tab, edge) or tab_stop_below(tab, edge)
+    return panels.stop_after(tab, panel) if tab else 0
 
 
 def stop_target(window: int, previous: int, tab_key: int) -> int:
@@ -102,10 +101,10 @@ def stop_target(window: int, previous: int, tab_key: int) -> int:
     after = window if tab_key > 0 else previous
     tab = main_tab(after)
     panel = next((w for w in descendants(tab) if panels.is_player_panel(w)), 0) if tab else 0
-    stops = _stops(panel) if panel and winUser.isWindowVisible(panel) else []
-    if not stops or window in stops or previous in stops or _next_control(panel) != after:
+    found = stops(panel) if panel and winUser.isWindowVisible(panel) else []
+    if not found or window in found or previous in found or next_control(panel) != after:
         return 0
-    return stops[0] if tab_key > 0 else stops[-1]
+    return found[0] if tab_key > 0 else found[-1]
 
 
 def icon_name(holder: int, edge: RECT) -> str:
@@ -122,24 +121,27 @@ class _PlayerStop(IAccessible):
 
     def _move(self, gesture, step: int):
         panel = _panel(self.windowHandle)
-        stops = _stops(panel) if panel else []
-        if self.windowHandle not in stops:
+        found = stops(panel) if panel else []
+        if self.windowHandle not in found:
             gesture.send()
             return
-        index = stops.index(self.windowHandle) + step
-        if 0 <= index < len(stops):
+        index = found.index(self.windowHandle) + step
+        if 0 <= index < len(found):
             # The toolbar window redirects focus to the remembered button.
-            if not toolbar.set_focus(stops[index]):
+            if not toolbar.set_focus(found[index]):
                 gesture.send()
             return
-        after = _next_control(panel)
+        after = next_control(panel)
+        if not after:
+            if not self.appModule.leave_tab_end(self.windowHandle, step > 0, self.processHandle):
+                gesture.send()
+            return
         if step > 0:
-            if not after or not toolbar.set_focus(after):
+            if not toolbar.set_focus(after):
                 gesture.send()
             return
         # ezcd moves from the control after the player to the one before it.
-        if after:
-            self.appModule.pass_focus(after)
+        self.appModule.pass_focus(after)
         gesture.send()
 
     @script(gesture="kb:tab")

@@ -175,7 +175,8 @@ absolute coordinates, captions in a particular language.
   `[185]`, 2 Rewind `[186]`, 0 Play `[184]`, 3 Forward `[187]`, 4 Next track `[188]`, 5 Stop `[189]`,
   6 Pause `[190]` (their design-time hints). The volume has `[109]` Volume Control; the position no string.
 - Neither the toolbar nor the sliders are Tab stops. Tab goes from Filename preview, the last control
-  of the output panel above, to Options right of the player, which lie on its row.
+  of the output panel above, to Options right of the player, which lie on its row. So it is with the
+  metadata panel at the bottom; for Left and Right, see Layouts of the metadata panel.
 - A click on the quiet loudspeaker without a disc changed nothing on the screen.
 
 ## Tabs of the main window
@@ -324,6 +325,28 @@ absolute coordinates, captions in a particular language.
   on the Audio CD page of the tab's own page control, captioned by labels without windows left of them.
 - With the fields disabled (no file selected, no disc in the ripper), the captions are still drawn.
 
+### Layouts of the metadata panel
+
+- View on the top panel (string `[346]`) has Metadata panel (`[682]`) ▸: Standard (`[939]`), Extended
+  (`[940]`), a separator, Left (`[683]`), Right (`[684]`), Bottom (`[685]`, the default). The Audio
+  Converter and Audio CD Ripper tabs each have their own View and their own setting. ezcd draws its menu items itself: with
+  the submenu closed, its items have command IDs and check marks, but no texts.
+- Extended adds Lyrics (a `TMemo`), Language, Producer, Engineer, Mixer, BPM, ISRC, Catalog number and
+  UPC/EAN. The rating with its caption then stands between two columns of fields, on the line of Language,
+  with no window between Language and the field left of the rating.
+- Left and Right make the panel anew, with new windows: a `TPanel` holding a `TScrollBox` holding the
+  `TPanel` of the fields, beside the list of files for the whole height of the tab (the explorer and the
+  drive's row stay above the list). The fields are in one column under the cover art; the text with the
+  size and format of the cover is left of it, word-wrapped. The panel of the fields is taller than the
+  scroll box: the display model has no captions of the fields scrolled out of view, and after a scroll
+  it may keep pieces of captions at their old places. Tab to a field scrolls it into view. The captions
+  of the fields are `TLabel`s, readable from ezcd's memory with their positions (see Cover art and
+  rating).
+- The output panel then is under the list, its controls in another arrangement, and the player of the
+  Audio CD Ripper tab under the output panel: outside the metadata panel, no Tab stop is right of the
+  player or below it. Tab goes from DSP, the last control of the output panel, to the tab labels. A
+  one-pixel `TPanel` (a splitter, without MSAA role) stands between the list and the metadata panel.
+
 ## Cover art and rating
 
 - The cover art of the metadata panel (`TDropPanel`) is not a tab stop, but takes focus. VCL's Tab
@@ -349,8 +372,10 @@ absolute coordinates, captions in a particular language.
   `FControls`, the `TList` of the controls without windows (at 8 the pointer to the items, at 16 their
   count). A class name is a short string pointed to from 136 bytes before the virtual method table the
   object points to. A control has `FLeft`, `FTop`, `FWidth`, `FHeight` at 0x90 (parent's client
-  pixels), `FVisible` at 0xA9 and `FEnabled` at 0xAA, and the code pointer of `FOnClick` at 0x1F8,
-  nil without a handler; `TRating` has its number of stars at 0x340. `FVisible` stays set inside a
+  pixels), `FVisible` at 0xA9 and `FEnabled` at 0xAA, the code pointer of `FOnClick` at 0x1F8,
+  nil without a handler, and `FText` at 0x2D0: the caption, a null-terminated string made by
+  `StrAlloc`, the size of its block in bytes (these 4 included) right before it, nil without a
+  caption. `TRating` has its number of stars at 0x340. `FVisible` stays set inside a
   hidden window, as on a hidden tab.
 - Controls without windows that take clicks: `TSpeedButton`s and `TPngSpeedButton`s (counters, pages
   of the Disc Burner tab, metadata services, Encoder information, the gear of Filename preview), the

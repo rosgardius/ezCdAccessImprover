@@ -117,6 +117,10 @@ class LanguageFiles:
         self._tab_language = max(candidates, key=lambda s: _matches(s, shown_texts))
         log.debug(f"ezcd's language by its tabs: {self._tab_language.get(_LANGUAGE_NAME)!r}")
 
+    def knows_any(self, texts: set[str]) -> bool:
+        """Whether any of the texts is a string of a language file."""
+        return any(_matches(strings, texts) for strings in self._load())
+
     def texts(self, *numbers: int) -> set[str]:
         """All translations of the given strings, to tell a caption in any language."""
         return {strings[n] for strings in self._load() for n in numbers if strings.get(n)}

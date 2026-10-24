@@ -18,7 +18,8 @@ import characterProcessing
 import winUser
 from speech.speech import getCurrentLanguage
 
-from . import screen
+from . import screen, vcl
+from .language import LanguageFiles
 from .screen import Text, joined
 from .windows import child_windows, is_tab_stop, parent
 
@@ -118,20 +119,22 @@ class Layout:
         """The text left of the control up to the nearest window on its left, and that window, 0 if none.
 
         Beside a multi-line control, only the text on its first line. With ``nearer``, only the text
-        nearer to the control than to that window: the text right next to a window is its unit.
+        nearer to the control than to that window: the text right next to a window is its unit. A panel
+        has no unit, but may reach past its controls up to the caption.
         """
         rect = self.rect
         edge, neighbour = self.bounds.left, 0
         for sibling, other in self.siblings.items():
             if edge < other.right <= rect.left and self._beside(other):
                 edge, neighbour = other.right, sibling
+        has_unit = nearer and neighbour and winUser.getClassName(neighbour) != "TPanel"
         texts = [
             t
             for t in self.texts
             if edge <= t.left < rect.left
             and self._beside(t)
             and _is_caption(t.text)
-            and not (nearer and neighbour and t.left - edge < rect.left - t.right)
+            and not (has_unit and t.left - edge < rect.left - t.right)
         ]
         return _line(texts), neighbour
 
@@ -217,11 +220,23 @@ class Layout:
         return min(right, key=lambda s: (self.siblings[s].left, self.siblings[s].top), default=0)
 
 
-def from_screen(control: int, binding_handle, read: Callable[[Layout], str]) -> str:
-    """What ``read`` finds in the control's layout, painted again if it finds nothing at first."""
-    if not binding_handle:
-        return ""
-    return read(Layout(control, binding_handle)) or read(Layout(control, binding_handle, repaint=True))
+def from_screen(
+    control: int,
+    binding_handle,
+    read: Callable[[Layout], str],
+    process_handle: int = 0,
+    language: LanguageFiles | None = None,
+) -> str:
+    """What ``read`` finds in the control's layout, painted again if it finds nothing at first; with
+    ``process_handle`` and ``language``, else among the labels in ezcd's memory, which the display model
+    may lack."""
+    found = binding_handle and (
+        read(Layout(control, binding_handle)) or read(Layout(control, binding_handle, repaint=True))
+    )
+    if found or not process_handle or language is None:
+        return found or ""
+    labels = vcl.label_texts(parent(control), process_handle, language)
+    return read(Layout(control, texts=labels)) if labels else ""
 
 
 def spoken(caption: str) -> str:
@@ -246,6 +261,7 @@ def _caption(layout: Layout, unit: bool = True) -> str:
     return _UNIT_SEPARATOR.join(part for part in (text, joined(layout.right()) if unit else "") if part)
 
 
-def caption(control: int, binding_handle) -> str:
-    """The name of the control from the screen; empty if the display model has nothing for it."""
-    return from_screen(control, binding_handle, _caption)
+def caption(control: int, binding_handle, process_handle: int, language: LanguageFiles) -> str:
+    """The name of the control from the screen; empty if neither the display model nor ezcd's memory has
+    anything for it."""
+    return from_screen(control, binding_handle, _caption, process_handle, language)

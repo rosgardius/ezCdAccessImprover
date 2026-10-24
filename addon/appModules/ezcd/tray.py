@@ -25,7 +25,7 @@ from logHandler import log
 from . import panels, toolbar, toolbar_stops
 from .language import LanguageFiles
 from .top_panel import main_tab
-from .windows import descendants, parent, rect, tab_stop_below, tab_stop_right
+from .windows import descendants, parent
 
 # ezcd's strings for the buttons, by image.
 _NAMES = {
@@ -72,10 +72,7 @@ def stop_of(hwnd: int, process_handle: int, language: LanguageFiles) -> TrayTool
 def next_control(hwnd: int) -> int:
     """The control after the tray's stop in the Tab order: the Tab stop right of it or below it."""
     tab = main_tab(hwnd)
-    if not tab:
-        return 0
-    edge = rect(hwnd)
-    return tab_stop_right(tab, edge) or tab_stop_below(tab, edge)
+    return panels.stop_after(tab, hwnd) if tab else 0
 
 
 def toolbar_passed(window: int, previous: int, forward: bool) -> int:

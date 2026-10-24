@@ -9,25 +9,55 @@ pointer rests on the cover art. The cover art of the metadata panel is a Tab sto
 fields, where Applications opens its menu.
 """
 
+from ctypes.wintypes import RECT
+
 import winUser
 from NVDAObjects.IAccessible import IAccessible
 from scriptHandler import script
 
-from . import remote, screen
+from . import remote, screen, vcl
 from .dialogs import ClosedByEscape
+from .language import LanguageFiles
 from .windows import child_windows, parent, rect
 
 COVER_CLASS = "TDropPanel"
 _MENU_GESTURES = ("kb:applications", "kb:shift+f10")
 
 
-def cover_info(cover: int, binding_handle) -> str:
-    """The text under the cover art: its size and format, if there is a cover."""
+def cover_info(cover: int, binding_handle, process_handle: int, language: LanguageFiles) -> str:
+    """The text beside the cover art: its size and format, if there is a cover.
+
+    ezcd draws it under the cover art, or left of it while the metadata panel is left or right of the
+    list of files; then the fields are under the cover art, and the "/" before a total among them.
+    """
     panel = parent(cover)
-    area = screen.logical_rect(panel, panel)
-    cover_rect = screen.logical_rect(cover, panel)
-    area.left, area.top, area.right = cover_rect.left, cover_rect.bottom, cover_rect.right
-    return " ".join(screen.joined(line) for line in screen.lines(screen.texts(panel, binding_handle, area)))
+    bounds = screen.logical_rect(panel, panel)
+    edge = screen.logical_rect(cover, panel)
+    siblings = [
+        screen.logical_rect(window, panel)
+        for window in child_windows(panel)
+        if window != cover and winUser.isWindowVisible(window)
+    ]
+    under_bottom = min(
+        (o.top for o in siblings if o.top >= edge.bottom and o.left < edge.right and edge.left < o.right),
+        default=bounds.bottom,
+    )
+    areas = (
+        RECT(bounds.left, edge.top, edge.left, edge.bottom),
+        RECT(edge.left, edge.bottom, edge.right, under_bottom),
+    )
+    labels = vcl.label_texts(panel, process_handle, language)
+    if labels:
+        texts = [
+            t
+            for t in labels
+            for area in areas
+            if area.left <= (t.left + t.right) // 2 < area.right
+            and area.top <= (t.top + t.bottom) // 2 < area.bottom
+        ]
+    else:
+        texts = [text for area in areas for text in screen.texts(panel, binding_handle, area)]
+    return " ".join(screen.joined(line) for line in screen.lines(texts))
 
 
 def open_menu(window: int):
@@ -60,7 +90,12 @@ class CoverArt(IAccessible):
         return winUser.getWindowText(self.windowHandle)
 
     def _get_description(self):
-        return cover_info(self.windowHandle, self.appModule.helperLocalBindingHandle)
+        return cover_info(
+            self.windowHandle,
+            self.appModule.helperLocalBindingHandle,
+            self.processHandle,
+            self.appModule.language,
+        )
 
     @script(gestures=_MENU_GESTURES)
     def script_open_menu(self, gesture):

@@ -14,7 +14,8 @@ from dataclasses import dataclass
 import winUser
 from logHandler import log
 
-from . import remote
+from . import remote, screen
+from .language import LanguageFiles
 
 # Not in winBindings; a private library object keeps these declarations away from ctypes.windll.
 _user32 = ctypes.WinDLL("user32")
@@ -38,6 +39,11 @@ _LIST_COUNT = 16
 _BOUNDS = 0x90
 _VISIBLE_ENABLED = 0xA9
 _ON_CLICK = 0x1F8
+# TControl.FText: the caption, a null-terminated string made by StrAlloc, which keeps the size of the block
+# in bytes, these 4 included, right before it.
+_TEXT = 0x2D0
+_MAX_TEXT_LENGTH = 1024
+_LABEL_CLASSES = frozenset(("TLabel",))
 
 
 class _Bounds(ctypes.Structure):
@@ -64,6 +70,8 @@ class Control:
     enabled: bool
     on_click: bool
     """Whether the control has a handler of clicks."""
+    text: str
+    """The caption, empty if none."""
 
 
 def window_object(hwnd: int) -> int:
@@ -87,6 +95,26 @@ def _class_name(process_handle: int, address: int) -> str:
     text = (ctypes.c_char * length[0])()
     remote.read(process_handle, name + 1, text)
     return text.raw.decode("latin-1")
+
+
+def _text(process_handle: int, address: int) -> str:
+    """The control's caption; empty if none or if it cannot be read, as the offset may be another one in
+    another version of ezcd."""
+    try:
+        text = _pointer(process_handle, address + _TEXT)
+        if not text:
+            return ""
+        size = (ctypes.c_uint32 * 1)()
+        remote.read(process_handle, text - 4, size)
+        length = (size[0] - 4) // 2 - 1
+        if not 0 < length <= _MAX_TEXT_LENGTH:
+            return ""
+        chars = (ctypes.c_wchar * length)()
+        remote.read(process_handle, text, chars)
+    except OSError:
+        log.debugWarning("Caption of a VCL control of ezcd not read", exc_info=True)
+        return ""
+    return chars.value
 
 
 def controls(hwnd: int, process_handle: int, class_names: frozenset[str]) -> list[Control]:
@@ -116,6 +144,7 @@ def controls(hwnd: int, process_handle: int, class_names: frozenset[str]) -> lis
             remote.read(process_handle, address + _VISIBLE_ENABLED, flags)
             visible, enabled = (bool(flag) for flag in flags)
             on_click = bool(_pointer(process_handle, address + _ON_CLICK))
+            text = _text(process_handle, address)
             found.append(
                 Control(
                     address,
@@ -127,6 +156,7 @@ def controls(hwnd: int, process_handle: int, class_names: frozenset[str]) -> lis
                     visible,
                     enabled,
                     on_click,
+                    text,
                 )
             )
     except OSError:
@@ -139,3 +169,20 @@ def screen_rect(hwnd: int, control: Control) -> RECT:
     """The rectangle on the screen of the window's control."""
     left, top = winUser.ClientToScreen(hwnd, control.left, control.top)
     return RECT(left, top, left + control.width, top + control.height)
+
+
+def label_texts(hwnd: int, process_handle: int, language: LanguageFiles) -> list[screen.Text]:
+    """The captions of the window's shown labels without windows, each on one line, at the labels'
+    rectangles in the window's logical coordinates, as the display model has texts; none if ezcd's memory
+    cannot be read, or if no caption is a string of ezcd's language files.
+
+    Unlike the display model, they are there also scrolled out of view, and never painted only in part.
+    """
+    found = []
+    for label in controls(hwnd, process_handle, _LABEL_CLASSES):
+        text = " ".join(label.text.split())
+        if label.visible and text:
+            edge = screen.to_logical(screen_rect(hwnd, label), hwnd)
+            found.append(screen.Text(edge.left, edge.top, edge.right, edge.bottom, text))
+    # Another version of ezcd may keep the caption elsewhere: what is read there is no string of ezcd.
+    return found if language.knows_any({t.text for t in found}) else []

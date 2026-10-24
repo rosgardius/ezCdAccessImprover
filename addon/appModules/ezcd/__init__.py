@@ -163,25 +163,33 @@ class AppModule(appModuleHandler.AppModule):
             and time.monotonic() - self._focus_return_at < _RETURN_FOCUS_TIMEOUT
         )
 
-    def leave_tab_end(self, toolbar_hwnd: int, forward: bool, process_handle: int) -> bool:
-        """Moves focus from a toolbar stop at the end of its tab to the next or previous stop there, and
-        after the last one to the tab labels, on the way to the top panel; ``False`` if it did not move.
+    def leave_tab_end(self, stop_hwnd: int, forward: bool, process_handle: int) -> bool:
+        """Moves focus from a stop at the end of its tab to the next or previous stop there, and after the
+        last one to the tab labels, on the way to the top panel; ``False`` if it did not move.
 
         Before the first stop, focus passes by the tab labels for the key that follows: VCL goes from there
         to the tab's last control.
         """
-        target = tab_end.neighbour(toolbar_hwnd, forward)
+        target = tab_end.neighbour(stop_hwnd, forward)
         if not target:
             return False
-        if winUser.getClassName(target) == "TToolBar":
-            return self._enter_stop(
-                explorer.stop_of(target, process_handle, self.language)
-                or tray.stop_of(target, process_handle, self.language)
-            )
+        if not top_panel.is_main_tab_labels(target):
+            return self._enter_end_stop(target, process_handle)
         if forward:
             return toolbar.set_focus(target)
         self.pass_focus(target)
         return False
+
+    def _enter_end_stop(self, hwnd: int, process_handle: int) -> bool:
+        """Moves focus to the stop of a window ``tab_end`` gives: a toolbar stop or a slider of the player;
+        ``False`` if it did not move."""
+        if winUser.getClassName(hwnd) != "TToolBar":
+            return toolbar.set_focus(hwnd)
+        return self._enter_stop(
+            explorer.stop_of(hwnd, process_handle, self.language)
+            or tray.stop_of(hwnd, process_handle, self.language)
+            or player.stop_of(hwnd, process_handle, self.language)
+        )
 
     def explorer_toggled(self, toolbar_hwnd: int):
         """View Explorer is being pressed on the toolbar: ezcd will hide it and show the other one."""
@@ -189,8 +197,8 @@ class AppModule(appModuleHandler.AppModule):
         self._toggle_pressed_at = time.monotonic()
 
     def _toolbar_passed(self, window: int, previous: int, tab_key: int, process_handle: int) -> int:
-        """The toolbar of the explorer or the tray that Tab or Shift+Tab passed by, once for the focus and
-        its ancestors."""
+        """The toolbar of the explorer or the tray, or the window of a stop at the end of the tab, that Tab
+        or Shift+Tab passed by, once for the focus and its ancestors."""
         if not tab_key:
             return 0
         key = (window, previous, tab_key)
@@ -285,12 +293,9 @@ class AppModule(appModuleHandler.AppModule):
             ):
                 return
         # VCL skips the toolbars of the explorer and the tray; stop at the one Tab or Shift+Tab passed by.
-        # Those at the end of the tab come before its top panel.
+        # Those at the end of the tab come before its top panel, also the player's stops.
         passed = self._toolbar_passed(obj.windowHandle, previous, tab_key, obj.processHandle)
-        if passed and self._enter_stop(
-            explorer.stop_of(passed, obj.processHandle, self.language)
-            or tray.stop_of(passed, obj.processHandle, self.language)
-        ):
+        if passed and self._enter_end_stop(passed, obj.processHandle):
             return
         # VCL skips the top panel on Tab; stop at it instead of the tab labels.
         if (

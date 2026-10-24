@@ -95,26 +95,32 @@ def tab_stop_rows(hwnd: int) -> list[list[int]]:
     return rows(list(_tab_stops(hwnd)))
 
 
-def _tab_stops(hwnd: int) -> dict[int, RECT]:
-    return {window: rect(window) for window in descendants(hwnd) if is_tab_stop(window)}
+def _tab_stops(hwnd: int, outside: int = 0) -> dict[int, RECT]:
+    """The Tab stops inside the window, without those inside ``outside``."""
+    return {
+        window: rect(window)
+        for window in descendants(hwnd)
+        if is_tab_stop(window) and not (outside and winUser.isDescendantWindow(outside, window))
+    }
 
 
-def tab_stop_right(hwnd: int, edge: RECT) -> int:
-    """The Tab stop inside the window nearest right of the rectangle on its line, 0 if none."""
+def tab_stop_right(hwnd: int, edge: RECT, outside: int = 0) -> int:
+    """The Tab stop inside the window nearest right of the rectangle on its line, 0 if none; none inside
+    ``outside``."""
     right = {
         window: other.left
-        for window, other in _tab_stops(hwnd).items()
+        for window, other in _tab_stops(hwnd, outside).items()
         if other.left >= edge.right and other.top < edge.bottom and edge.top < other.bottom
     }
     return min(right, key=right.get, default=0)
 
 
-def tab_stop_below(hwnd: int, edge: RECT) -> int:
+def tab_stop_below(hwnd: int, edge: RECT, outside: int = 0) -> int:
     """The Tab stop inside the window nearest below the rectangle, the leftmost of those at the same
-    height; 0 if none."""
+    height; 0 if none; none inside ``outside``."""
     below = {
         window: (other.top, other.left)
-        for window, other in _tab_stops(hwnd).items()
+        for window, other in _tab_stops(hwnd, outside).items()
         if other.top >= edge.bottom - _ROW_OVERLAP and other.left < edge.right and edge.left < other.right
     }
     return min(below, key=below.get, default=0)

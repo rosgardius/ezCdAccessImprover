@@ -7,8 +7,7 @@
 import winUser
 from NVDAObjects.IAccessible import IAccessible
 
-from . import captions, screen, top_panel
-from .cover_art import COVER_CLASS
+from . import captions, panels, screen, top_panel, vcl
 from .language import LanguageFiles
 from .windows import child_windows, parent
 
@@ -29,7 +28,7 @@ def is_metadata_field(hwnd: int) -> bool:
     panel = parent(hwnd)
     if winUser.getClassName(panel) != "TPanel":
         return False
-    if child_windows(panel, COVER_CLASS):
+    if panels.is_metadata_panel(panel):
         return True
     # The CD-Text panel is under the list of tracks, on a page of the Disc Burner tab's own page control.
     page = parent(panel)
@@ -40,12 +39,19 @@ def is_metadata_field(hwnd: int) -> bool:
     )
 
 
+def _own_caption(texts: list[screen.Text]) -> list[screen.Text]:
+    """The texts after the last caption before the field's own: a control without a window, as the rating,
+    may lie with its caption between the field and the window left of it. Every caption ends in a colon."""
+    ends = [i for i, text in enumerate(texts[:-1]) if text.text.endswith(":")]
+    return texts[ends[-1] + 1 :] if ends else texts
+
+
 def _caption_of(layout: captions.Layout, language: LanguageFiles) -> str:
     texts, neighbour = layout.left()
-    caption = screen.joined(texts)
+    caption = screen.joined(_own_caption(texts))
     if caption and neighbour and not any(c.isalnum() for c in caption):
         # The total right of a track or disc number is captioned only by "/" between the two.
-        number = screen.joined(captions.Layout(neighbour, texts=layout.texts).left()[0])
+        number = screen.joined(_own_caption(captions.Layout(neighbour, texts=layout.texts).left()[0]))
         strings = language.strings({t.text for t in layout.texts}, _CAPTION_STRINGS)
         for number_string, total_string in _TOTALS:
             if strings.get(number_string) == number and strings.get(total_string):
@@ -54,10 +60,15 @@ def _caption_of(layout: captions.Layout, language: LanguageFiles) -> str:
     return caption.rstrip(" :")
 
 
-def field_name(field: int, binding_handle, language: LanguageFiles) -> str:
-    """The caption of the field in the language of ezcd; empty if the display model has none."""
+def field_name(field: int, binding_handle, process_handle: int, language: LanguageFiles) -> str:
+    """The caption of the field in the language of ezcd, from the labels in ezcd's memory, else from the
+    display model; empty if neither has it."""
     # The layout depends on the fields chosen in ezcd's settings, so the caption is found by position.
-    return captions.from_screen(field, binding_handle, lambda layout: _caption_of(layout, language))
+    labels = vcl.label_texts(parent(field), process_handle, language)
+    caption = _caption_of(captions.Layout(field, texts=labels), language) if labels else ""
+    return caption or captions.from_screen(
+        field, binding_handle, lambda layout: _caption_of(layout, language)
+    )
 
 
 class MetadataField(IAccessible):
@@ -68,6 +79,9 @@ class MetadataField(IAccessible):
     def _get_name(self):
         if not self._field_name:
             self._field_name = field_name(
-                self.windowHandle, self.appModule.helperLocalBindingHandle, self.appModule.language
+                self.windowHandle,
+                self.appModule.helperLocalBindingHandle,
+                self.processHandle,
+                self.appModule.language,
             )
         return self._field_name

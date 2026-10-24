@@ -335,9 +335,10 @@ class Captioned(IAccessible):
     @functools.cached_property
     def _screen_name(self) -> str:
         window = self._caption_window()
-        return captions.caption(window, self.appModule.helperLocalBindingHandle) or fixed_name(
-            window, self.appModule.language
-        )
+        language = self.appModule.language
+        return captions.caption(
+            window, self.appModule.helperLocalBindingHandle, self.processHandle, language
+        ) or fixed_name(window, language)
 
 
 class ComboBoxEdit(IAccessible):
