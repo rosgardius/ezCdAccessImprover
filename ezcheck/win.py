@@ -1,5 +1,6 @@
 """The Win32 calls of the checker, declared once with 64-bit types."""
 
+import contextlib
 import ctypes
 import ctypes.wintypes as W
 from collections.abc import Iterator
@@ -35,6 +36,13 @@ for _library, _name, _restype, _argtypes in (
     (user32, "SetProcessDpiAwarenessContext", W.BOOL, (W.HANDLE,)),
     (user32, "ClientToScreen", W.BOOL, (W.HWND, ctypes.POINTER(W.POINT))),
     (kernel32, "OpenProcess", W.HANDLE, (W.DWORD, W.BOOL, W.DWORD)),
+    (
+        kernel32,
+        "VirtualAllocEx",
+        ctypes.c_void_p,
+        (W.HANDLE, ctypes.c_void_p, ctypes.c_size_t, W.DWORD, W.DWORD),
+    ),
+    (kernel32, "VirtualFreeEx", W.BOOL, (W.HANDLE, ctypes.c_void_p, ctypes.c_size_t, W.DWORD)),
     (kernel32, "CloseHandle", W.BOOL, (W.HANDLE,)),
     (kernel32, "QueryFullProcessImageNameW", W.BOOL, (W.HANDLE, W.DWORD, W.LPWSTR, ctypes.POINTER(W.DWORD))),
     (
@@ -84,6 +92,9 @@ SMTO_ABORTIFHUNG = 2
 SEND_TIMEOUT_MS = 500
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 PROCESS_VM_READ = 0x0010
+PROCESS_VM_OPERATION = 0x0008
+BUFFER_SIZE = 4096
+_MEM_COMMIT_RESERVE, _MEM_RELEASE, _PAGE_READWRITE = 0x3000, 0x8000, 0x04
 # Coordinates in physical pixels, also those of other processes' windows.
 _DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4
 
@@ -213,6 +224,19 @@ def read_memory(process: int, address: int, target: ctypes.Array | ctypes.Struct
         raise ctypes.WinError(ctypes.get_last_error())
     if done.value != size:
         raise OSError(f"{done.value} of {size} bytes read at {address:#x}")
+
+
+@contextlib.contextmanager
+def buffer(process: int) -> Iterator[int]:
+    """``BUFFER_SIZE`` bytes in the process's memory, for messages that write their answer there; raises
+    ``OSError`` if they cannot be had."""
+    address = kernel32.VirtualAllocEx(process, None, BUFFER_SIZE, _MEM_COMMIT_RESERVE, _PAGE_READWRITE)
+    if not address:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        yield address
+    finally:
+        kernel32.VirtualFreeEx(process, address, 0, _MEM_RELEASE)
 
 
 def product_version(path: str) -> str | None:

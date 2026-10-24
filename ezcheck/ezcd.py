@@ -15,6 +15,9 @@ _EXECUTABLE = "ezcd.exe"
 _STYLE_CLASSES = frozenset(("TScrollingStyleHook.TScrollWindow", "TVclStyleScrollBarsHook.TScrollWindow"))
 
 
+_ACCESS = win.PROCESS_QUERY_LIMITED_INFORMATION | win.PROCESS_VM_READ | win.PROCESS_VM_OPERATION
+
+
 class Unavailable(Exception):
     """ezcd cannot be checked now; the message says why and what to do."""
 
@@ -27,7 +30,7 @@ class Ezcd:
     """The main window."""
     path: str
     process: int
-    """A handle with access to ezcd's memory, open while the checker runs."""
+    """A handle that reads ezcd's memory and makes buffers in it, open while the checker runs."""
 
     @classmethod
     def find(cls) -> "Ezcd":
@@ -36,9 +39,7 @@ class Ezcd:
             if win.class_name(hwnd) != MAIN_CLASS:
                 continue
             thread_id, process_id = win.thread_and_process(hwnd)
-            process = win.open_process(
-                process_id, win.PROCESS_QUERY_LIMITED_INFORMATION | win.PROCESS_VM_READ
-            )
+            process = win.open_process(process_id, _ACCESS)
             if not process:
                 query = win.open_process(process_id, win.PROCESS_QUERY_LIMITED_INFORMATION)
                 path = win.process_path(query) if query else ""
@@ -72,6 +73,18 @@ class Ezcd:
     def read(self, address: int, target: ctypes.Array | ctypes.Structure):
         """Reads ezcd's memory; raises ``OSError`` if it cannot."""
         win.read_memory(self.process, address, target)
+
+    def window_object(self, hwnd: int) -> int:
+        """The address of the window's VCL object; 0 if it has none."""
+        instance = win.user32.GetWindowLongPtrW(hwnd, win.GWLP_HINSTANCE)
+        thread_id, _process_id = win.thread_and_process(hwnd)
+        return win.user32.GetPropW(hwnd, facts.objects.window_property(instance, thread_id)) or 0
+
+    def controls(self, hwnd: int, class_names: frozenset[str], offsets) -> list:
+        """The window's ``facts.objects.Control``s of the VCL classes, read at the ``Vcl`` offsets; none if
+        the window has no VCL object. Raises ``OSError`` if they cannot be read."""
+        window = self.window_object(hwnd)
+        return facts.objects.controls(self.read, window, class_names, offsets) if window else []
 
     @functools.cached_property
     def version(self) -> str | None:

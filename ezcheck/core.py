@@ -36,9 +36,13 @@ class Findings:
     notes: list[str] = dataclasses.field(default_factory=list)
 
     def expect(self, field: str, expected: object, found: object, section: str | None = None):
-        """Notes a discrepancy unless what was found is what was expected; the section is by default that of
-        the field's group (``SECTIONS``)."""
-        if found != expected:
+        """Notes a discrepancy unless what was found is what was expected."""
+        self.require(field, found == expected, expected, found, section)
+
+    def require(self, field: str, holds: bool, expected: object, found: object, section: str | None = None):
+        """Notes a discrepancy unless the fact holds; the section is by default that of the field's group
+        (``SECTIONS``)."""
+        if not holds:
             if section is None:
                 section = SECTIONS.get(field.split(".")[0].split("[")[0], "")
             self.discrepancies.append(Discrepancy(field, str(expected), str(found), section))
@@ -89,6 +93,19 @@ class Context:
     def facts(self):
         """The set of facts chosen for the version of ezcd."""
         return self.selection.facts
+
+    @property
+    def shown_strings(self) -> dict[int, str]:
+        """The strings of the language ezcd shows; empty if it is not known."""
+        return self.ezcd.language_files.get(self.ezcd.language, {})
+
+    def shown(self, string) -> str:
+        """The ``facts.groups.String`` in the language ezcd shows; empty if it has none."""
+        return self.shown_strings.get(string.number, "")
+
+    def translations(self, string) -> set[str]:
+        """The ``facts.groups.String`` in every language of ezcd."""
+        return {s[string.number] for s in self.ezcd.language_files.values() if s.get(string.number)}
 
 
 @dataclass(frozen=True)

@@ -380,7 +380,8 @@ absolute coordinates, captions in a particular language.
 - Download Cover Art (`TAmazon`) opens with focus on the form; its list of results has no name. Escape
   closes it.
 - The rating (`TRating`, caption Rating `[592]` left of it) has no window: five stars drawn in the
-  metadata panel, 16 × 16 design units each from its left edge. A click sets the stars up to the one
+  metadata panel, 16 × 16 design units each from its left edge; the control is wider than its stars (113
+  pixels for their 100 at 120 DPI). A click sets the stars up to the one
   clicked; a click in the first few pixels of the rating (5 at 120 DPI) sets none, a click right of
   the stars all five. ezcd marks the file as changed (its name in italics) even when the stars are set
   back. ezcd hides it with the Rating field and disables it without a file.
