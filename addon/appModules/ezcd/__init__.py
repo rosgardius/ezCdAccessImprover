@@ -53,6 +53,7 @@ from . import (
     toolbar_stops,
     top_panel,
     tray,
+    version,
     window_focus,
     windowless,
 )
@@ -71,7 +72,9 @@ _MAX_PATH_LENGTH = 32767
 class AppModule(appModuleHandler.AppModule):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.language = LanguageFiles(self._executable_path(), self._main_window_texts)
+        app_path = self._executable_path()
+        version.choose(app_path)
+        self.language = LanguageFiles(app_path, self._main_window_texts)
         self.remembered_buttons: dict[Hashable, tuple[int, int]] = {}
         """``StopButton.key`` of the last focused button of each toolbar stop, by ``ToolbarStop.key``."""
         self._focus_window = 0

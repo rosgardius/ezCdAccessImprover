@@ -21,6 +21,7 @@ from NVDAObjects.window import Window
 
 from . import captions, counters, filename_preview, player, remote, screen, vcl
 from .cover_art import COVER_CLASS
+from .facts.objects import Control
 from .language import OwnString
 from .names import Name, name_text
 from .windows import child_windows, parent, rect, root, rows
@@ -34,11 +35,11 @@ _MOVE_DOWN = 242
 _COVER_ART = 349
 _ENCODER_INFORMATION = OwnString("encoder_information")
 
-type _Item = int | vcl.Control
+type _Item = int | Control
 """A child window or a control without a window."""
 
 
-def _controls(holder: int, process_handle: int) -> list[vcl.Control]:
+def _controls(holder: int, process_handle: int) -> list[Control]:
     """The shown controls without windows of the window that take clicks."""
     # VCL keeps a control visible inside a hidden window, as on a hidden tab.
     if not winUser.isWindowVisible(holder):
@@ -132,7 +133,7 @@ class DrawnControl(Window):
     lastChild = None
     actionCount = 1
 
-    def __init__(self, holder: int, control: vcl.Control):
+    def __init__(self, holder: int, control: Control):
         self.holder = holder
         self.control = control
         super().__init__(windowHandle=holder)

@@ -20,6 +20,7 @@ from scriptHandler import script
 from speech.speech import speakMessage
 
 from . import remote, toolbar, vcl
+from .facts.objects import Control
 from .names import ezcd_string
 from .windows import descendants, parent, rect, root, rows
 
@@ -74,7 +75,7 @@ def is_tag(hwnd: int) -> bool:
     return hwnd in _tags(root(hwnd))
 
 
-def _settings_button(panel: int, process_handle: int) -> vcl.Control | None:
+def _settings_button(panel: int, process_handle: int) -> Control | None:
     return next(
         (c for c in vcl.controls(panel, process_handle, _SETTINGS_CLASSES) if c.visible and c.enabled), None
     )

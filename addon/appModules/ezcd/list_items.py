@@ -20,7 +20,7 @@ from NVDAObjects.IAccessible.sysListView32 import LVM_GETITEMCOUNT
 from scriptHandler import script
 from winBindings import user32
 
-from . import commands, remote, screen
+from . import commands, remote, screen, version
 from .windows import parent, rect
 
 addonHandler.initTranslation()
@@ -30,9 +30,6 @@ _LIST_VIEW_CLASSES = ("TListView", "TJamShellList", "TJamShellPopupMenu", "TJamS
 _REPEAT_WINDOW = 0.1
 """Seconds after an item's focus event within which a focus event for the same item repeats it."""
 _LB_GETITEMDATA = 0x199
-# VCL keeps the check box of a TCheckListBox item in an object whose address is the item's data: after
-# the pointer to its class and the item's own data comes the state, 0 unchecked, 1 checked, 2 grayed.
-_CHECK_STATE_OFFSET = 16
 _CHECK_STATES = {0: set(), 1: {State.CHECKED}, 2: {State.HALFCHECKED}}
 _TOGGLE_POLL_MS = 20
 _TOGGLE_POLLS = 25
@@ -82,7 +79,7 @@ class CheckListItem(ListItem):
             return None
         state = ctypes.c_ubyte()
         try:
-            remote.read(self.processHandle, wrapper + _CHECK_STATE_OFFSET, state)
+            remote.read(self.processHandle, wrapper + version.facts.vcl.check_state, state)
         except OSError:
             log.debugWarning("Check state of a TCheckListBox item not read", exc_info=True)
             return None

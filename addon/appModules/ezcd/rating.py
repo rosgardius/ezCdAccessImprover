@@ -20,7 +20,8 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible
 from scriptHandler import script
 
-from . import panels, remote, screen, toolbar, vcl
+from . import panels, remote, screen, toolbar, vcl, version
+from .facts.objects import Control
 from .names import ezcd_string
 from .windows import parent, tab_stop_below
 
@@ -28,12 +29,10 @@ _RATING_CLASSES = frozenset(("TRating",))
 _STARS = 5
 # A star in design units; a click at the rating's left edge sets no stars.
 _STAR_WIDTH = 16
-# TRating: the number of stars.
-_VALUE = 0x340
 _CAPTION = 592
 
 
-def _rating(panel: int, process_handle: int) -> vcl.Control | None:
+def _rating(panel: int, process_handle: int) -> Control | None:
     """The shown rating of the metadata panel, if it can be set."""
     if not panels.is_metadata_panel(panel):
         return None
@@ -85,7 +84,7 @@ class RatingSlider(IAccessible):
             return None
         stars = (ctypes.c_int32 * 1)()
         try:
-            remote.read(self.processHandle, rating.address + _VALUE, stars)
+            remote.read(self.processHandle, rating.address + version.facts.vcl.rating_stars, stars)
         except OSError:
             log.debugWarning("Rating of ezcd not read", exc_info=True)
             return None

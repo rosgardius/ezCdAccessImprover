@@ -63,6 +63,8 @@ The app module is a few thousand lines. These rules keep it from growing copies 
   - `panels.py`: panels of the main window, recognised by the windows they hold;
   - `language.py`: ezcd's strings, the add-on's own strings and the choice of the language ezcd shows
     (also of one window);
+  - `facts/`: what depends on the version of ezcd (see [Versions of ezcd](#versions-of-ezcd));
+    `version.py`: the set of facts chosen for the running ezcd;
   - `commands.py`: the category of the add-on's commands in Input Gestures.
 
   A second copy of a helper, even a one-line one such as `parent(hwnd)`, is a defect. A helper
@@ -88,6 +90,24 @@ The app module is a few thousand lines. These rules keep it from growing copies 
   through `captions.from_screen` or `screen.redraw`, not by a retry written anew.
 - `chooseNVDAObjectOverlayClasses` stays one chain by window class. A kind of object with several
   classes chooses among them itself, as `ToolbarStop.overlay_class` does.
+
+## Versions of ezcd
+
+What the add-on relies on and a version of ezcd may change (offsets in VCL objects, for now) is a field of
+`facts.Facts`, not a constant of a module.
+
+- `facts.VERSIONS` holds one set for each version of ezcd that changed a fact, from the oldest to the
+  newest. A new set is `dataclasses.replace` of the one before it, with `since` set to the version and only
+  what changed. A version of ezcd that changed nothing gets no set: it only raises `facts.LAST_TESTED`.
+- The oldest supported version is the `since` of the first set; raising it removes the older sets.
+- Modules read the chosen set, `version.facts`, and never compare versions: a difference in behaviour is a
+  named field of the set. Only `facts.select` compares them.
+- A version newer than `LAST_TESTED`, or one that cannot be read, gets the last set; one older than the
+  first set, the first. Either is one `log.info` line; the user is not told.
+- Window classes stay string literals in the code; one moves into the set only when a version of ezcd
+  changes it.
+- `facts/` imports only the standard library and itself, so that it loads without NVDA. The reading of
+  VCL objects through a function given (`facts.objects`) lives there with the offsets it uses.
 
 ## Comments
 
