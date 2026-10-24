@@ -6,7 +6,7 @@ Exit codes: 0 every fact holds, 1 some do not, 2 ezcd could not be checked.
 import argparse
 import sys
 
-from . import audit, report, win
+from . import baseline, report, win
 from .checks import CHECKS
 from .core import Context, Status
 from .ezcd import Ezcd, Unavailable
@@ -63,7 +63,7 @@ def main() -> int:
         if not ezcd.version:
             print("ezcd.exe has no version to name the baseline by.", file=sys.stderr)
             return EXIT_UNAVAILABLE
-        print(f"Baseline written: {audit.write_baseline(ezcd.version, context.cache.get('audit', {}))}")
+        print(f"Baseline written: {baseline.write(ezcd.version, context.cache.get('audit', {}))}")
     code = EXIT_FAILED if any(r.status == Status.FAILED for r in results) else EXIT_PASSED
     print(report.as_json(context, results, code) if args.json else report.text(context, results))
     return code

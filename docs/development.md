@@ -18,9 +18,9 @@ The `ezCdAccessImprover` NVDA add-on is an app module for EZ CD Audio Converter
 | `addon/appModules/ezcd/` | The app module: the package name is the executable name without `.exe` |
 | `readme.md` | User documentation, rendered to `addon/doc/en/readme.html` |
 | `changelog.md` | Change history, used as the GitHub release description |
-| `docs/` | Development documentation (this file and notes on the application's UI) |
+| `docs/` | Development documentation: this file, notes on the application's UI, checking a new version of it |
 | `ezcheck/` | The checker of the facts in the running ezcd, without NVDA ([its readme](../ezcheck/readme.md)); not part of the add-on |
-| `.github/` | CI: ruff, `nvaddon check`, build; on a tag, a release and add-on store submission |
+| `.github/` | CI: ruff, the tests of `ezcheck`, `nvaddon check`, build; on a tag, a release and add-on store submission |
 
 Generated files (`addon/manifest.ini`, `addon/doc/`, `*.nvda-addon`, `*.pot`, `*.mo`)
 are git-ignored and must not be edited by hand.
@@ -35,6 +35,7 @@ uv run nvaddon check              # validate addon.toml against add-on store rul
 uv run nvaddon build              # build ezCdAccessImprover-<version>.nvda-addon
 uv run nvaddon install --link     # link addon/ into the installed NVDA (once)
 uv run python -m ezcheck          # check the facts in the running ezcd
+uv run python -m unittest discover -s ezcheck/tests -t .  # tests of the facts and the checker
 ```
 
 After the first `install --link`, NVDA has to be restarted; after that, app module
@@ -114,6 +115,7 @@ in design units, where ezcd keeps its language setting. A string is its number a
   changes it.
 - `facts/` imports only the standard library and itself, so that it loads without NVDA. The reading of
   VCL objects through a function given (`facts.objects`) lives there with the offsets it uses.
+- A new version of ezcd is checked as [new-ezcd-version.md](new-ezcd-version.md) says.
 
 ## Comments
 

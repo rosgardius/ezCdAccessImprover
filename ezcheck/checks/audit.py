@@ -5,8 +5,8 @@ A finding not in the baseline fails the check; one of the baseline no longer fou
 
 from collections.abc import Callable
 
-from .. import audit, msaa, win
-from ..core import Context, Findings, Scope, check
+from .. import audit, baseline, msaa, win
+from ..core import Context, Findings, Scope, Skip, check
 
 _UNTABBED_CLASSES = frozenset(("TToolBar", "TTrackBar", "TMyTrackBar", "TButton", "TBitBtn", "TPngBitBtn"))
 _SPEED_BUTTONS = frozenset(("TSpeedButton", "TPngSpeedButton"))
@@ -64,11 +64,15 @@ def _audit(kind: str, find: Callable[[Context, int, str], set[str]], context: Co
     if context.cache.get("writing baseline"):
         findings.notes.append(f"{len(found)} found")
         return
-    version, known = audit.baseline(context.ezcd.version)
-    expected = {f for f in known[kind] if f == name or f.startswith(f"{name}/")}
-    for new in sorted(found - expected):
-        findings.require("", False, f"as in the baseline of ezcd {version}", f"new: {new}", _SECTIONS[kind])
-    findings.notes.extend(f"no longer found: {gone}" for gone in sorted(expected - found))
+    path = baseline.nearest(context.ezcd.version)
+    if path is None:
+        raise Skip("no baseline in ezcheck/baselines")
+    new, gone = baseline.compare(baseline.load(path)[kind], found, name)
+    for finding in new:
+        findings.require(
+            "", False, f"as in the baseline of ezcd {path.stem}", f"new: {finding}", _SECTIONS[kind]
+        )
+    findings.notes.extend(f"no longer found: {finding}" for finding in gone)
 
 
 @check("audit.unnamed", "accessibility", Scope.TAB | Scope.DIALOG)

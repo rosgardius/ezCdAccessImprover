@@ -29,6 +29,9 @@ jobs:
     - name: Lint
       run: uv run ruff check addon ezcheck
 
+    - name: Test the checker
+      run: uv run python -m unittest discover -s ezcheck/tests -t .
+
     - name: Validate addon.toml
       run: uv run nvaddon check
 

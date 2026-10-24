@@ -1,19 +1,12 @@
-"""The audit: what in ezcd is not accessible by itself, compared with a baseline of an earlier version.
+"""The names of the elements the audit finds.
 
 An element is named without language and window handles: by the form, or the tab of the main window, and
 the classes of the windows down to it, each with its index among the visible windows of its class under
 the same parent, by their places on the screen, as VCL reorders windows and makes them anew.
 """
 
-import json
-from pathlib import Path
-
 from . import main_window, win
-from .addon import facts
 from .core import Context, Skip
-
-BASELINES = Path(__file__).resolve().parent / "baselines"
-KINDS = ("unnamed", "windowless", "untabbed")
 
 
 def root(context: Context) -> tuple[int, str]:
@@ -48,30 +41,3 @@ def path(top: int, name: str, hwnd: int) -> str:
         steps.insert(0, f"{win.class_name(hwnd)}[{_index(hwnd)}]")
         hwnd = win.parent(hwnd)
     return "/".join([name, *steps])
-
-
-def _version_key(name: str) -> tuple[int, ...]:
-    return facts.parse(name)
-
-
-def baseline(version: str | None) -> tuple[str, dict[str, list[str]]]:
-    """The baseline of the nearest version: the newest not newer than ezcd's, else the oldest; its version
-    and findings by kind. Raises ``Skip`` if there is none."""
-    files = sorted(BASELINES.glob("*.json"), key=lambda p: _version_key(p.stem))
-    if not files:
-        raise Skip("no baseline in ezcheck/baselines")
-    current = facts.parse(version)
-    older = [p for p in files if _version_key(p.stem) <= current]
-    chosen = older[-1] if older else files[0]
-    with chosen.open(encoding="utf-8") as file:
-        found = json.load(file)
-    return chosen.stem, {kind: found.get(kind, []) for kind in KINDS}
-
-
-def write_baseline(version: str, found: dict[str, set[str]]) -> Path:
-    BASELINES.mkdir(exist_ok=True)
-    target = BASELINES / f"{version}.json"
-    with target.open("w", encoding="utf-8", newline="\n") as file:
-        json.dump({kind: sorted(found.get(kind, ())) for kind in KINDS}, file, ensure_ascii=False, indent=2)
-        file.write("\n")
-    return target

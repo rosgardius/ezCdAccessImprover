@@ -1,7 +1,7 @@
 # EZ CD Audio Converter: UI facts the add-on relies on
 
 Checked with EZ CD Audio Converter 13.2.1.1 (x64). An update of the application may change image
-numbers or layout; recheck this file then.
+numbers or layout; recheck this file then ([new-ezcd-version.md](new-ezcd-version.md)).
 
 ## Framework
 
