@@ -4,6 +4,7 @@ Improves accessibility of EZ CD Audio Converter with NVDA.
 
 * Author: Rosgardius
 * NVDA compatibility: 2026.1 to 2026.2
+* EZ CD Audio Converter compatibility: 13.2.1 or later
 
 ## Features
 
