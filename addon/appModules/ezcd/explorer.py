@@ -11,6 +11,9 @@ takes its place (View Explorer, Add files, ...): one Tab stop right before the c
 
 The breadcrumb bar is the path of the folder, edited in a field that ezcd shows on a click into the bar.
 A click into the arrow of a crumb shows a popup list of the folders in it.
+
+View > Folder tree off makes the tree zero wide, but it stays a Tab stop; Tab and Shift+Tab go on past
+it.
 """
 
 import builtins
@@ -113,6 +116,12 @@ def stop_of(hwnd: int, process_handle: int, language: LanguageFiles) -> Explorer
     tab = main_tab(hwnd) if toolbars else 0
     buttons = toolbar_stops.read_buttons(toolbars, process_handle) if tab else ()
     return ExplorerToolbar(buttons, winUser.getWindowText(tab), row) if buttons else None
+
+
+def is_hidden_tree(hwnd: int) -> bool:
+    """Whether the window is the folder tree that View > Folder tree hides."""
+    edge = rect(hwnd)
+    return winUser.getClassName(hwnd) == "TJamShellTree" and edge.right <= edge.left
 
 
 def _first_below(panel: int) -> int:

@@ -78,6 +78,8 @@ class AppModule(appModuleHandler.AppModule):
         self._tab_key = 0
         """1 after Tab, -1 after Shift+Tab, until the next focus or key."""
         self._passing = 0
+        self._skipped_tree = 0
+        """The hidden folder tree that Tab or Shift+Tab went on past, until the next key."""
         self._passed_toolbar: tuple[tuple[int, int, int] | None, int] = (None, 0)
         """The last answer of ``_toolbar_passed``, until the next key."""
         self._explorer_toggle = 0
@@ -217,6 +219,7 @@ class AppModule(appModuleHandler.AppModule):
         # Called in NVDA's keyboard hook thread for every gesture, in any application.
         self._tab_key = 0
         self._passing = 0
+        self._skipped_tree = 0
         self._passed_toolbar = (None, 0)
         self._focus_return = 0
         self._folder_changed = False
@@ -239,6 +242,15 @@ class AppModule(appModuleHandler.AppModule):
         self._tab_kept = False
         window_return = self.window_focus.note_focus(obj, previous)
         if passing and obj.windowHandle == passing:
+            return
+        hwnd = obj.windowHandle
+        if tab_key and (hwnd == self._skipped_tree or explorer.is_hidden_tree(hwnd)):
+            # NVDA does not see the key it sends: the next focus comes from the same key, past the tree. The
+            # tree and then its item get focus: the key is sent once.
+            self._focus_window, self._tab_key = previous, tab_key
+            if hwnd != self._skipped_tree:
+                self._skipped_tree = hwnd
+                KeyboardInputGesture.fromName("tab" if tab_key > 0 else "shift+tab").send()
             return
         # VCL moves focus to the form as the Cancel of a status window, such as Adding files, is disabled at
         # the end; the window was reported already.
