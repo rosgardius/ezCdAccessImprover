@@ -360,6 +360,11 @@ class CaptionedButton(IAccessible):
     def _get_name(self):
         return self._full_name
 
+    def event_nameChange(self):
+        # ezcd changes some captions, as Cancel to Close when the check for updates ends.
+        self.__dict__.pop("_full_name", None)
+        super().event_nameChange()
+
     def event_stateChange(self):
         super().event_stateChange()
         if self.windowClassName in captions.CHOICE_CLASSES:

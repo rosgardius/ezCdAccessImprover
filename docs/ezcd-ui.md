@@ -547,6 +547,10 @@ absolute coordinates, captions in a particular language.
   the second right under it. A click at the centre moves the selected service, and the list fires focus
   and selection on it at its new place; on the first service Move up does nothing.
 - About is the last item of the Help menu (on every top panel); Escape closes it.
+- Check for updates (`TUpdateCheckForm`, from the Help menu) opens titled Checking for updates... `[690]`, with
+  focus on its button; the title's change from English to the language shown comes before the focus event. When the check ends (some 200 ms later), ezcd changes the title (No updates `[696]`),
+  the label (No updates available. `[697]`) and the button's caption; only the title and the button fire
+  name changes, the label is drawn later.
 - When a dialog closes, VCL gives focus back to the control that had it before. After Options, DSP and
   Edit profiles, ezcd moves it on to the main form 10–110 ms later; Tab from the main form goes to the
   tab labels. After the conversion window and after a window opened by the mouse, focus goes to the tab

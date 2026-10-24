@@ -8,11 +8,13 @@ The text of a dialog is in labels without windows, visible only in the display m
 panels. The labels that caption a control are said with the control, so they are left out.
 """
 
+import api
 import controlTypes
 import winUser
 from NVDAObjects.behaviors import Dialog
 from NVDAObjects.IAccessible import IAccessible
 from scriptHandler import script
+from speech.speech import speakObjectProperties
 from winBindings import user32
 
 from . import captions, convert_window, screen
@@ -103,5 +105,21 @@ class ClosedByEscape(EzcdDialog):
         self.close()
 
 
-DIALOG_CLASSES = {"TEncoderInfo": ClosedByEscape, "TFC_GetMetadata": ClosedByEscape}
+class UpdateCheck(EzcdDialog):
+    """Check for updates. When the check ends, ezcd changes the title and the text, which has no event."""
+
+    def event_nameChange(self):
+        # ezcd also translates the title before the dialog is shown; that one NVDA says with the dialog.
+        if self == api.getForegroundObject():
+            # The new text is drawn only after ezcd has changed the title.
+            screen.redraw(self.windowHandle)
+            speakObjectProperties(self, name=True, description=True, reason=controlTypes.OutputReason.CHANGE)
+        super().event_nameChange()
+
+
+DIALOG_CLASSES = {
+    "TEncoderInfo": ClosedByEscape,
+    "TFC_GetMetadata": ClosedByEscape,
+    "TUpdateCheckForm": UpdateCheck,
+}
 """Overlay classes of dialogs other than ``EzcdDialog``, by form class."""
