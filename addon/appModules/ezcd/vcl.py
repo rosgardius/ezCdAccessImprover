@@ -16,6 +16,7 @@ from logHandler import log
 
 from . import remote, screen
 from .language import LanguageFiles
+from .windows import descendants, top_level_windows
 
 # Not in winBindings; a private library object keeps these declarations away from ctypes.windll.
 _user32 = ctypes.WinDLL("user32")
@@ -44,6 +45,9 @@ _ON_CLICK = 0x1F8
 _TEXT = 0x2D0
 _MAX_TEXT_LENGTH = 1024
 _LABEL_CLASSES = frozenset(("TLabel",))
+
+_trusted_processes: set[int] = set()
+"""The ezcd processes whose captions at ``_TEXT`` turned out to be ezcd's strings."""
 
 
 class _Bounds(ctypes.Structure):
@@ -171,10 +175,31 @@ def screen_rect(hwnd: int, control: Control) -> RECT:
     return RECT(left, top, left + control.width, top + control.height)
 
 
+def _captions(hwnd: int, process_handle: int) -> set[str]:
+    return {label.text.strip() for label in controls(hwnd, process_handle, _LABEL_CLASSES)} - {""}
+
+
+def _text_offset_holds(hwnd: int, process_handle: int, language: LanguageFiles, texts: set[str]) -> bool:
+    """Whether the captions read at ``_TEXT`` are ezcd's: some of them, or of the labels of the main window,
+    are strings of the language files. Another version of ezcd may keep the caption elsewhere, and what
+    is read there is no string of ezcd."""
+    process_id, _thread_id = winUser.getWindowThreadProcessID(hwnd)
+    if process_id in _trusted_processes:
+        return True
+    holds = language.knows_any(texts) or any(
+        language.knows_any(_captions(window, process_handle))
+        for form in top_level_windows(process_id, "TMainform")
+        for window in descendants(form)
+    )
+    if holds:
+        _trusted_processes.add(process_id)
+    return holds
+
+
 def label_texts(hwnd: int, process_handle: int, language: LanguageFiles) -> list[screen.Text]:
     """The captions of the window's shown labels without windows, each on one line, at the labels'
     rectangles in the window's logical coordinates, as the display model has texts; none if ezcd's memory
-    cannot be read, or if no caption is a string of ezcd's language files.
+    cannot be read, or if the captions there are not ezcd's (``_text_offset_holds``).
 
     Unlike the display model, they are there also scrolled out of view, and never painted only in part.
     """
@@ -184,5 +209,6 @@ def label_texts(hwnd: int, process_handle: int, language: LanguageFiles) -> list
         if label.visible and text:
             edge = screen.to_logical(screen_rect(hwnd, label), hwnd)
             found.append(screen.Text(edge.left, edge.top, edge.right, edge.bottom, text))
-    # Another version of ezcd may keep the caption elsewhere: what is read there is no string of ezcd.
-    return found if language.knows_any({t.text for t in found}) else []
+    if not found or not _text_offset_holds(hwnd, process_handle, language, {t.text for t in found}):
+        return []
+    return found

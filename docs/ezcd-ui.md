@@ -117,7 +117,8 @@ absolute coordinates, captions in a particular language.
 - The breadcrumb bar (`TJamShellBreadCrumbBar`) is a tab stop without a name; NVDA calls it a pane.
   Its window text is the path of a file system folder (`C:\Windows`) and is empty for a virtual one
   (This PC); the crumbs are drawn, the last one the current folder. A drop-down arrow is at its right
-  end.
+  end. A narrow bar cuts the last crumb to its first letters. The node selected in the explorer's tree is the
+  current folder, also while View hides the tree.
 - A click on the empty space of the bar shows its hidden combo box (`TBreadCrumbComboBox` holding a
   `ComboBox` and its `Edit`) over it, with the path selected in the edit and focus in it; F4, Enter,
   Space and letters on the bar do nothing. Enter in the edit goes to the typed path; a path that does not
@@ -359,6 +360,9 @@ absolute coordinates, captions in a particular language.
   Audio CD Ripper tab under the output panel: outside the metadata panel, no Tab stop is right of the
   player or below it. Tab goes from DSP, the last control of the output panel, to the tab labels. A
   one-pixel `TPanel` (a splitter, without MSAA role) stands between the list and the metadata panel.
+- The status line under the list of files (1 file selected | format | … | size) is a `TLabel` in a
+  `TPanel` without child windows. After the panel was made anew, the display model may have no text for
+  it for a while, also after a repaint.
 
 ## Cover art and rating
 

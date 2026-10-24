@@ -7,7 +7,6 @@
 The tree also answers some TreeView messages; a node handle there is VirtualTrees' node pointer.
 """
 
-import ctypes
 import functools
 import re
 import time
@@ -31,6 +30,23 @@ from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from scriptHandler import script
 
 from . import convert_window, names, remote, top_panel
+from .remote import (
+    TVGN_CARET,
+    TVGN_CHILD,
+    TVGN_FIRSTVISIBLE,
+    TVGN_LASTVISIBLE,
+    TVGN_NEXT,
+    TVGN_NEXTVISIBLE,
+    TVGN_PARENT,
+    TVGN_PREVIOUSVISIBLE,
+    TVGN_ROOT,
+    TVIF_HANDLE,
+    TVIF_STATE,
+    TVIS_SELECTED,
+    TVM_GETITEMW,
+    TreeItemStructure,
+    next_node,
+)
 from .windows import parent, root
 
 addonHandler.initTranslation()
@@ -54,47 +70,12 @@ _DISC_PAGE_STRINGS = (471, 472)
 # data disc.
 _DISC = _("Disc")
 
-TVM_GETNEXTITEM = 0x110A
-TVM_GETITEMW = 0x113E
-TVGN_ROOT = 0x0
-TVGN_NEXT = 0x1
-TVGN_PARENT = 0x3
-TVGN_CHILD = 0x4
-TVGN_FIRSTVISIBLE = 0x5
-TVGN_NEXTVISIBLE = 0x6
-TVGN_PREVIOUSVISIBLE = 0x7
-TVGN_CARET = 0x9
-TVGN_LASTVISIBLE = 0xA
-TVIF_STATE = 0x8
-TVIF_HANDLE = 0x10
-TVIS_SELECTED = 0x2
 _SELECT_ALL_POLL_MS = 50
 _SELECT_ALL_POLLS = 10
 _CLOSED_EDITOR_EVENTS_SECONDS = 1.0
 _COLUMN_SEPARATOR = "; "
 # Such as VirtualStringTree1 or CDW_VirtualStringTree.
 _COMPONENT_NAME = re.compile(r"\w*VirtualStringTree\d*")
-
-
-class _TvItem(ctypes.Structure):
-    # TVITEMEXW; ezcd and NVDA are both 64-bit.
-    _fields_ = (
-        ("mask", ctypes.c_uint),
-        ("hItem", ctypes.c_void_p),
-        ("state", ctypes.c_uint),
-        ("stateMask", ctypes.c_uint),
-        ("pszText", ctypes.c_void_p),
-        ("cchTextMax", ctypes.c_int),
-        ("iImage", ctypes.c_int),
-        ("iSelectedImage", ctypes.c_int),
-        ("cChildren", ctypes.c_int),
-        ("lParam", ctypes.c_void_p),
-        ("iIntegral", ctypes.c_int),
-        ("uStateEx", ctypes.c_uint),
-        ("hwnd", ctypes.c_void_p),
-        ("iExpandedImage", ctypes.c_int),
-        ("iReserved", ctypes.c_int),
-    )
 
 
 def is_conversion_list(hwnd: int) -> bool:
@@ -149,11 +130,6 @@ def is_list_focus_event(obj, focus) -> bool:
     return _is_client_event_with_focus(obj, focus, controlTypes.Role.TREEVIEW)
 
 
-def next_node(hwnd: int, relation: int, node: int = 0) -> int:
-    """The node in the ``TVGN_*`` relation to the node; 0 if there is none or ezcd did not answer."""
-    return remote.send(hwnd, TVM_GETNEXTITEM, relation, node)
-
-
 def _walk(hwnd: int) -> Iterator[int]:
     """All nodes in the tree's own order, where a node's descendants follow it."""
     current = next_node(hwnd, TVGN_ROOT)
@@ -169,7 +145,7 @@ def _walk(hwnd: int) -> Iterator[int]:
 
 def _node_selected(hwnd: int, process_handle: int, address: int, node: int) -> bool | None:
     # The tree does not check the node: it must come from next_node just before.
-    item = _TvItem(mask=TVIF_HANDLE | TVIF_STATE, hItem=node, stateMask=TVIS_SELECTED)
+    item = TreeItemStructure(mask=TVIF_HANDLE | TVIF_STATE, hItem=node, stateMask=TVIS_SELECTED)
     remote.write(process_handle, address, item)
     if not remote.send(hwnd, TVM_GETITEMW, 0, address):
         return None

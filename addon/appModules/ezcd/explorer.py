@@ -261,20 +261,37 @@ def _last_crumb(bar: int, binding_handle, repaint: bool = False) -> str:
     return max(found, key=lambda t: t.left).text if found else ""
 
 
+def _folder(bar: int, binding_handle, process_handle: int, repaint: bool = False) -> str:
+    """The current folder as the breadcrumb bar draws it, in full; empty if neither the display model nor
+    the tree has it.
+
+    A narrow bar cuts the last crumb. ezcd selects the folder it goes to in the tree of the explorer, which
+    has it in full, also while View hides the tree.
+    """
+    crumb = _last_crumb(bar, binding_handle, repaint)
+    tab = main_tab(bar)
+    tree = next((w for w in descendants(tab) if winUser.getClassName(w) == "TJamShellTree"), 0) if tab else 0
+    node = remote.next_node(tree, remote.TVGN_CARET) if tree else 0
+    selected = remote.node_text(tree, process_handle, node) if node else ""
+    return selected if selected and selected.startswith(crumb) else crumb
+
+
 def is_folder_list_focus(bar: int) -> bool:
     """Whether the focus is in the list of the folder whose path the breadcrumb bar shows."""
     focus = api.getFocusObject()
     return focus.windowClassName == "TJamShellList" and main_tab(focus.windowHandle) == main_tab(bar)
 
 
-def announce_folder(bar: int, binding_handle):
+def announce_folder(bar: int, binding_handle, process_handle: int):
     """Reports the folder that the list in focus went to and the number of its items, once ezcd has
     filled the list."""
 
     def announce():
         if is_folder_list_focus(bar):
             folder_list = api.getFocusObject().windowHandle
-            ui.message(f"{_last_crumb(bar, binding_handle, repaint=True)}, {_item_count(folder_list)}")
+            ui.message(
+                f"{_folder(bar, binding_handle, process_handle, repaint=True)}, {_item_count(folder_list)}"
+            )
 
     core.callLater(_FOLDER_FILL_DELAY, announce)
 
@@ -305,8 +322,8 @@ class PathBar(IAccessible):
 
     def _get_value(self):
         # A folder without a path, as This PC, is only drawn as the last crumb.
-        return winUser.getWindowText(self.windowHandle) or _last_crumb(
-            self.windowHandle, self.appModule.helperLocalBindingHandle
+        return winUser.getWindowText(self.windowHandle) or _folder(
+            self.windowHandle, self.appModule.helperLocalBindingHandle, self.processHandle
         )
 
     def doAction(self, index=None):

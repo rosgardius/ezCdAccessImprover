@@ -4,6 +4,9 @@
 
 """Panels of the main window, recognised by the windows they hold."""
 
+from NVDAObjects.IAccessible import IAccessible
+
+from . import screen, vcl
 from .cover_art import COVER_CLASS
 from .windows import child_windows, descendants, rect, tab_stop_below, tab_stop_right
 
@@ -38,3 +41,24 @@ def stop_after(tab: int, window: int) -> int:
     edge = rect(window)
     metadata = next((w for w in descendants(tab) if is_metadata_panel(w)), 0)
     return tab_stop_right(tab, edge, metadata) or tab_stop_below(tab, edge, metadata)
+
+
+class TextPanel(IAccessible):
+    """A panel without child windows, as NVDA's ``ContentGenericClient`` presents it: its value is the
+    text it shows, the captions of its labels without windows, as the status line under the list of files.
+
+    The display model lacks that text for a panel ezcd made anew, as when the layout of the metadata panel
+    changes; the text then comes from ezcd's memory. A panel with no text, as the splitter beside the
+    metadata panel, is left out of simple review.
+    """
+
+    def _get_value(self):
+        shown = super()._get_value()
+        if shown and not shown.isspace():
+            return shown
+        labels = vcl.label_texts(self.windowHandle, self.processHandle, self.appModule.language)
+        return " ".join(screen.joined(line) for line in screen.lines(labels))
+
+    def _get_presentationType(self):
+        # Simple review goes into the children of a layout panel: its controls without windows (Holder).
+        return self.presType_content if self.value else self.presType_layout

@@ -12,6 +12,7 @@ import watchdog
 import winKernel
 import winUser
 from exceptions import CallCancelled
+from logHandler import log
 from winBindings import user32
 
 BUFFER_SIZE = 1024
@@ -25,6 +26,22 @@ _MK_LBUTTON = 0x1
 _WM_CONTEXTMENU = 0x7B
 # Messages go from NVDA's main thread: a hung ezcd must not freeze NVDA.
 _TIMEOUT_MS = 500
+# TreeView messages, which TVirtualStringTree answers too.
+TVM_GETNEXTITEM = 0x110A
+TVM_GETITEMW = 0x113E
+TVGN_ROOT = 0x0
+TVGN_NEXT = 0x1
+TVGN_PARENT = 0x3
+TVGN_CHILD = 0x4
+TVGN_FIRSTVISIBLE = 0x5
+TVGN_NEXTVISIBLE = 0x6
+TVGN_PREVIOUSVISIBLE = 0x7
+TVGN_CARET = 0x9
+TVGN_LASTVISIBLE = 0xA
+TVIF_STATE = 0x8
+TVIF_HANDLE = 0x10
+TVIS_SELECTED = 0x2
+TVIF_TEXT = 0x1
 
 
 def send(hwnd: int, msg: int, wparam: int = 0, lparam: int = 0) -> int:
@@ -130,3 +147,54 @@ def write(process_handle: int, address: int, source: ctypes.Array | ctypes.Struc
         process_handle, address, ctypes.byref(source), ctypes.sizeof(source), None
     ):
         raise ctypes.WinError()
+
+
+class TreeItemStructure(ctypes.Structure):
+    # TVITEMEXW; ezcd and NVDA are both 64-bit.
+    _fields_ = (
+        ("mask", ctypes.c_uint),
+        ("hItem", ctypes.c_void_p),
+        ("state", ctypes.c_uint),
+        ("stateMask", ctypes.c_uint),
+        ("pszText", ctypes.c_void_p),
+        ("cchTextMax", ctypes.c_int),
+        ("iImage", ctypes.c_int),
+        ("iSelectedImage", ctypes.c_int),
+        ("cChildren", ctypes.c_int),
+        ("lParam", ctypes.c_void_p),
+        ("iIntegral", ctypes.c_int),
+        ("uStateEx", ctypes.c_uint),
+        ("hwnd", ctypes.c_void_p),
+        ("iExpandedImage", ctypes.c_int),
+        ("iReserved", ctypes.c_int),
+    )
+
+
+def next_node(hwnd: int, relation: int, node: int = 0) -> int:
+    """The node of a tree view in the ``TVGN_*`` relation to the node; 0 if there is none or ezcd did not
+    answer."""
+    return send(hwnd, TVM_GETNEXTITEM, relation, node)
+
+
+def node_text(hwnd: int, process_handle: int, node: int) -> str:
+    """The text of the tree view's node; empty if ezcd did not tell. The node must come from ``next_node``
+    just before: the tree does not check it."""
+    item = TreeItemStructure()
+    chars = (BUFFER_SIZE - ctypes.sizeof(item)) // ctypes.sizeof(ctypes.c_wchar)
+    text = (ctypes.c_wchar * chars)()
+    try:
+        with buffer(process_handle) as address:
+            item = TreeItemStructure(
+                mask=TVIF_HANDLE | TVIF_TEXT,
+                hItem=node,
+                pszText=address + ctypes.sizeof(item),
+                cchTextMax=chars,
+            )
+            write(process_handle, address, item)
+            if not send(hwnd, TVM_GETITEMW, 0, address):
+                return ""
+            read(process_handle, address + ctypes.sizeof(item), text)
+    except OSError:
+        log.debugWarning("Tree view node text unavailable", exc_info=True)
+        return ""
+    return text.value

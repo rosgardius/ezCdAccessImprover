@@ -550,7 +550,7 @@ class CellEditor(Edit):
 
     def reportFocus(self):
         cells = self.appModule.cells
-        cell = (self.tree, file_lists.next_node(self.tree, file_lists.TVGN_CARET), self.column)
+        cell = (self.tree, remote.next_node(self.tree, remote.TVGN_CARET), self.column)
         if self.is_closed:
             # ezcd moved on while the column was read.
             return
@@ -651,7 +651,7 @@ class BetweenEditors(IAccessible):
             and winUser.getGUIThreadInfo(self.windowThreadID).hwndFocus == self.windowHandle
         ):
             return
-        place = (file_lists.next_node(tree, file_lists.TVGN_CARET), _scroll_position(tree))
+        place = (remote.next_node(tree, remote.TVGN_CARET), _scroll_position(tree))
         idle = time.monotonic() - self.appModule.cells.activity_time
         if place != self._place or idle < _BETWEEN_EDITORS_SECONDS:
             self._place = place

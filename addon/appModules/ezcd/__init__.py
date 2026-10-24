@@ -20,7 +20,7 @@ import winKernel
 import winUser
 from keyboardHandler import KeyboardInputGesture
 from logHandler import log
-from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
+from NVDAObjects.IAccessible import ContentGenericClient, IAccessible, getNVDAObjectFromEvent
 from scriptHandler import script
 from speech.speech import speakMessage
 from winBindings import kernel32
@@ -42,6 +42,7 @@ from . import (
     metadata,
     names,
     options,
+    panels,
     player,
     rating,
     sliders,
@@ -355,7 +356,7 @@ class AppModule(appModuleHandler.AppModule):
             obj.windowHandle
         ):
             self._folder_changed = True
-            explorer.announce_folder(obj.windowHandle, self.helperLocalBindingHandle)
+            explorer.announce_folder(obj.windowHandle, self.helperLocalBindingHandle, obj.processHandle)
         if obj.windowClassName == "TJamShellList" and self._folder_changed:
             return
         if obj.windowClassName == "TVirtualStringTree":
@@ -563,6 +564,8 @@ class AppModule(appModuleHandler.AppModule):
                 clsList.insert(0, top_panel.TopPanelWindow)
             elif explorer.is_hidden_explorer_row(hwnd):
                 clsList.insert(0, explorer.HiddenExplorerRow)
+            elif ContentGenericClient in clsList:
+                clsList.insert(0, panels.TextPanel)
         elif window_class in styles.SCROLL_BAR_COVER_CLASSES:
             if child_id == 0:
                 clsList.insert(0, styles.ScrollBarCover)
