@@ -26,10 +26,6 @@ from .names import ezcd_string
 from .windows import parent, tab_stop_below
 
 _RATING_CLASSES = frozenset(("TRating",))
-_STARS = 5
-# A star in design units; a click at the rating's left edge sets no stars.
-_STAR_WIDTH = 16
-_CAPTION = 592
 
 
 def _rating(panel: int, process_handle: int) -> Control | None:
@@ -72,7 +68,7 @@ class RatingSlider(IAccessible):
 
     @functools.cached_property
     def _caption(self) -> str:
-        return ezcd_string(self.windowHandle, _CAPTION, self.appModule.language)
+        return ezcd_string(self.windowHandle, version.facts.rating.caption, self.appModule.language)
 
     def _get_name(self):
         return self._caption
@@ -88,21 +84,24 @@ class RatingSlider(IAccessible):
         except OSError:
             log.debugWarning("Rating of ezcd not read", exc_info=True)
             return None
-        return stars[0] if 0 <= stars[0] <= _STARS else None
+        return stars[0] if 0 <= stars[0] <= version.facts.rating.stars else None
 
     def _get_value(self):
         stars = self._value()
-        return "" if stars is None else builtins._("{number} of {total}").format(number=stars, total=_STARS)
+        if stars is None:
+            return ""
+        return builtins._("{number} of {total}").format(number=stars, total=version.facts.rating.stars)
 
     def _set_stars(self, stars: int):
         current = self._value()
         rating = _rating(self.windowHandle, self.processHandle)
         if current is None or rating is None:
             return
-        stars = min(max(stars, 0), _STARS)
+        facts = version.facts.rating
+        stars = min(max(stars, 0), facts.stars)
         if stars == current:
             return
-        star = _STAR_WIDTH * screen.dpi_scale(self.windowHandle)
+        star = facts.star_width * screen.dpi_scale(self.windowHandle)
         x = rating.left + (round((stars - 0.5) * star) if stars else 0)
         if remote.click(self.windowHandle, x, rating.top + rating.height // 2):
             eventHandler.executeEvent("valueChange", self)
@@ -126,7 +125,7 @@ class RatingSlider(IAccessible):
 
     @script(gesture="kb:end")
     def script_all(self, gesture):
-        self._set_stars(_STARS)
+        self._set_stars(version.facts.rating.stars)
 
     @script(gesture="kb:tab")
     def script_next_control(self, gesture):

@@ -14,19 +14,13 @@ import winUser
 from logHandler import log
 from NVDAObjects.IAccessible import IAccessible
 
-from . import screen
+from . import screen, version
+from .facts.groups import SummaryField
 from .language import LanguageFiles, OwnString
 from .windows import child_windows, parent, root
 
 _WINDOW_CLASSES = ("TConvertWnd", "TConvertWnd_Single")
-_RESUME_STRING = 145
 _TOTAL_PROGRESS = OwnString("total_progress")
-
-# The summary panel in design units (DFM): the row of the total bar and the percentage right of it, and
-# the grid of label and value pairs under it.
-_BAR_ROW = 16
-_ROWS = (0, 16, 37, 53, 69)
-_COLUMNS = (0, 128, 264, 384, 528, 648)
 
 _SPEED_INTERVAL = 0.5
 _SPEED_PERIOD = 5.0
@@ -37,17 +31,6 @@ _NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
 class Bar(enum.Enum):
     CONVERTER = enum.auto()
     TOTAL = enum.auto()
-
-
-class Field(enum.Enum):
-    """A label and value pair of the summary panel: its row and the columns of the label and the value."""
-
-    CONVERTED = (37, 0, 128)
-    ELAPSED = (37, 264, 384)
-    ERRORS = (53, 0, 128)
-    REMAINING = (53, 264, 384)
-    SKIPPED = (69, 0, 128)
-    SPEED = (69, 264, 384)
 
 
 class State(enum.Enum):
@@ -92,7 +75,7 @@ def state(window: int, language: LanguageFiles) -> State:
     # After the end, Pause is disabled; while paused, it says Resume.
     if any(not winUser.isWindowEnabled(b) for b in buttons):
         return State.FINISHED
-    resume = language.texts(_RESUME_STRING)
+    resume = language.texts(version.facts.strings.resume)
     if any(winUser.getWindowText(b).replace("&", "") in resume for b in buttons):
         return State.PAUSED
     return State.RUNNING
@@ -108,13 +91,11 @@ class Summary:
     cells: dict[tuple[int, int], str]
     """Texts of the panel's grid by row and column in design units."""
 
-    def label(self, field: Field) -> str:
-        row, label, _value = field.value
-        return self.cells.get((row, label), "")
+    def label(self, field: SummaryField) -> str:
+        return self.cells.get((field.row, field.label), "")
 
-    def value(self, field: Field) -> str:
-        row, _label, value = field.value
-        return self.cells.get((row, value), "")
+    def value(self, field: SummaryField) -> str:
+        return self.cells.get((field.row, field.value), "")
 
 
 def read_summary(panel: int, binding_handle) -> Summary | None:
@@ -128,14 +109,15 @@ def read_summary(panel: int, binding_handle) -> Summary | None:
     # The labels stay where the form designer put them, scaled with the form; the bar and the percentage
     # stretch with the window.
     scale = screen.dpi_scale(panel)
+    grid = version.facts.convert_window
     pieces: dict[tuple[int, int], list[screen.Text]] = collections.defaultdict(list)
     percent = []
     for text in sorted(found, key=lambda t: t.left):
-        row = _nearest((text.top - area.top) / scale, _ROWS)
-        if row == _BAR_ROW and text.left >= bar.right:
+        row = _nearest((text.top - area.top) / scale, grid.rows)
+        if row == grid.bar_row and text.left >= bar.right:
             percent.append(text)
-        elif row > _BAR_ROW:
-            pieces[row, _nearest((text.left - area.left) / scale, _COLUMNS)].append(text)
+        elif row > grid.bar_row:
+            pieces[row, _nearest((text.left - area.left) / scale, grid.columns)].append(text)
     return Summary(screen.joined(percent), {cell: screen.joined(texts) for cell, texts in pieces.items()})
 
 
@@ -175,15 +157,16 @@ def _compose(summary: Summary, current: State, speed: SpeedAverage, state_word: 
     parts = [state_word]
     if current != State.FINISHED:
         parts.append(summary.percent)
-    fields = [Field.CONVERTED, Field.ERRORS, Field.SKIPPED]
-    fields += [Field.ELAPSED] if current == State.FINISHED else [Field.REMAINING]
+    grid = version.facts.convert_window
+    fields = [grid.converted, grid.errors, grid.skipped]
+    fields += [grid.elapsed] if current == State.FINISHED else [grid.remaining]
     if current == State.RUNNING:
-        fields.append(Field.SPEED)
+        fields.append(grid.speed)
     for field in fields:
         value = summary.value(field)
-        if field in (Field.ERRORS, Field.SKIPPED) and value in ("", "0"):
+        if field in (grid.errors, grid.skipped) and value in ("", "0"):
             continue
-        if field == Field.SPEED:
+        if field == grid.speed:
             value = speed.average(value)
         parts.append(f"{summary.label(field)} {value}".strip())
     return ", ".join(p for p in parts if p)
@@ -204,7 +187,7 @@ class ConversionStatus:
         if not self._speed.due():
             return
         summary = read_summary(parent(bar), binding_handle)
-        self._speed.add(summary.value(Field.SPEED) if summary is not None else "")
+        self._speed.add(summary.value(version.facts.convert_window.speed) if summary is not None else "")
 
     def text(self, window: int, binding_handle, language: LanguageFiles) -> str:
         """The status of the conversion; empty when the panel has no text yet."""

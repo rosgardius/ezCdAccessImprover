@@ -14,7 +14,6 @@ import contextlib
 import functools
 from collections.abc import Callable, Hashable
 from dataclasses import dataclass
-from typing import ClassVar
 
 import api
 import controlTypes
@@ -26,6 +25,7 @@ from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from scriptHandler import script
 
 from . import names, toolbar, windows
+from .facts.groups import String
 from .language import LanguageFiles
 
 _MENU_MARK = "▼"
@@ -173,9 +173,6 @@ class ToolbarButton(_StopToolbar):
     One that shows only an image is named by ezcd's string for the image.
     """
 
-    image_names: ClassVar[dict[int, int]] = {}
-    """Numbers of ezcd's strings for buttons without text, by image."""
-
     @property
     def button_index(self) -> int:
         return button_child_id(self) - 1
@@ -189,11 +186,16 @@ class ToolbarButton(_StopToolbar):
     def _get_name(self):
         return super()._get_name() or self._image_name
 
+    def _image_strings(self) -> dict[int, String]:
+        """ezcd's strings for buttons without text, by image; none by default."""
+        return {}
+
     @functools.cached_property
     def _image_name(self) -> str:
-        button = self._tool_button() if self.image_names else None
-        number = None if button is None else self.image_names.get(button.image)
-        return "" if number is None else names.ezcd_string(self.windowHandle, number, self.appModule.language)
+        strings = self._image_strings()
+        button = self._tool_button() if strings else None
+        string = None if button is None else strings.get(button.image)
+        return "" if string is None else names.ezcd_string(self.windowHandle, string, self.appModule.language)
 
     def _tool_button(self) -> toolbar.ToolButton | None:
         buttons = toolbar.read_buttons(self.windowHandle, self.processHandle)

@@ -31,13 +31,12 @@ from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from NVDAObjects.window.edit import Edit
 from scriptHandler import script
 
-from . import commands, file_lists, remote, screen
+from . import commands, file_lists, remote, screen, version
 from .language import LanguageFiles
 from .windows import parent, root
 
 addonHandler.initTranslation()
 
-_LYRICS_STRING = 474
 _SB_HORZ = 0
 _SIF_RANGE = 0x1
 _SIF_PAGE = 0x2
@@ -348,7 +347,7 @@ class CellTable:
             if index is None:
                 break
             target = cursor.columns[index]
-            is_lyrics = target.caption in self._language.texts(_LYRICS_STRING)
+            is_lyrics = target.caption in self._language.texts(version.facts.strings.lyrics)
             if is_lyrics and not past_lyrics:
                 break
             # The tree moves its focused column only while the editor is closed; Enter keeps the text.

@@ -28,7 +28,8 @@ from logHandler import log
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from scriptHandler import script
 
-from . import convert_window, names, remote, top_panel
+from . import convert_window, names, remote, top_panel, version
+from .facts.groups import String, Strings
 from .language import OwnString
 from .remote import (
     TVGN_CARET,
@@ -49,21 +50,6 @@ from .remote import (
 )
 from .windows import parent, root
 
-_FILES_STRING = 494
-_TRACKLIST_STRING = 137
-_FILELIST_STRING = 141
-_DISC_STRING = 486
-# The string naming a list of the main window, by the string of the caption of the page holding it: the
-# Audio Converter and Audio CD Ripper tabs, the Audio CD, MP3 disc and Data disc pages of the Disc Burner tab.
-_LIST_NAMES = {
-    172: _FILES_STRING,
-    171: _TRACKLIST_STRING,
-    470: _TRACKLIST_STRING,
-    471: _FILELIST_STRING,
-    472: _FILELIST_STRING,
-}
-# The pages whose list holds the disc as its only top-level node.
-_DISC_PAGE_STRINGS = (471, 472)
 _DISC = OwnString("disc")
 
 _SELECT_ALL_POLL_MS = 50
@@ -87,6 +73,18 @@ def is_main_window_list(hwnd: int) -> bool:
 
 def is_main_list_editor(hwnd: int) -> bool:
     return winUser.getClassName(hwnd) == "TVTEdit" and is_main_window_list(parent(hwnd))
+
+
+def _list_names(strings: Strings) -> tuple[tuple[String, String], ...]:
+    """The caption of the page holding a list of the main window and the string naming the list: the Audio
+    Converter and Audio CD Ripper tabs, the Audio CD, MP3 disc and Data disc pages of the Disc Burner tab."""
+    return (
+        (strings.converter_tab, strings.files),
+        (strings.ripper_tab, strings.tracklist),
+        (strings.audio_cd_page, strings.tracklist),
+        (strings.mp3_disc_page, strings.filelist),
+        (strings.data_disc_page, strings.filelist),
+    )
 
 
 def _burner_page(hwnd: int) -> int:
@@ -344,9 +342,13 @@ class MainFileListItem(TreeItem):
         if not page:
             return ""
         strings = self.appModule.language.window_strings(self.windowHandle)
-        if winUser.getWindowText(page) not in (strings.get(n) for n in _DISC_PAGE_STRINGS):
+        facts = version.facts.strings
+        # Their lists hold the disc as their only top-level node.
+        if winUser.getWindowText(page) not in (
+            strings.get(s.number) for s in (facts.mp3_disc_page, facts.data_disc_page)
+        ):
             return ""
-        return strings.get(_DISC_STRING) or self.appModule.language.own_string(self.windowHandle, _DISC)
+        return strings.get(facts.disc.number) or self.appModule.language.own_string(self.windowHandle, _DISC)
 
     def _get_name(self):
         name = super()._get_name()
@@ -559,7 +561,12 @@ class MainWindowList(IAccessible):
         strings = self.appModule.language.window_strings(self.windowHandle)
         caption = _page_caption(self.windowHandle)
         name = next(
-            (strings.get(n, "") for shown, n in _LIST_NAMES.items() if strings.get(shown) == caption), ""
+            (
+                strings.get(list_name.number, "")
+                for page, list_name in _list_names(version.facts.strings)
+                if strings.get(page.number) == caption
+            ),
+            "",
         )
         # Some languages have Filelist in small letters.
         return name[:1].upper() + name[1:]
@@ -572,7 +579,9 @@ class ConversionFileList(IAccessible):
     """The list of the conversion window, named Format by ezcd."""
 
     def _get_name(self):
-        name = self.appModule.language.window_strings(self.windowHandle).get(_FILES_STRING)
+        name = self.appModule.language.window_strings(self.windowHandle).get(
+            version.facts.strings.files.number
+        )
         return name or super()._get_name()
 
 

@@ -13,13 +13,15 @@ a split button showing the value of a setting.
 import ctypes
 import functools
 import re
+from collections.abc import Callable
 
 import controlTypes
 import winUser
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 
-from . import captions, cards, panels, remote, screen
+from . import captions, cards, panels, remote, screen, version
 from .captions import Layout
+from .facts.groups import String, Strings
 from .language import LanguageFiles, OwnString
 from .windows import child_windows, descendants, parent, root
 
@@ -30,27 +32,8 @@ _CB_GETLBTEXTLEN = 0x149
 _ROW_SEPARATOR = ", "
 _TEXT_LENGTH = 256
 
-# Strings of the language files.
-_FILENAME_PREVIEW = 266
-_MOVE_UP = 241
-_MOVE_DOWN = 242
-_PROFILE = 582
-_FILENAMES = 180
-_FILES = 494
-_METADATA = 101
-_FIELD_NAME = 834
-_FIELD_VALUE = 835
-_COVER_ART = 349
-_TRACKLIST = 137
-_SOURCE_DRIVE = 462
-_READ_SPEED = 463
-_DISC_WRITER = 235
-_WRITE_SPEED = 236
-_FOLDERS = 380
-_VOLUME_CONTROL = 109
-
-type Name = int | OwnString | str | None
-"""A string number of the language files, the add-on's own string or the name itself."""
+type Name = String | OwnString | str | None
+"""A string of the language files, the add-on's own string or the name itself."""
 
 
 def _image_button(hwnd: int) -> Name:
@@ -63,7 +46,7 @@ def _image_button(hwnd: int) -> Name:
     if neighbour_class == "TEdit":
         return OwnString("browse")
     if neighbour_class == "TComboBox":
-        return _FILENAME_PREVIEW
+        return version.facts.strings.filename_preview
     return None
 
 
@@ -88,19 +71,21 @@ def _move_button(hwnd: int) -> Name:
     layout = Layout(hwnd)
     for sibling, rect in layout.siblings.items():
         if winUser.getClassName(sibling) == "TButton" and not winUser.getWindowText(sibling):
-            return _MOVE_UP if layout.rect.top < rect.top else _MOVE_DOWN
+            strings = version.facts.strings
+            return strings.move_up if layout.rect.top < rect.top else strings.move_down
     return None
 
 
 def _metadata_tree(hwnd: int) -> Name:
     """Metadata editor: the list of files lies in a panel of the form, the list of fields deeper."""
-    return _FILES if parent(parent(hwnd)) == root(hwnd) else _METADATA
+    strings = version.facts.strings
+    return strings.files if parent(parent(hwnd)) == root(hwnd) else strings.metadata
 
 
 def _metadata_combo_box(hwnd: int) -> Name:
     """Metadata editor: the name of a field to add is typed, the type of a picture is chosen."""
     if child_windows(hwnd, "Edit"):
-        return _FIELD_NAME
+        return version.facts.strings.field_name
     return OwnString("picture_type")
 
 
@@ -163,9 +148,10 @@ def _drive_combo_box(hwnd: int) -> Name:
     if len(others) != 1:
         return None
     other = layout.siblings[others[0]]
+    strings = version.facts.strings
     if other.top < layout.rect.bottom and layout.rect.top < other.bottom:
-        return _SOURCE_DRIVE if layout.rect.left < other.left else _READ_SPEED
-    return _DISC_WRITER if layout.rect.top < other.top else _WRITE_SPEED
+        return strings.source_drive if layout.rect.left < other.left else strings.read_speed
+    return strings.disc_writer if layout.rect.top < other.top else strings.write_speed
 
 
 def _main_combo_box(hwnd: int) -> Name:
@@ -195,7 +181,7 @@ def _settings_combo_box(hwnd: int) -> Name:
     if winUser.getClassName(parent(hwnd)) != "TSettings2AudioCDRipperDriveForm":
         return None
     _texts, above = Layout(hwnd).above()
-    return None if above else _SOURCE_DRIVE
+    return None if above else version.facts.strings.source_drive
 
 
 _ANY_FORM = {"TButton": _button, "TCheckBox": _check_box}
@@ -205,50 +191,59 @@ _RELEASE_CODE = OwnString("release_code")
 _RESULTS = OwnString("results")
 _FOLDER_CONTENTS = OwnString("folder_contents")
 _POSITION = OwnString("position")
-_FORMS = {
-    "TProfile_Editor": {"TVirtualStringTree": _PROFILE, "TButton": _move_button},
-    # The caption of the last field lies below the edge of its panel and is not drawn.
-    "TMBManual": {"TEdit": _RELEASE_CODE, "TListView": _RESULTS},
-    "TFC_GetMetadata": {"TVirtualStringTree": _TRACKLIST},
-    "TAmazon": {"TListView": _RESULTS},
-    "TMainform": {
-        "TComboBoxEx": _PROFILE,
-        "TComboBox": _main_combo_box,
-        "TJamShellTree": _FOLDERS,
-        "TJamShellList": _FOLDER_CONTENTS,
-        # The player's volume and position: the only sliders of the main window.
-        "TTrackBar": _VOLUME_CONTROL,
-        "TMyTrackBar": _POSITION,
-    },
-    "TSettings2Form": {"TTreeView": _CATEGORIES, "TComboBox": _settings_combo_box},
-    "TDSPForm": {"TComboBox": _dsp_combo_box},
-    "TNamePreview": {"TEdit": _FILENAMES, "TListBox": _TEMPLATES, "TListView": _FILENAME_PREVIEW},
-    "TTMetadata": {
-        "TVirtualStringTree": _metadata_tree,
-        "TComboBox": _metadata_combo_box,
-        "TMemo": _FIELD_VALUE,
-        "TListView": _COVER_ART,
-    },
-}
+
+
+def _form_rules(strings: Strings) -> dict[str, dict[str, Name | Callable[[int], Name]]]:
+    """The names of controls without captions by the class of their form and their own class: a name, or a
+    function of the control's window giving it."""
+    return {
+        "TProfile_Editor": {"TVirtualStringTree": strings.profile, "TButton": _move_button},
+        # The caption of the last field lies below the edge of its panel and is not drawn.
+        "TMBManual": {"TEdit": _RELEASE_CODE, "TListView": _RESULTS},
+        "TFC_GetMetadata": {"TVirtualStringTree": strings.tracklist},
+        "TAmazon": {"TListView": _RESULTS},
+        "TMainform": {
+            "TComboBoxEx": strings.profile,
+            "TComboBox": _main_combo_box,
+            "TJamShellTree": strings.folders,
+            "TJamShellList": _FOLDER_CONTENTS,
+            # The player's volume and position: the only sliders of the main window.
+            "TTrackBar": strings.volume_control,
+            "TMyTrackBar": _POSITION,
+        },
+        "TSettings2Form": {"TTreeView": _CATEGORIES, "TComboBox": _settings_combo_box},
+        "TDSPForm": {"TComboBox": _dsp_combo_box},
+        "TNamePreview": {
+            "TEdit": strings.filenames,
+            "TListBox": _TEMPLATES,
+            "TListView": strings.filename_preview,
+        },
+        "TTMetadata": {
+            "TVirtualStringTree": _metadata_tree,
+            "TComboBox": _metadata_combo_box,
+            "TMemo": strings.field_value,
+            "TListView": strings.cover_art,
+        },
+    }
 
 
 def fixed_name(hwnd: int, language: LanguageFiles) -> str:
     """The name of a control ezcd shows without a caption; empty if none is known for it."""
     control_class = winUser.getClassName(hwnd)
-    form_rules = _FORMS.get(winUser.getClassName(root(hwnd)), {})
+    form_rules = _form_rules(version.facts.strings).get(winUser.getClassName(root(hwnd)), {})
     rule = form_rules.get(control_class) or _ANY_FORM.get(control_class)
     return name_text(hwnd, rule(hwnd) if callable(rule) else rule, language)
 
 
-def ezcd_string(hwnd: int, number: int, language: LanguageFiles) -> str:
+def ezcd_string(hwnd: int, string: String, language: LanguageFiles) -> str:
     """The string of the language files in the language of the control's window; empty if it has none."""
     # Some strings are captions of labels: "Disc writer :".
-    return language.window_strings(hwnd).get(number, "").rstrip(" :")
+    return language.window_strings(hwnd).get(string.number, "").rstrip(" :")
 
 
 def name_text(hwnd: int, name: Name, language: LanguageFiles) -> str:
     """The name in the language of the control's window; empty if there is none."""
-    if isinstance(name, int):
+    if isinstance(name, String):
         return ezcd_string(hwnd, name, language)
     if isinstance(name, OwnString):
         return language.own_string(hwnd, name)

@@ -26,14 +26,9 @@ from logHandler import log
 from scriptHandler import script
 from winBindings import user32
 
-from . import remote, screen, windows
+from . import remote, screen, version, windows
 from .language import OwnString
 from .names import Captioned
-
-# The buttons in design units (DFM): squares beside the edit, level with its top, 1 to 3 units from it
-# by the window; a click goes to a button's centre.
-_BUTTON_SIZE = 23
-_BUTTON_GAP = 2
 
 # While converting, ezcd handles messages seconds late.
 _CLICK_TIMEOUT_MS = 5000
@@ -65,8 +60,8 @@ def _button_rect(edit: int, step: Step) -> RECT:
     """The button's rectangle on the screen."""
     rect = windows.rect(edit)
     scale = screen.dpi_scale(edit)
-    size = round(_BUTTON_SIZE * scale)
-    gap = round(_BUTTON_GAP * scale)
+    size = round(version.facts.counter.button_size * scale)
+    gap = round(version.facts.counter.button_gap * scale)
     left = rect.left - gap - size if step == Step.LESS else rect.right + gap
     return RECT(left, rect.top, left + size, rect.top + size)
 

@@ -61,8 +61,8 @@ The app module is a few thousand lines. These rules keep it from growing copies 
   - `vcl.py`: VCL objects in ezcd's memory, such as controls without windows;
   - `captions.py`: captions found by position;
   - `panels.py`: panels of the main window, recognised by the windows they hold;
-  - `language.py`: ezcd's strings, the add-on's own strings and the choice of the language ezcd shows
-    (also of one window);
+  - `language.py`: ezcd's strings and the add-on's own strings in the language ezcd shows (also in one
+    window), and the choice of that language; `facts/language.py`: reading their files;
   - `facts/`: what depends on the version of ezcd (see [Versions of ezcd](#versions-of-ezcd));
     `version.py`: the set of facts chosen for the running ezcd;
   - `commands.py`: the category of the add-on's commands in Input Gestures.
@@ -93,8 +93,10 @@ The app module is a few thousand lines. These rules keep it from growing copies 
 
 ## Versions of ezcd
 
-What the add-on relies on and a version of ezcd may change (offsets in VCL objects, for now) is a field of
-`facts.Facts`, not a constant of a module.
+What the add-on relies on and a version of ezcd may change is a field of `facts.Facts`, not a constant of a
+module: offsets in VCL objects, images of toolbar buttons, numbers of strings in the language files, sizes
+in design units, where ezcd keeps its language setting. A string is its number and its text in
+`english.uni` (`facts.groups.String`), which says what the number means.
 
 - `facts.VERSIONS` holds one set for each version of ezcd that changed a fact, from the oldest to the
   newest. A new set is `dataclasses.replace` of the one before it, with `since` set to the version and only

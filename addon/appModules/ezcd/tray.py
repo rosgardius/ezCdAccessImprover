@@ -22,19 +22,11 @@ import queueHandler
 import winUser
 from logHandler import log
 
-from . import panels, toolbar, toolbar_stops
+from . import panels, toolbar, toolbar_stops, version
 from .language import LanguageFiles
 from .top_panel import main_tab
 from .windows import descendants, parent
 
-# ezcd's strings for the buttons, by image.
-_NAMES = {
-    8: 191,  # Open tray
-    7: 192,  # Close tray, hidden
-    9: 434,  # Drive settings: a gear without a hint, on the Audio CD Ripper tab only
-}
-# Open tray and Close tray, each by the image of the other.
-_PAIRS = {8: 7, 7: 8}
 # ezcd may wait for the drive to move the tray before it shows the other button.
 _PAIR_TIMEOUT = 10.0
 _POLL_SECONDS = 0.1
@@ -83,6 +75,12 @@ def toolbar_passed(window: int, previous: int, forward: bool) -> int:
     return tray if tray and tray not in (window, previous) and next_control(tray) == after else 0
 
 
+def _pairs() -> dict[int, int]:
+    """The images of Open tray and Close tray, each by the image of the other."""
+    tray = version.facts.tray
+    return {tray.open_tray: tray.close_tray, tray.close_tray: tray.open_tray}
+
+
 class TrayToolbarWindow(toolbar_stops.ToolbarWindow):
     find_stop = staticmethod(stop_of)
 
@@ -114,7 +112,7 @@ class PairFocus:
             buttons = toolbar.read_buttons(hwnd, process_handle)
             if any(b.index == pressed.index and not b.hidden for b in buttons):
                 continue
-            pair = next((b for b in buttons if b.image == _PAIRS[pressed.image] and not b.hidden), None)
+            pair = next((b for b in buttons if b.image == _pairs()[pressed.image] and not b.hidden), None)
             if pair is not None:
                 queueHandler.queueFunction(queueHandler.eventQueue, self._focus, button, pair.index)
                 return
@@ -138,10 +136,12 @@ class PairFocus:
 class TrayButton(toolbar_stops.ButtonBeforeControl):
     find_stop = staticmethod(stop_of)
     next_control = staticmethod(next_control)
-    image_names = _NAMES
+
+    def _image_strings(self):
+        return version.facts.tray.button_strings
 
     def doAction(self, index=None):
         pressed = self._tool_button()
         super().doAction(index)
-        if not index and pressed is not None and pressed.image in _PAIRS:
+        if not index and pressed is not None and pressed.image in _pairs():
             self.appModule.tray_pair.follow(self, pressed)

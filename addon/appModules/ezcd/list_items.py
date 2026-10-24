@@ -33,11 +33,6 @@ _LB_GETITEMDATA = 0x199
 _CHECK_STATES = {0: set(), 1: {State.CHECKED}, 2: {State.HALFCHECKED}}
 _TOGGLE_POLL_MS = 20
 _TOGGLE_POLLS = 25
-# The buttons that move the selected service, image speed buttons without windows, in design units
-# (DFM): one under the other, right of the list and level with its top.
-_MOVE_BUTTON_LEFT = 4
-_MOVE_BUTTON_WIDTH = 23
-_MOVE_BUTTON_HEIGHT = 22
 
 
 class ListItem(IAccessible):
@@ -123,9 +118,11 @@ class ServiceItem(CheckListItem):
         panel = parent(lst)
         edge = rect(lst)
         scale = screen.dpi_scale(lst)
+        buttons = version.facts.service_buttons
+        # Speed buttons without windows.
         point = POINT(
-            edge.right + round((_MOVE_BUTTON_LEFT + _MOVE_BUTTON_WIDTH / 2) * scale),
-            edge.top + round((_MOVE_BUTTON_HEIGHT * (1.5 if down else 0.5)) * scale),
+            edge.right + round((buttons.left + buttons.width / 2) * scale),
+            edge.top + round((buttons.height * (1.5 if down else 0.5)) * scale),
         )
         if user32.ScreenToClient(panel, ctypes.byref(point)):
             remote.post_click(panel, point.x, point.y)

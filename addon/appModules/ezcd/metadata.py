@@ -7,20 +7,11 @@
 import winUser
 from NVDAObjects.IAccessible import IAccessible
 
-from . import captions, panels, screen, top_panel, vcl
+from . import captions, panels, screen, top_panel, vcl, version
 from .language import LanguageFiles
 from .windows import child_windows, parent
 
 FIELD_CLASSES = ("TEdit", "TMemo", "TCheckBox")
-
-# Strings of the language files: the captions of the number fields and the names of the totals right of them.
-_NUMBER_STRING = 590
-_DISC_NUMBER_STRING = 598
-_TOTAL_TRACKS_STRING = 801
-_TOTAL_DISCS_STRING = 503
-_TOTALS = ((_NUMBER_STRING, _TOTAL_TRACKS_STRING), (_DISC_NUMBER_STRING, _TOTAL_DISCS_STRING))
-# All captions of the metadata panel; they tell the language, as short ones are the same in several.
-_CAPTION_STRINGS = (*range(588, 604), 608, 609, *range(900, 907), 934, 935, 936)
 
 
 def is_metadata_field(hwnd: int) -> bool:
@@ -52,10 +43,12 @@ def _caption_of(layout: captions.Layout, language: LanguageFiles) -> str:
     if caption and neighbour and not any(c.isalnum() for c in caption):
         # The total right of a track or disc number is captioned only by "/" between the two.
         number = screen.joined(_own_caption(captions.Layout(neighbour, texts=layout.texts).left()[0]))
-        strings = language.strings({t.text for t in layout.texts}, _CAPTION_STRINGS)
-        for number_string, total_string in _TOTALS:
-            if strings.get(number_string) == number and strings.get(total_string):
-                return strings[total_string].strip("<>")
+        facts = version.facts.metadata
+        strings = language.strings({t.text for t in layout.texts}, facts.captions)
+        totals = ((facts.number, facts.total_tracks), (facts.disc_number, facts.total_discs))
+        for number_string, total_string in totals:
+            if strings.get(number_string.number) == number and strings.get(total_string.number):
+                return strings[total_string.number].strip("<>")
         return f"{number.rstrip(' :')} {caption}".strip()
     return caption.rstrip(" :")
 

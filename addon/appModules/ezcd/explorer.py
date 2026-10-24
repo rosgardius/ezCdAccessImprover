@@ -30,26 +30,12 @@ from NVDAObjects.IAccessible import IAccessible
 from NVDAObjects.IAccessible.sysListView32 import LVM_GETITEMCOUNT, LVM_GETNEXTITEM
 from scriptHandler import script
 
-from . import captions, list_items, names, panels, remote, screen, toolbar, toolbar_stops
+from . import captions, list_items, names, panels, remote, screen, toolbar, toolbar_stops, version
 from .language import LanguageFiles, OwnString
 from .top_panel import main_tab
 from .windows import child_windows, descendants, parent, rect, tab_stop_below
 
 _PATH = OwnString("path")
-
-# ezcd's strings for the buttons, by image.
-_VIEW_EXPLORER = 29
-_NAMES = {
-    _VIEW_EXPLORER: 704,  # View Explorer: shows and hides the explorer, pressed while it is shown
-    33: 327,  # Add files...
-    32: 328,  # Add folder...
-    25: 489,  # Go to Computer
-    26: 490,  # Go to Music
-    30: 701,  # Move backward in history
-    31: 702,  # Move forward in history
-    3: 703,  # Go up
-    4: 346,  # View: the menu of the list's view (List, Details, Icons, Large icons)
-}
 
 
 @dataclass(frozen=True)
@@ -171,7 +157,9 @@ def toggle_button(
         button = (
             None
             if stop is None
-            else next((b for b in stop.buttons if b.button.image == _VIEW_EXPLORER), None)
+            else next(
+                (b for b in stop.buttons if b.button.image == version.facts.explorer.view_explorer), None
+            )
         )
         if button is not None:
             return stop, button
@@ -198,11 +186,13 @@ class ExplorerButton(toolbar_stops.ButtonBeforeControl):
 
     find_stop = staticmethod(stop_of)
     next_control = staticmethod(next_control)
-    image_names = _NAMES
+
+    def _image_strings(self):
+        return version.facts.explorer.button_strings
 
     def _is_toggle(self) -> bool:
         button = self._tool_button()
-        return button is not None and button.image == _VIEW_EXPLORER
+        return button is not None and button.image == version.facts.explorer.view_explorer
 
     def _get_role(self):
         return controlTypes.Role.TOGGLEBUTTON if self._is_toggle() else super().role

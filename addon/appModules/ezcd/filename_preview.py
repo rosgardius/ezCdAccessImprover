@@ -19,15 +19,13 @@ from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from scriptHandler import script
 from speech.speech import speakMessage
 
-from . import remote, toolbar, vcl
+from . import remote, toolbar, vcl, version
 from .facts.objects import Control
 from .names import ezcd_string
 from .windows import descendants, parent, rect, root, rows
 
 FORM = "TNamePreview"
 _SETTINGS_CLASSES = frozenset(("TPngSpeedButton",))
-# "Filename generation", the page of Settings the button opens.
-SETTINGS_CAPTION = 576
 
 
 def _shown(form: int, class_name: str) -> int:
@@ -260,7 +258,9 @@ class SettingsButton(IAccessible):
 
     @functools.cached_property
     def _caption(self) -> str:
-        return ezcd_string(self.windowHandle, SETTINGS_CAPTION, self.appModule.language)
+        return ezcd_string(
+            self.windowHandle, version.facts.strings.filename_generation, self.appModule.language
+        )
 
     def _get_name(self):
         return self._caption

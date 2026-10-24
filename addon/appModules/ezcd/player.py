@@ -19,22 +19,12 @@ import winUser
 from NVDAObjects.IAccessible import IAccessible
 from scriptHandler import script
 
-from . import panels, toolbar, toolbar_stops
+from . import panels, toolbar, toolbar_stops, version
 from .captions import SLIDER_CLASSES
 from .language import LanguageFiles, OwnString
 from .top_panel import main_tab
 from .windows import child_windows, descendants, parent, rect
 
-# ezcd's strings for the buttons, by image: the buttons' hints.
-_NAMES = {
-    1: 185,  # Previous track
-    2: 186,  # Rewind
-    0: 184,  # Play
-    3: 187,  # Forward
-    4: 188,  # Next track
-    5: 189,  # Stop
-    6: 190,  # Pause
-}
 _QUIET = OwnString("quiet")
 _LOUD = OwnString("loud")
 
@@ -152,7 +142,9 @@ class PlayerToolbarWindow(toolbar_stops.ToolbarWindow):
 
 class PlayerButton(_PlayerStop, toolbar_stops.ToolbarButton):
     find_stop = staticmethod(stop_of)
-    image_names = _NAMES
+
+    def _image_strings(self):
+        return version.facts.player.button_strings
 
 
 class PlayerSlider(_PlayerStop):

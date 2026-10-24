@@ -14,29 +14,11 @@ import winUser
 from NVDAObjects.IAccessible import IAccessible
 from scriptHandler import script
 
-from . import toolbar, toolbar_stops
+from . import toolbar, toolbar_stops, version
+from .facts import groups
 from .language import LanguageFiles
 from .toolbar_stops import StopButton
 from .windows import child_windows, parent
-
-# The tab's main action, recognised by the ImageIndex of its button and its caption in the language file,
-# and whether F8 presses it.
-_MAIN_BUTTONS = (
-    ((1,), (232, 406), True),  # Audio Converter: "Convert"
-    ((0,), (176,), True),  # Audio CD Ripper: "Rip CD"
-    ((13, 14, 10), (239, 391, 392), False),  # Disc Burner: "Burn CD", "Burn DVD", "Burn disc"
-)
-# The Disc Burner's main button has image 13 on the Audio CD page, 14 on MP3 disc and 10 on Data disc; one
-# button for keys.
-_SAME_IMAGES = {14: 13, 10: 13}
-# Buttons that open a menu, by ``TopPanel.key``.
-_MENU_BUTTONS = {
-    1: frozenset(((0, 0), (4, 0), (15, 0), (19, 0))),  # Audio Converter ▼, Metadata ▼, View, Help
-    0: frozenset(((1, 0), (3, 0), (4, 0), (15, 0), (19, 0))),  # CD Ripper ▼, Disc ▼, Metadata ▼, View, Help
-    13: frozenset(((2, 0), (15, 0), (19, 0))),  # Disc Burner ▼ (Settings is (2, 1)), View, Help
-}
-# Buttons whose right click opens a menu of more actions, by ``TopPanel.key``.
-_CONTEXT_MENU_BUTTONS = {1: frozenset(((7, 0),))}  # Save metadata: modified files, all files
 
 
 @dataclass(frozen=True)
@@ -45,31 +27,32 @@ class TopPanel(toolbar_stops.ToolbarStop):
 
     main: StopButton
     """The tab's main action."""
-    main_shortcut: bool
-    """Whether F8 presses the main action."""
+    known: groups.TopPanel
+    """What the set of facts tells of the panel."""
 
     @property
     def key(self) -> int:
         """Tells the panels apart: the image of the main button."""
-        return _image_key(self.main.button.image)
+        return self.known.main_images[0]
 
     def has_menu(self, button: StopButton) -> bool:
-        return button.key in _MENU_BUTTONS.get(self.key, ())
+        return button.key in self.known.menu_buttons
 
     def overlay_class(self, button: StopButton | None) -> type:
         if button is None:
             return TopPanelToolbarWindow
-        if button == self.main and self.main_shortcut:
+        if button == self.main and self.known.main_shortcut:
             return MainButton
         if self.has_menu(button):
             return MenuButton
-        if button.key in _CONTEXT_MENU_BUTTONS.get(self.key, ()):
+        if button.key in self.known.context_menu_buttons:
             return ContextMenuButton
         return TopPanelButton
 
 
 def _image_key(image: int) -> int:
-    return _SAME_IMAGES.get(image, image)
+    """The image by which the buttons of a top panel are told apart: one for all images of a main button."""
+    return next((p.main_images[0] for p in version.facts.top_panels if image in p.main_images), image)
 
 
 def is_main_tab_labels(hwnd: int) -> bool:
@@ -88,13 +71,15 @@ def main_tab(hwnd: int) -> int:
     return hwnd
 
 
-def _main_shortcut(button: toolbar.ToolButton, language: LanguageFiles) -> bool | None:
-    """Whether F8 presses the button if it is the main action, ``None`` if it is not."""
+def _known_panel(button: toolbar.ToolButton, language: LanguageFiles) -> groups.TopPanel | None:
+    """The top panel whose main action the button is, recognised by its image and its caption; ``None`` if
+    it is no main action."""
     return next(
         (
-            shortcut
-            for images, numbers, shortcut in _MAIN_BUTTONS
-            if button.image in images and button.text.strip() in language.texts(*numbers)
+            panel
+            for panel in version.facts.top_panels
+            if button.image in panel.main_images
+            and button.text.strip() in language.texts(*panel.main_strings)
         ),
         None,
     )
@@ -107,9 +92,9 @@ def _read_panel(panel: int, process_handle: int, language: LanguageFiles) -> Top
         # The main action has a toolbar of its own.
         if sum(b.toolbar == candidate.toolbar for b in buttons) != 1:
             continue
-        shortcut = _main_shortcut(candidate.button, language)
-        if shortcut is not None:
-            return TopPanel(buttons, candidate, shortcut)
+        known = _known_panel(candidate.button, language)
+        if known is not None:
+            return TopPanel(buttons, candidate, known)
     return None
 
 

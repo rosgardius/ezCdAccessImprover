@@ -22,14 +22,13 @@ from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from scriptHandler import script
 from speech.speech import speakObject
 
-from . import remote, vcl
+from . import remote, vcl, version
 from .language import LanguageFiles
 from .top_panel import active_tab, main_tab
 from .windows import child_windows, descendants, parent, rect
 
-# ezcd's strings for the pages, the captions of their buttons from left to right.
-_PAGE_STRINGS = (470, 471, 472)  # Audio CD, MP3 disc, Data disc
-PAGE_COUNT = len(_PAGE_STRINGS)
+# Audio CD, MP3 disc, Data disc.
+PAGE_COUNT = 3
 _BUTTON_CLASSES = frozenset(("TPngSpeedButton",))
 # The panel of the buttons ends a pixel above the page control.
 _EDGE_TOLERANCE = 2
@@ -52,7 +51,10 @@ def page_index(pages: int, language: LanguageFiles) -> int | None:
     """The position of the active page among the buttons; ``None`` if not known."""
     page = active_tab(pages)
     caption = winUser.getWindowText(page) if page else ""
-    return next((i for i, number in enumerate(_PAGE_STRINGS) if caption in language.texts(number)), None)
+    strings = version.facts.strings
+    # The captions of the pages' buttons from left to right.
+    buttons = (strings.audio_cd_page, strings.mp3_disc_page, strings.data_disc_page)
+    return next((i for i, string in enumerate(buttons) if caption in language.texts(string)), None)
 
 
 def _button_panel(pages: int) -> int:

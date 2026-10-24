@@ -19,7 +19,7 @@ from NVDAObjects import NVDAObjectTextInfo
 from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from NVDAObjects.window import Window
 
-from . import captions, counters, filename_preview, player, remote, screen, vcl
+from . import captions, counters, filename_preview, player, remote, screen, vcl, version
 from .cover_art import COVER_CLASS
 from .facts.objects import Control
 from .language import OwnString
@@ -30,9 +30,6 @@ _BUTTON_CLASSES = frozenset(("TSpeedButton", "TPngSpeedButton"))
 # Only with a handler of clicks: other labels and images are text and pictures.
 _CLICKED_CLASSES = frozenset(("TLabel", "TImage"))
 _CLASSES = _BUTTON_CLASSES | _CLICKED_CLASSES
-_MOVE_UP = 241
-_MOVE_DOWN = 242
-_COVER_ART = 349
 _ENCODER_INFORMATION = OwnString("encoder_information")
 
 type _Item = int | Control
@@ -170,9 +167,10 @@ class DrawnControl(Window):
     def _known_name(self) -> Name:
         """The name of a control without a caption; empty if none is known for it."""
         form = winUser.getClassName(root(self.holder))
+        strings = version.facts.strings
         if self.control.class_name == "TImage":
             # The picture of the panel over the cover art.
-            return _COVER_ART if form == "TCoverArtWnd" else player.icon_name(self.holder, self._rect)
+            return strings.cover_art if form == "TCoverArtWnd" else player.icon_name(self.holder, self._rect)
         if not self._is_button:
             return ""
         if child_windows(self.holder, "TComboBoxEx"):
@@ -186,9 +184,11 @@ class DrawnControl(Window):
                 if c.class_name in _BUTTON_CLASSES and c.left == self.control.left
             ]
             if len(column) == 2:
-                return _MOVE_UP if self.control.top == min(c.top for c in column) else _MOVE_DOWN
+                return (
+                    strings.move_up if self.control.top == min(c.top for c in column) else strings.move_down
+                )
         if form == filename_preview.FORM:
-            return filename_preview.SETTINGS_CAPTION
+            return strings.filename_generation
         return ""
 
     def _drawn_text(self) -> str:
