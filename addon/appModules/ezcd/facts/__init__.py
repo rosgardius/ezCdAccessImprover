@@ -52,7 +52,7 @@ class Facts:
 # From the oldest version to the newest; a newer set is ``dataclasses.replace`` of the one before it.
 VERSIONS: tuple[Facts, ...] = (
     Facts(
-        since=(13, 2, 1, 1),
+        since=(13, 2, 1),
         vcl=Vcl(
             vmt_class_name=-136,
             controls=0x398,

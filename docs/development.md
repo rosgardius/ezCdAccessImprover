@@ -101,7 +101,9 @@ in design units, where ezcd keeps its language setting. A string is its number a
 - `facts.VERSIONS` holds one set for each version of ezcd that changed a fact, from the oldest to the
   newest. A new set is `dataclasses.replace` of the one before it, with `since` set to the version and only
   what changed. A version of ezcd that changed nothing gets no set: it only raises `facts.LAST_TESTED`.
-- The oldest supported version is the `since` of the first set; raising it removes the older sets.
+- The oldest supported version is the `since` of the first set, which the readme gives as "EZ CD Audio
+  Converter compatibility"; raising it removes the older sets. `LAST_TESTED` is the version in "Tested
+  with" above.
 - Modules read the chosen set, `version.facts`, and never compare versions: a difference in behaviour is a
   named field of the set. Only `facts.select` compares them.
 - A version newer than `LAST_TESTED`, or one that cannot be read, gets the last set; one older than the
