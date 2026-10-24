@@ -12,14 +12,12 @@ fields, where Applications opens its menu.
 import winUser
 from NVDAObjects.IAccessible import IAccessible
 from scriptHandler import script
-from winBindings import user32
 
-from . import screen
+from . import remote, screen
 from .dialogs import ClosedByEscape
 from .windows import child_windows, parent, rect
 
 COVER_CLASS = "TDropPanel"
-_WM_CONTEXTMENU = 0x7B
 _MENU_GESTURES = ("kb:applications", "kb:shift+f10")
 
 
@@ -35,8 +33,7 @@ def cover_info(cover: int, binding_handle) -> str:
 def open_menu(window: int):
     """Has ezcd open the window's context menu at its centre, as a right click does."""
     edge = rect(window)
-    x, y = (edge.left + edge.right) // 2, (edge.top + edge.bottom) // 2
-    user32.PostMessage(window, _WM_CONTEXTMENU, window, (x & 0xFFFF) | (y & 0xFFFF) << 16)
+    remote.post_context_menu(window, (edge.left + edge.right) // 2, (edge.top + edge.bottom) // 2)
 
 
 def _is_shown(window: int) -> bool:

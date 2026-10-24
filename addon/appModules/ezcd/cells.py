@@ -582,6 +582,13 @@ class CellEditor(Edit):
         """Whether the editor closed before NVDA got to its focus event, as on a held key."""
         return self._open_editor() != self.windowHandle
 
+    def event_caret(self):
+        # Moving to another cell closes the editor with Enter, which drops its selection. NVDA would report
+        # the selection as gone: its focus stays on this editor until the focus event of the next one, which
+        # the walk of Alt+Home and Alt+End holds back until it ends.
+        if not self.is_closed:
+            super().event_caret()
+
     def _move(self, direction: int):
         editor = self._open_editor()
         if not editor:

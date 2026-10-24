@@ -23,6 +23,8 @@ they are unavailable. Convert and Rip CD report their shortcut, F8.
   returns to the button.
 * The menu of the first button switches the tab. After choosing a tab there, focus goes to the first
   button of that tab.
+* Save metadata has a menu of its own, as with a right click: Applications or Shift+F10 opens it, with
+  Save modified files and Save all files.
 * To press a button without focusing it, move the navigator object to it and press NVDA+Numpad Enter.
 
 ### Toolbars of the file explorer
@@ -327,8 +329,9 @@ with Escape, close with Escape as with their close button.
 
 ### Menus
 
-A menu opened by a button, by Applications on the cover art or by Alt+Down on a tag of Filename preview
-opens with its first item selected, as menus opened from the keyboard do, so Enter chooses it at once.
+A menu opened by a button, by Applications on the cover art or on Save metadata, or by Alt+Down on a
+tag of Filename preview opens with its first item selected, as menus opened from the keyboard do, so
+Enter chooses it at once.
 Items are numbered without the separators, items with a submenu too, such as "Manual search, submenu,
 3 of 4"; the number is said whenever NVDA reports the position of objects. A key that would choose an
 item but is a sign rather than a letter, such as "<" before every variant of a tag, is not reported.

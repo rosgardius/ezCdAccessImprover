@@ -54,6 +54,10 @@ absolute coordinates, captions in a particular language.
   from other buttons: `fsStyle` is `TBSTYLE_AUTOSIZE` on all of them, without `TBSTYLE_DROPDOWN`.
   The menu opens on the mouse press, in a modal menu loop; the posted click opens it all the same,
   and Escape returns focus to the toolbar.
+- Save metadata (converter image 7) has a `PopupMenu`, the only top-panel button with one: Save
+  modified files (`[686]`) and Save all files (`[687]`); the click of the button does not show it. A
+  posted `WM_CONTEXTMENU` at the button's centre, in screen coordinates, opens it; with the point -1, -1
+  of the Applications key, nothing opens.
 - Pressing: a posted `WM_LBUTTONDOWN`/`WM_LBUTTONUP` pair at the centre of `TB_GETITEMRECT`, in the
   toolbar's client coordinates, presses the button (no DPI conversion needed). The proxy's
   `accDoDefaultAction` and `WM_COMMAND` to the parent do nothing.

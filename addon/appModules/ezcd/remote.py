@@ -22,6 +22,7 @@ _KEY_UP_DATA = 0xC0000001
 _WM_LBUTTONDOWN = 0x201
 _WM_LBUTTONUP = 0x202
 _MK_LBUTTON = 0x1
+_WM_CONTEXTMENU = 0x7B
 # Messages go from NVDA's main thread: a hung ezcd must not freeze NVDA.
 _TIMEOUT_MS = 500
 
@@ -91,6 +92,11 @@ def post_click(hwnd: int, x: int, y: int) -> bool:
     return bool(user32.PostMessage(hwnd, _WM_LBUTTONDOWN, _MK_LBUTTON, lparam)) and bool(
         user32.PostMessage(hwnd, _WM_LBUTTONUP, 0, lparam)
     )
+
+
+def post_context_menu(hwnd: int, x: int, y: int) -> bool:
+    """Has ezcd open the window's context menu at the screen point, as a right click there does."""
+    return bool(user32.PostMessage(hwnd, _WM_CONTEXTMENU, hwnd, (x & 0xFFFF) | (y & 0xFFFF) << 16))
 
 
 @contextmanager

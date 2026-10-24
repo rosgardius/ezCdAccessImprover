@@ -35,6 +35,8 @@ _MENU_BUTTONS = {
     0: frozenset(((1, 0), (3, 0), (4, 0), (15, 0), (19, 0))),  # CD Ripper ▼, Disc ▼, Metadata ▼, View, Help
     13: frozenset(((2, 0), (15, 0), (19, 0))),  # Disc Burner ▼ (Settings is (2, 1)), View, Help
 }
+# Buttons whose right click opens a menu of more actions, by ``TopPanel.key``.
+_CONTEXT_MENU_BUTTONS = {1: frozenset(((7, 0),))}  # Save metadata: modified files, all files
 
 
 @dataclass(frozen=True)
@@ -59,7 +61,11 @@ class TopPanel(toolbar_stops.ToolbarStop):
             return TopPanelToolbarWindow
         if button == self.main and self.main_shortcut:
             return MainButton
-        return MenuButton if self.has_menu(button) else TopPanelButton
+        if self.has_menu(button):
+            return MenuButton
+        if button.key in _CONTEXT_MENU_BUTTONS.get(self.key, ()):
+            return ContextMenuButton
+        return TopPanelButton
 
 
 def _image_key(image: int) -> int:
@@ -199,6 +205,15 @@ class MenuButton(toolbar_stops.ToolbarMenuButton, TopPanelButton):
             # The menu of the first button switches the tab: focus goes to the new tab's first button.
             self.appModule.tab_menu_opened(parent(parent(self.windowHandle)))
         super().doAction(index)
+
+
+class ContextMenuButton(TopPanelButton):
+    """A button with a context menu, opened by Applications or Shift+F10."""
+
+    @script(gestures=("kb:applications", "kb:shift+f10"))
+    def script_open_context_menu(self, gesture):
+        if not toolbar.open_context_menu(self.windowHandle, self.processHandle, self.button_index):
+            gesture.send()
 
 
 class TabLabels(IAccessible):

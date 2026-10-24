@@ -119,6 +119,18 @@ def click(hwnd: int, process_handle: int, index: int, arrow: bool = False) -> bo
     return remote.post_click(hwnd, x, (rect.top + rect.bottom) // 2)
 
 
+def open_context_menu(hwnd: int, process_handle: int, index: int) -> bool:
+    """Has ezcd open the button's context menu at its centre, as a right click does.
+
+    The Applications key gives no point, and the toolbar then opens no menu of a button.
+    """
+    rect = item_rect(hwnd, process_handle, index)
+    if rect is None:
+        return False
+    x, y = winUser.ClientToScreen(hwnd, (rect.left + rect.right) // 2, (rect.top + rect.bottom) // 2)
+    return remote.post_context_menu(hwnd, x, y)
+
+
 def set_focus(hwnd: int) -> bool:
     # SetFocus sends focus messages to ezcd's thread and waits for them.
     if _is_hung_app_window(hwnd):
