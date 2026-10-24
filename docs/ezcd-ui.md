@@ -652,6 +652,9 @@ absolute coordinates, captions in a particular language.
 - `Language\*.uni` next to `ezcd.exe`: UTF-16 with BOM, each entry is a `[N]` line followed by the
   text line. Some entries are empty (`[580]` in Croatian): an empty string matches any window
   without text, so it tells nothing about the language.
+- Some translations lack strings that `english.uni` has (in 13.2.1.1 Arabic, Croatian, Indonesian,
+  Macedonian, Norwegian and Ukrainian): ezcd shows them in English, also after a switch of the language
+  while it runs (in Indonesian, the captions of the metadata panel).
 - The active language is `HKCU\Software\Poikosoft\EZ CD Audio Converter`, value `k82`, equal to
   string `[0]` of the active file (unique among the files, as `Russian (ру́сский)`). When the language
   is switched in the running application, the captions change at once but `k82` keeps the old value.

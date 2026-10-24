@@ -7,9 +7,6 @@ from collections.abc import Iterator
 from ..addon import facts
 from ..core import Context, Findings, Skip, check
 
-_ENGLISH = facts.language.OWN_BASE
-"""ezcd's English file, which the add-on's own strings are named after too."""
-
 
 def _version_text(version: tuple[int, ...]) -> str:
     return ".".join(map(str, version))
@@ -48,9 +45,9 @@ def _english_strings(context: Context, findings: Findings):
     """Every string of the set of facts has its number in english.uni with the same text; a translation
     without it is a note."""
     files = context.ezcd.language_files
-    english = files.get(_ENGLISH)
+    english = files.get(facts.language.ENGLISH)
     if not english:
-        raise Skip(f"no readable Language\\{_ENGLISH}.uni next to ezcd.exe")
+        raise Skip(f"no readable Language\\{facts.language.ENGLISH}.uni next to ezcd.exe")
     strings = list(strings_of(context.facts))
     for field, string in strings:
         findings.expect(field, repr(string.english), repr(english.get(string.number, "")))

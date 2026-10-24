@@ -11,7 +11,9 @@ import re
 _ENTRY = re.compile(r"^\[(\d+)\][ \t]*\n(.*)$", re.MULTILINE)
 _EXTENSION = ".uni"
 OWN_STRINGS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "strings")
-OWN_BASE = "english"
+ENGLISH = "english"
+"""ezcd's English file, ``english.uni``: ezcd shows its strings where a translation has none."""
+OWN_BASE = ENGLISH
 """The language of the add-on's own strings and of their keys, said where they have no translation."""
 
 

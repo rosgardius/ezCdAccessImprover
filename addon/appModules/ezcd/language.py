@@ -14,7 +14,7 @@ from logHandler import log
 
 from . import facts, version, windows
 from .facts.groups import String
-from .facts.language import OWN_BASE
+from .facts.language import ENGLISH, OWN_BASE
 
 type MainWindowTexts = Callable[[], tuple[set[str], set[str]]]
 """The captions of the main window's tabs and all texts the window shows; empty if it has no tabs yet."""
@@ -159,11 +159,13 @@ class LanguageFiles:
         return best if best is not None and _matches(best, shown_texts, given) else {}
 
     def window_strings(self, hwnd: int) -> dict[int, str]:
-        """The strings in the language of the control's window; empty if none fits."""
-        return self.strings(windows.shown_texts(hwnd))
+        """The strings in the language of the control's window, and in English those it lacks, as ezcd
+        shows them; empty if no language fits."""
+        strings = self.strings(windows.shown_texts(hwnd))
+        return {**self._load().get(ENGLISH, {}), **strings} if strings else {}
 
     def own_string(self, hwnd: int, string: OwnString) -> str:
         """The add-on's string in the language of the control's window, else in English."""
-        strings = self.window_strings(hwnd)
+        strings = self.strings(windows.shown_texts(hwnd))
         language = next((name for name, s in self._load().items() if s is strings), OWN_BASE)
         return _own_strings(language).get(string.key) or _own_strings(OWN_BASE)[string.key]
