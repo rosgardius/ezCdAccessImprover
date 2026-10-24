@@ -3,7 +3,7 @@
 import ctypes
 
 from .. import main_window, toolbar, win
-from ..core import Context, Findings, Skip, check
+from ..core import Context, Findings, Scope, Skip, check
 from ..main_window import Tab
 
 _MENU_MARK = "▼"
@@ -60,7 +60,7 @@ def _described(buttons: list[toolbar.Button]) -> str:
     return ", ".join(b.describe() for b in buttons) or "none"
 
 
-@check("main.tabs", "main window")
+@check("main.tabs", "main window", Scope.TAB)
 def _tabs(context: Context, findings: Findings):
     """The main window's page control holds three tabs captioned with strings.converter_tab, ripper_tab
     and burner_tab in the language ezcd shows."""
@@ -77,7 +77,7 @@ def _tabs(context: Context, findings: Findings):
     findings.notes.append(f"active tab: {win.text(main_window.active_tab(context.ezcd))!r}")
 
 
-@check("main.parts", "main window")
+@check("main.parts", "main window", Scope.TAB)
 def _parts(context: Context, findings: Findings):
     """The active tab shows the parts the add-on recognises by their windows: the top panel, the row above
     the explorer with the breadcrumb bar, the drive's panel, the player, the metadata panel with the cover
@@ -103,7 +103,7 @@ def _parts(context: Context, findings: Findings):
         findings.notes.append("the explorer is hidden: its row of toolbars stands in its place")
 
 
-@check("top_panel.buttons", "top panels")
+@check("top_panel.buttons", "top panels", Scope.TAB)
 def _top_panel(context: Context, findings: Findings):
     """The top panel of the active tab has its main button (an image and a caption of top_panels[tab]),
     and the buttons of menu_buttons and context_menu_buttons; every button marked ▼ is in menu_buttons."""
@@ -161,7 +161,7 @@ def _named_images(findings: Findings, field: str, buttons: list[toolbar.Button],
             findings.require(field, button.image in strings, f"a string for image {button.image}", "none")
 
 
-@check("explorer.buttons", "explorer")
+@check("explorer.buttons", "explorer", Scope.TAB)
 def _explorer(context: Context, findings: Findings):
     """The toolbars of the explorer, or of the row in its place, have View Explorer and a string in
     explorer.button_strings for every button without text; one of them, the view, has a drop-down
@@ -186,7 +186,7 @@ def _explorer(context: Context, findings: Findings):
         )
 
 
-@check("tray.buttons", "drive")
+@check("tray.buttons", "drive", Scope.TAB)
 def _tray(context: Context, findings: Findings):
     """The toolbar of the drive's tray has Open tray and Close tray, one of them hidden, and a string in
     tray.button_strings for every button without text."""
@@ -206,7 +206,7 @@ def _tray(context: Context, findings: Findings):
     _named_images(findings, "tray.button_strings", [b for b in buttons if not b.hidden], known.button_strings)
 
 
-@check("player.buttons", "player")
+@check("player.buttons", "player", Scope.TAB)
 def _player(context: Context, findings: Findings):
     """The toolbar of the player has a button for every image of player.button_strings and no other."""
     _kind, parts = _tab(context)
@@ -221,7 +221,7 @@ def _player(context: Context, findings: Findings):
     )
 
 
-@check("vcl.controls", "memory")
+@check("vcl.controls", "memory", Scope.TAB)
 def _vcl_controls(context: Context, findings: Findings):
     """The controls without windows of the active tab are read from ezcd's memory (vcl.controls,
     list_items, list_count, vmt_class_name, bounds, visible_enabled): there are some, the visible ones lie
@@ -254,7 +254,7 @@ def _vcl_controls(context: Context, findings: Findings):
             )
 
 
-@check("vcl.text", "memory")
+@check("vcl.text", "memory", Scope.TAB)
 def _vcl_text(context: Context, findings: Findings):
     """Captions of the visible labels of the active tab, read at vcl.text, are strings of the language
     files."""
@@ -273,7 +273,7 @@ def _vcl_text(context: Context, findings: Findings):
     )
 
 
-@check("vcl.on_click", "memory")
+@check("vcl.on_click", "memory", Scope.TAB)
 def _vcl_on_click(context: Context, findings: Findings):
     """The handler of clicks, read at vcl.on_click, is set for every speed button without a window of the
     active tab and not for every control, as labels that are no links have none."""
@@ -293,7 +293,7 @@ def _vcl_on_click(context: Context, findings: Findings):
     )
 
 
-@check("rating", "metadata panel")
+@check("rating", "metadata panel", Scope.TAB)
 def _rating(context: Context, findings: Findings):
     """The rating of the metadata panel has 0 to rating.stars stars at vcl.rating_stars, its stars of
     rating.star_width design units fit it, and its caption, rating.caption, is left of it."""
@@ -326,7 +326,7 @@ def _rating(context: Context, findings: Findings):
     findings.require("rating.caption", caption in beside, f"{caption!r} left of the rating", beside)
 
 
-@check("metadata.captions", "metadata panel")
+@check("metadata.captions", "metadata panel", Scope.TAB)
 def _metadata_captions(context: Context, findings: Findings):
     """Every caption of the metadata panel is in metadata.captions in the language ezcd shows, and so are
     metadata.number and disc_number."""
@@ -349,7 +349,7 @@ def _metadata_captions(context: Context, findings: Findings):
         findings.require(field, caption in shown, f"{caption!r} on the panel", "none")
 
 
-@check("burner.pages", "Disc Burner")
+@check("burner.pages", "Disc Burner", Scope.TAB)
 def _burner_pages(context: Context, findings: Findings):
     """The pages of the Disc Burner tab are switched by three speed buttons without windows right above
     them, captioned strings.audio_cd_page, mp3_disc_page and data_disc_page; the shown page has one of

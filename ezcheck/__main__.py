@@ -8,8 +8,9 @@ import sys
 
 from . import report, win
 from .checks import CHECKS
-from .core import Context, Status, run
+from .core import Context, Status
 from .ezcd import Ezcd, Unavailable
+from .runner import run_checks
 
 EXIT_PASSED, EXIT_FAILED, EXIT_UNAVAILABLE = 0, 1, 2
 
@@ -45,12 +46,15 @@ def main() -> int:
         return EXIT_UNAVAILABLE
     try:
         context = Context(ezcd)
-        results = [run(c, context) for c in chosen]
-        code = EXIT_FAILED if any(r.status == Status.FAILED for r in results) else EXIT_PASSED
-        print(report.as_json(context, results, code) if args.json else report.text(context, results))
-        return code
+        results = run_checks(context, chosen)
+    except KeyboardInterrupt:
+        print("Interrupted; the windows the checker opened are closed.", file=sys.stderr)
+        return EXIT_UNAVAILABLE
     finally:
         ezcd.close()
+    code = EXIT_FAILED if any(r.status == Status.FAILED for r in results) else EXIT_PASSED
+    print(report.as_json(context, results, code) if args.json else report.text(context, results))
+    return code
 
 
 if __name__ == "__main__":

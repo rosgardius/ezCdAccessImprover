@@ -31,10 +31,11 @@ def text(context: Context, results: list[Result]) -> str:
     ]
     for result in results:
         reason = f": {result.reason}" if result.reason else ""
-        lines.append(f"{_MARKS[result.status]} {result.check.id}{reason}")
+        where = f" [{result.where}]" if result.where else ""
+        lines.append(f"{_MARKS[result.status]} {result.check.id}{where}{reason}")
         for found in result.findings.discrepancies:
-            where = f" ({found.section})" if found.section else ""
-            lines.append(f"    {found.field or '-'}: expected {found.expected}, found {found.found}{where}")
+            section = f" ({found.section})" if found.section else ""
+            lines.append(f"    {found.field or '-'}: expected {found.expected}, found {found.found}{section}")
         lines.extend(f"    note: {note}" for note in result.findings.notes)
     counts = {status: sum(r.status == status for r in results) for status in Status}
     lines += ["", ", ".join(f"{count} {status.value}" for status, count in counts.items())]
@@ -49,6 +50,7 @@ def as_json(context: Context, results: list[Result], exit_code: int) -> str:
                 {
                     "id": r.check.id,
                     "part": r.check.part,
+                    "where": r.where,
                     "status": r.status.value,
                     "reason": r.reason,
                     "discrepancies": [vars(d) for d in r.findings.discrepancies],

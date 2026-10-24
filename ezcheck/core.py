@@ -10,6 +10,19 @@ from .addon import facts
 from .ezcd import Ezcd
 
 
+class Scope(enum.Enum):
+    """Where a check runs."""
+
+    ONCE = enum.auto()
+    """Once, with the main window as it is."""
+    TAB = enum.auto()
+    """On each tab of the main window."""
+    DIALOG = enum.auto()
+    """In each dialog the checker opens."""
+    SETTINGS = enum.auto()
+    """In Settings."""
+
+
 class Status(enum.Enum):
     PASSED = "passed"
     FAILED = "failed"
@@ -72,6 +85,8 @@ class Skip(Exception):
 @dataclass(frozen=True)
 class Result:
     check: "Check"
+    where: str
+    """The tab or the dialog it ran in; empty for a check run once."""
     status: Status
     reason: str
     """Why the check was skipped; empty otherwise."""
@@ -83,6 +98,12 @@ class Context:
 
     def __init__(self, ezcd: Ezcd):
         self.ezcd = ezcd
+        self.dialog = 0
+        """The dialog open for the checks of dialogs, 0 for the others."""
+        self.dialog_classes: frozenset[str] = frozenset()
+        """The form classes the add-on expects of that dialog."""
+        self.cache: dict[str, object] = {}
+        """What the run learns once, by name."""
 
     @functools.cached_property
     def selection(self):
@@ -114,6 +135,7 @@ class Check:
     part: str
     """The part of ezcd it checks."""
     run: Callable[[Context, Findings], None]
+    scope: Scope
 
     @property
     def description(self) -> str:
@@ -127,21 +149,25 @@ class Check:
 CHECKS: list[Check] = []
 
 
-def check(id: str, part: str):
+def check(id: str, part: str, scope: Scope = Scope.ONCE):
     """Registers the function as a check: ``run(context, findings)``, raising ``Skip`` when it cannot run."""
 
     def register(function: Callable[[Context, Findings], None]):
-        CHECKS.append(Check(id, part, function))
+        CHECKS.append(Check(id, part, function, scope))
         return function
 
     return register
 
 
-def run(found: Check, context: Context) -> Result:
+def run(found: Check, context: Context, where: str = "") -> Result:
     findings = Findings()
     try:
         found.run(context, findings)
     except Skip as skip:
-        return Result(found, Status.SKIPPED, str(skip), findings)
+        return Result(found, where, Status.SKIPPED, str(skip), findings)
     status = Status.FAILED if findings.discrepancies else Status.PASSED
-    return Result(found, status, "", findings)
+    return Result(found, where, status, "", findings)
+
+
+def skipped(found: Check, where: str, reason: str) -> Result:
+    return Result(found, where, Status.SKIPPED, reason, Findings())

@@ -70,6 +70,14 @@ class Ezcd:
     def close(self):
         win.close(self.process)
 
+    def is_foreground(self) -> bool:
+        foreground = win.user32.GetForegroundWindow()
+        return bool(foreground) and win.thread_and_process(foreground)[1] == self.process_id
+
+    def active_window(self) -> int:
+        """ezcd's active window; 0 while ezcd has none."""
+        return win.gui_info(self.thread_id).hwndActive or 0
+
     def read(self, address: int, target: ctypes.Array | ctypes.Structure):
         """Reads ezcd's memory; raises ``OSError`` if it cannot."""
         win.read_memory(self.process, address, target)

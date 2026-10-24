@@ -258,3 +258,10 @@ def product_version(path: str) -> str | None:
     if not _version.VerQueryValueW(data, key, ctypes.byref(value), ctypes.byref(length)) or not length.value:
         return None
     return ctypes.wstring_at(value.value, length.value).rstrip("\0")
+
+
+def client_origin(hwnd: int) -> tuple[int, int]:
+    """The top left corner of the window's client area on the screen."""
+    point = W.POINT(0, 0)
+    user32.ClientToScreen(hwnd, ctypes.byref(point))
+    return point.x, point.y

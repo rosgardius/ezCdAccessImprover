@@ -20,6 +20,13 @@ uv run python -m ezcheck
 
 ezcd running as administrator can only be checked by a checker running as administrator too.
 
+A full run takes some 15 seconds. It shows each tab of the main window, opens the windows that only show
+something (the buttons ending in » or ..., Settings and its pages, Filename preview, Encoder
+information) and closes them as their close box does, so that nothing in them is kept; at the end the
+tab shown at the start is shown again, also after Ctrl+C. Do not use ezcd meanwhile. It opens menus too:
+while ezcd is in the foreground they would open on the screen, so the checker asks you to switch away
+and waits up to 30 seconds. It never chooses anything that converts, rips, burns or saves.
+
 ## The report
 
 The header names the version of ezcd, its path, the set of facts used for it, the language ezcd shows,

@@ -532,7 +532,8 @@ absolute coordinates, captions in a particular language.
   `24.09.2026`); the scales of sliders lie over or under the slider, within its height.
 - The window shown while file names are checked before a conversion (Checking filenames...) has a label
   repeating its caption, with a space before the dots.
-- The page forms of Settings are made anew each time their page is chosen. Their settings take effect
+- The page forms of Settings are made anew each time their page is chosen; `TVM_SELECTITEM` sent to the
+  tree of pages chooses one as a click does. A hidden page form has no place on the screen. Their settings take effect
   at once; the dialog has only Close.
 - Counters in Settings: the numbers of parallel converters and of scanners (`TEdit`s in their own
   `TPanel`s of `TSettings2AudioConverterForm`, captioned above) and the limit of metadata results per
@@ -588,8 +589,10 @@ absolute coordinates, captions in a particular language.
   item, as a real key does.
 - MSAA numbers the separators among the items (child IDs), and gives an item with a submenu as an
   object of its own, with child ID 0; its place is found by its location among the menu's children.
-- The menus of the top panels have their items drawn by ezcd (`MFT_OWNERDRAW`, no text in the menu;
-  MSAA has the names) and no mnemonics. Other menus have plain text without `&`: an item is then
+- The menus of the top panels have their items drawn by ezcd (`MFT_OWNERDRAW`, no text in the menu)
+  and no mnemonics. NVDA gets their names; a program without NVDA does not: MSAA's `accName` is empty
+  outside ezcd's process. Their command IDs are read from the menu (`MN_GETHMENU`), and a `WM_COMMAND`
+  with one, posted to the window owning the menu after it closed, chooses the item. Other menus have plain text without `&`: an item is then
   chosen by its first character, which MSAA gives as its keyboard shortcut ("с" for List in the view
   menu of the explorer, "<" for every variant of a tag in Filename preview).
 - Escape from a submenu fires focus on the parent menu from the submenu's window, which is destroyed by
