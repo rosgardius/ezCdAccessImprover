@@ -22,7 +22,7 @@ from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from scriptHandler import script
 from speech.speech import speakObject
 
-from . import remote, screen
+from . import remote, vcl
 from .language import LanguageFiles
 from .top_panel import active_tab, main_tab
 from .windows import child_windows, descendants, parent, rect
@@ -30,11 +30,7 @@ from .windows import child_windows, descendants, parent, rect
 # ezcd's strings for the pages, the captions of their buttons from left to right.
 _PAGE_STRINGS = (470, 471, 472)  # Audio CD, MP3 disc, Data disc
 PAGE_COUNT = len(_PAGE_STRINGS)
-# The buttons in design units (DFM): side by side from the left of their panel.
-_BUTTON_LEFT = 3
-_BUTTON_STEP = 105
-_BUTTON_WIDTH = 100
-_BUTTON_HEIGHT = 24
+_BUTTON_CLASSES = frozenset(("TPngSpeedButton",))
 # The panel of the buttons ends a pixel above the page control.
 _EDGE_TOLERANCE = 2
 _POLL_MS = 20
@@ -71,14 +67,19 @@ def _button_panel(pages: int) -> int:
     )
 
 
-def _click(pages: int, index: int) -> bool:
-    """Posts a click on the page's button; ``False`` if there is no panel of the buttons."""
+def _click(pages: int, index: int, process_handle: int) -> bool:
+    """Posts a click on the page's button; ``False`` if the button is not found."""
     panel = _button_panel(pages)
     if not panel:
         return False
-    scale = screen.dpi_scale(panel)
-    x = round((_BUTTON_LEFT + _BUTTON_STEP * index + _BUTTON_WIDTH / 2) * scale)
-    return remote.post_click(panel, x, round(_BUTTON_HEIGHT / 2 * scale))
+    # ezcd widens the buttons to their captions, side by side from the left.
+    buttons = sorted(
+        (c for c in vcl.controls(panel, process_handle, _BUTTON_CLASSES) if c.visible), key=lambda c: c.left
+    )
+    if len(buttons) != PAGE_COUNT:
+        return False
+    button = buttons[index]
+    return remote.post_click(panel, button.left + button.width // 2, button.top + button.height // 2)
 
 
 class PageSwitcher:
@@ -103,7 +104,7 @@ class PageSwitcher:
         self._deadline = 0.0
         self._timer = None
 
-    def move(self, pages: int, target: Callable[[int], int]):
+    def move(self, pages: int, process_handle: int, target: Callable[[int], int]):
         """Shows the page at the position ``target`` gives for the current page's, if that is another page."""
         current = self._target if self._target is not None and pages == self._pages else None
         if current is None:
@@ -111,7 +112,7 @@ class PageSwitcher:
         if current is None:
             return
         index = target(current)
-        if index == current or not 0 <= index < PAGE_COUNT or not _click(pages, index):
+        if index == current or not 0 <= index < PAGE_COUNT or not _click(pages, index, process_handle):
             return
         if self._target is None or pages != self._pages:
             self._old_page = active_tab(pages)
@@ -186,7 +187,7 @@ class BurnerPages(IAccessible):
         return {} if index is None else {"indexInGroup": index + 1, "similarItemsInGroup": PAGE_COUNT}
 
     def _move(self, target: Callable[[int], int]):
-        self.appModule.page_switcher.move(self.windowHandle, target)
+        self.appModule.page_switcher.move(self.windowHandle, self.processHandle, target)
 
     @script(gesture="kb:leftArrow")
     def script_previous_page(self, gesture):

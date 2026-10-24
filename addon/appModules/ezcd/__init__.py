@@ -389,12 +389,15 @@ class AppModule(appModuleHandler.AppModule):
     def _step_burner_page(self, gesture, step: int):
         """Shows the page of the Disc Burner tab next to the active one, going round, if focus is in that
         tab."""
-        tab = top_panel.main_tab(api.getFocusObject().windowHandle)
+        focus = api.getFocusObject()
+        tab = top_panel.main_tab(focus.windowHandle)
         pages = burner_pages.pages_in_tab(tab) if tab else 0
         if not pages:
             gesture.send()
             return
-        self.page_switcher.move(pages, lambda current: (current + step) % burner_pages.PAGE_COUNT)
+        self.page_switcher.move(
+            pages, focus.processHandle, lambda current: (current + step) % burner_pages.PAGE_COUNT
+        )
 
     @script(gesture="kb:control+tab")
     def script_next_burner_page(self, gesture):
