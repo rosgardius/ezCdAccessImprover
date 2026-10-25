@@ -1,0 +1,65 @@
+# Russian translations for ezCdAccessImprover.
+# Copyright (C) 2026 Rosgardius <rosgardius@gmail.com>
+# This file is distributed under the same license as the ezCdAccessImprover
+# project.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: ezCdAccessImprover 0.1.0\n"
+"Report-Msgid-Bugs-To: nvda-translations@groups.io\n"
+"POT-Creation-Date: 2026-10-25 13:25+0300\n"
+"PO-Revision-Date: 2026-10-25 13:30+0300\n"
+"Last-Translator: Rosgardius <rosgardius@gmail.com>\n"
+"Language: ru\n"
+"Language-Team: ru\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#. Translators: Summary/title for this add-on, to be shown on installation
+#. and in add-on information found in the add-on store.
+#: addon.toml:17
+msgid "EZ CD Audio Converter Access Improver"
+msgstr "Улучшение доступности EZ CD Audio Converter"
+
+#. Translators: Long description to be shown for this add-on
+#. in add-on information from the add-on store.
+#: addon.toml:21
+msgid ""
+"Improves accessibility of EZ CD Audio Converter with NVDA. The code of "
+"this add-on was written entirely by AI and tested by the author with "
+"NVDA. If you don't trust software made by AI or don't want to use it, "
+"please don't install this add-on, or remove it."
+msgstr ""
+"Улучшает доступность EZ CD Audio Converter с NVDA. Код этого дополнения "
+"полностью написан искусственным интеллектом и проверен автором с NVDA. "
+"Если вы не доверяете программам, созданным искусственным интеллектом, или "
+"не хотите ими пользоваться, пожалуйста, не устанавливайте это дополнение "
+"или удалите его."
+
+#. Translators: What's new in this version of the add-on, shown in the add-on
+#. store.
+#: addon.toml:28
+msgid "Initial version."
+msgstr "Первая версия."
+
+#: addon/appModules/ezcd/explorer.py:236
+#, python-format
+msgid "%s item"
+msgid_plural "%s items"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: addon/appModules/ezcd/explorer.py:236
+msgid "blank"
+msgstr ""
+
+#: addon/appModules/ezcd/rating.py:93
+#, python-brace-format
+msgid "{number} of {total}"
+msgstr ""
+

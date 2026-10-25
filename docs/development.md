@@ -17,13 +17,15 @@ The `ezCdAccessImprover` NVDA add-on is an app module for EZ CD Audio Converter
 | `addon.toml` | Add-on metadata and build settings; `addon/manifest.ini` is generated from it |
 | `addon/appModules/ezcd/` | The app module: the package name is the executable name without `.exe` |
 | `readme.md` | User documentation, rendered to `addon/doc/en/readme.html` |
+| `addon/doc/ru/readme.md` | Its Russian translation, changed together with `readme.md`; headings keep the English ids (`{#top-buttons}`) |
+| `addon/locale/ru/LC_MESSAGES/nvda.po` | The Russian summary, description and changelog of `addon.toml` |
 | `changelog.md` | Change history, used as the GitHub release description |
 | `docs/` | Development documentation: this file, notes on the application's UI, checking a new version of it |
 | `ezcheck/` | The checker of the facts in the running ezcd, without NVDA ([its readme](../ezcheck/readme.md)); not part of the add-on |
 | `.github/` | CI: ruff, the tests of `ezcheck`, `nvaddon check`, build; on a tag, a release and add-on store submission |
 
-Generated files (`addon/manifest.ini`, `addon/doc/`, `*.nvda-addon`, `*.pot`, `*.mo`)
-are git-ignored and must not be edited by hand.
+Generated files (`addon/manifest.ini`, `addon/doc/en/`, the HTML in `addon/doc/`, `*.nvda-addon`, `*.pot`,
+`*.mo`) are git-ignored and must not be edited by hand.
 
 ## Commands
 
