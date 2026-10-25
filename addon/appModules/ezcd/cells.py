@@ -19,7 +19,6 @@ from ctypes.wintypes import BOOL, HWND
 from dataclasses import dataclass
 from typing import ClassVar
 
-import addonHandler
 import api
 import controlTypes
 import core
@@ -31,11 +30,9 @@ from NVDAObjects.IAccessible import IAccessible, getNVDAObjectFromEvent
 from NVDAObjects.window.edit import Edit
 from scriptHandler import script
 
-from . import commands, file_lists, remote, screen, version
+from . import file_lists, remote, screen, version
 from .language import LanguageFiles
 from .windows import parent, root
-
-addonHandler.initTranslation()
 
 _SB_HORZ = 0
 _SIF_RANGE = 0x1
@@ -507,7 +504,6 @@ class CellTable:
 class CellEditor(Edit):
     """The cell editor of the main window's list of files, named by its column."""
 
-    scriptCategory = commands.CATEGORY
     # NVDA takes the editor for one with the text object model, which it lacks.
     editAPIVersion = 0
     # The tree moves the editor to another file; NVDA would read the line of this one as it closes. Not
@@ -605,21 +601,13 @@ class CellEditor(Edit):
     def script_previous_column(self, gesture):
         self._move(-1)
 
-    @script(
-        # Translators: Describes a command in the cell editor of the list of files of EZ CD Audio Converter.
-        description=_("Moves the editor to the first column of the file that can be edited"),
-        gesture="kb:alt+home",
-    )
+    @script(gesture="kb:alt+home")
     def script_first_column(self, gesture):
         editor = self._open_editor()
         if editor:
             self.appModule.cells.walk(editor, self.appModule.helperLocalBindingHandle, -1)
 
-    @script(
-        # Translators: Describes a command in the cell editor of the list of files of EZ CD Audio Converter.
-        description=_("Moves the editor to the last column of the file that can be edited, before Lyrics"),
-        gesture="kb:alt+end",
-    )
+    @script(gesture="kb:alt+end")
     def script_last_column(self, gesture):
         editor = self._open_editor()
         if editor:

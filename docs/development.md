@@ -50,8 +50,8 @@ The add-on's own names and words for ezcd's controls are said in the language ez
 NVDA's: they are `OwnString("key")` in the code and `key = text` lines in
 `addon/appModules/ezcd/strings/english.txt`, with a `#` note for translators above each. A
 translation is a file named as ezcd's language file (`Language\russian.uni` → `russian.txt`); a missing
-file or key falls back to English. Only what belongs to NVDA's own UI (descriptions of commands and
-their category in Input Gestures) goes through `_()` with a `# Translators:` comment.
+file or key falls back to English. The add-on has no commands in Input Gestures: its keys work as
+the controls' own keys, so its code has no `_()` strings.
 
 ## Code rules
 
@@ -67,8 +67,7 @@ The app module is a few thousand lines. These rules keep it from growing copies 
   - `language.py`: ezcd's strings and the add-on's own strings in the language ezcd shows (also in one
     window), and the choice of that language; `facts/language.py`: reading their files;
   - `facts/`: what depends on the version of ezcd (see [Versions of ezcd](#versions-of-ezcd));
-    `version.py`: the set of facts chosen for the running ezcd;
-  - `commands.py`: the category of the add-on's commands in Input Gestures.
+    `version.py`: the set of facts chosen for the running ezcd.
 
   A second copy of a helper, even a one-line one such as `parent(hwnd)`, is a defect. A helper
   that a second module needs moves to its home, not into an import from an unrelated module.

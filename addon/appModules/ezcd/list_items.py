@@ -8,7 +8,6 @@ import ctypes
 import time
 from ctypes.wintypes import POINT
 
-import addonHandler
 import api
 import core
 import eventHandler
@@ -20,10 +19,8 @@ from NVDAObjects.IAccessible.sysListView32 import LVM_GETITEMCOUNT
 from scriptHandler import script
 from winBindings import user32
 
-from . import commands, remote, screen, version
+from . import remote, screen, version
 from .windows import parent, rect
-
-addonHandler.initTranslation()
 
 CLASSES = ("TListBox", "TCheckListBox", "TListView", "TJamShellList")
 _LIST_VIEW_CLASSES = ("TListView", "TJamShellList", "TJamShellPopupMenu", "TJamShellOverflowListView")
@@ -111,8 +108,6 @@ class ServiceItem(CheckListItem):
     ezcd fires focus on the item at its new place.
     """
 
-    scriptCategory = commands.CATEGORY
-
     def _press_move_button(self, down: bool):
         lst = self.windowHandle
         panel = parent(lst)
@@ -127,21 +122,11 @@ class ServiceItem(CheckListItem):
         if user32.ScreenToClient(panel, ctypes.byref(point)):
             remote.post_click(panel, point.x, point.y)
 
-    @script(
-        # Translators: Describes a command in the list of metadata services in the settings of
-        # EZ CD Audio Converter.
-        description=_("Moves the service up in the list"),
-        gesture="kb:alt+upArrow",
-    )
+    @script(gesture="kb:alt+upArrow")
     def script_move_up(self, gesture):
         self._press_move_button(down=False)
 
-    @script(
-        # Translators: Describes a command in the list of metadata services in the settings of
-        # EZ CD Audio Converter.
-        description=_("Moves the service down in the list"),
-        gesture="kb:alt+downArrow",
-    )
+    @script(gesture="kb:alt+downArrow")
     def script_move_down(self, gesture):
         self._press_move_button(down=True)
 
