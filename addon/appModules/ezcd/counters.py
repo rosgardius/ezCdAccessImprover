@@ -13,7 +13,6 @@ import ctypes
 import enum
 import queue
 import threading
-import time
 from ctypes.wintypes import POINT, RECT
 
 import api
@@ -22,7 +21,6 @@ import controlTypes
 import queueHandler
 import ui
 import winUser
-from logHandler import log
 from scriptHandler import script
 from winBindings import user32
 
@@ -117,12 +115,9 @@ class StepAnnouncer:
     def _run(self):
         while (request := self._requests.get()) is not None:
             edit, step = request
-            start = time.monotonic()
             if not click(edit, step):
-                log.debugWarning("ezcd did not handle the click on a counter button in time")
                 continue
             value = remote.text(edit, _TEXT_LENGTH, _READ_TIMEOUT_MS)
-            log.debug(f"Counter {value}, {time.monotonic() - start:.3f} s")
             if value:
                 last = self._requests.empty()
                 queueHandler.queueFunction(queueHandler.eventQueue, self._say, edit, value, last)

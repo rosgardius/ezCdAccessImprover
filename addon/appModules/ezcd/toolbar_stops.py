@@ -102,16 +102,14 @@ def focus_button(app_module, stop: ToolbarStop, button: StopButton, focused_tool
     app_module.remembered_buttons[stop.key] = button.key
     if button.toolbar != focused_toolbar:
         # The toolbar window redirects focus to the remembered button.
-        moved = toolbar.set_focus(button.toolbar)
-    else:
-        # VCL's focus stays on the window, the button changes only for NVDA.
-        obj = _button_object(button)
-        moved = obj is not None
-        if moved:
-            eventHandler.queueEvent("gainFocus", obj)
-    if not moved:
-        log.debugWarning("ezcd is not responding, focus not moved")
-    return moved
+        return toolbar.set_focus(button.toolbar)
+    # VCL's focus stays on the window, the button changes only for NVDA.
+    obj = _button_object(button)
+    if obj is None:
+        log.debugWarning("No object for a toolbar button of ezcd, focus not moved")
+        return False
+    eventHandler.queueEvent("gainFocus", obj)
+    return True
 
 
 def button_child_id(obj: IAccessible) -> int:

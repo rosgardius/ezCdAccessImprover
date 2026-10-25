@@ -55,11 +55,12 @@ def send(hwnd: int, msg: int, wparam: int = 0, lparam: int = 0) -> int:
 def handled(hwnd: int, msg: int, wparam: int, lparam: int, timeout_ms: int = _TIMEOUT_MS) -> bool:
     """Sends the message; whether ezcd handled it in time, for messages whose result tells nothing."""
     result = ctypes.c_size_t()
-    return bool(
-        user32.SendMessageTimeout(
-            hwnd, msg, wparam, lparam, winUser.SMTO_ABORTIFHUNG, timeout_ms, ctypes.byref(result)
-        )
-    )
+    if not user32.SendMessageTimeout(
+        hwnd, msg, wparam, lparam, winUser.SMTO_ABORTIFHUNG, timeout_ms, ctypes.byref(result)
+    ):
+        log.debugWarning(f"ezcd did not handle message 0x{msg:X} in time")
+        return False
+    return True
 
 
 def text(hwnd: int, length: int, timeout_ms: int = _TIMEOUT_MS) -> str:

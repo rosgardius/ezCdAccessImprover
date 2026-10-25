@@ -17,6 +17,7 @@ import textUtils
 import windowUtils
 import winUser
 import XMLFormatting
+from logHandler import log
 from winBindings import user32
 
 from .windows import rect as window_rect
@@ -108,4 +109,7 @@ def redraw(window: int, frame: bool = False) -> bool:
 
     # A window of another thread is painted synchronously: a hung ezcd must not stop NVDA.
     threading.Thread(target=paint, name="ezcdRedraw", daemon=True).start()
-    return done.wait(_REDRAW_TIMEOUT)
+    if not done.wait(_REDRAW_TIMEOUT):
+        log.debugWarning("ezcd did not paint a window in time")
+        return False
+    return True

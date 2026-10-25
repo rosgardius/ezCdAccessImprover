@@ -200,8 +200,7 @@ class ConversionStatus:
             if last_panel == panel and time.monotonic() - last_time < _STATUS_REUSE:
                 return last_text
         # ezcd fills the panel's background on every change and draws only the changed labels again.
-        if not screen.redraw(panel):
-            log.debugWarning("The summary panel of the conversion window was not redrawn in time")
+        screen.redraw(panel)
         summary = read_summary(panel, binding_handle)
         if summary is None:
             log.debugWarning("No text in the summary panel of the conversion window")

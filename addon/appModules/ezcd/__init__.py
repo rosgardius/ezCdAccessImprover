@@ -131,7 +131,7 @@ class AppModule(appModuleHandler.AppModule):
                 return None
         finally:
             winKernel.closeHandle(handle)
-        log.debugWarning(f"appPath unavailable, ezcd path from a limited process handle: {buffer.value}")
+        log.debug(f"appPath unavailable, ezcd path from a limited process handle: {buffer.value}")
         return buffer.value
 
     def _main_window_texts(self) -> tuple[set[str], set[str]]:

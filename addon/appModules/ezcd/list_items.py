@@ -46,7 +46,6 @@ class ListItem(IAccessible):
     def isDuplicateIAccessibleEvent(self, obj):
         elapsed = time.monotonic() - self._made
         if elapsed < _REPEAT_WINDOW and obj == self:
-            log.debug(f"Repeated focus on a list item after {elapsed * 1000:.0f} ms")
             return True
         return super().isDuplicateIAccessibleEvent(obj)
 

@@ -134,6 +134,7 @@ def open_context_menu(hwnd: int, process_handle: int, index: int) -> bool:
 def set_focus(hwnd: int) -> bool:
     # SetFocus sends focus messages to ezcd's thread and waits for them.
     if _is_hung_app_window(hwnd):
+        log.debugWarning("ezcd is not responding, focus not set to its toolbar")
         return False
     _process_id, thread_id = winUser.getWindowThreadProcessID(hwnd)
     current_thread_id = kernel32.GetCurrentThreadId()
