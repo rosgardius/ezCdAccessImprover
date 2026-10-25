@@ -119,7 +119,6 @@ class PairFocus:
         log.debugWarning("ezcd did not show the other button of the tray")
 
     def _focus(self, pressed: "TrayButton", pair: int):
-        # Unless focus has left the pressed button meanwhile.
         if self._stopped.is_set() or api.getFocusObject() != pressed:
             return
         stop = stop_of(pressed.windowHandle, pressed.processHandle, pressed.appModule.language)

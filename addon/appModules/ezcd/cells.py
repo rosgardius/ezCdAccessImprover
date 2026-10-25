@@ -85,7 +85,7 @@ def _scroll_info(tree: int) -> _ScrollInfo | None:
 
 
 def _scroll_position(tree: int) -> int:
-    # The position is in the units of the display model's coordinates.
+    """The horizontal scroll position, in the units of the display model's coordinates; 0 if unknown."""
     info = _scroll_info(tree)
     return info.nPos if info else 0
 
@@ -170,7 +170,6 @@ class _Cursor:
     scroll: int
 
     def follow_scroll(self):
-        # The header is read again only when the list scrolled and other columns came into view.
         position = _scroll_position(self.tree)
         if position != self.scroll:
             self.columns = header(self.tree, self.binding_handle)
@@ -414,8 +413,9 @@ class CellTable:
         return self._walk is not None
 
     def note_key(self, vk: int):
-        # Called in NVDA's keyboard hook thread for every key; Alt+Home or Alt+End held down repeats.
+        """Called in NVDA's keyboard hook thread for every key."""
         self.activity_time = time.monotonic()
+        # Alt+Home or Alt+End held down repeats.
         if self._walk is not None and vk not in (winUser.VK_HOME, winUser.VK_END):
             self._walk.stopped = True
 

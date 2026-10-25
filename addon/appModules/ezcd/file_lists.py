@@ -138,7 +138,10 @@ def _walk(hwnd: int) -> Iterator[int]:
 
 
 def _node_selected(hwnd: int, process_handle: int, address: int, node: int) -> bool | None:
-    # The tree does not check the node: it must come from next_node just before.
+    """Whether the node is selected; ``None`` if the tree does not answer.
+
+    The tree does not check the node: it must come from ``next_node`` just before.
+    """
     item = TreeItemStructure(mask=TVIF_HANDLE | TVIF_STATE, hItem=node, stateMask=TVIS_SELECTED)
     remote.write(process_handle, address, item)
     if not remote.send(hwnd, TVM_GETITEMW, 0, address):
@@ -222,7 +225,7 @@ class ClosedEditor:
         self._report_time = 0.0
 
     def note_key(self, gesture: KeyboardInputGesture):
-        # Called in NVDA's keyboard hook thread.
+        """Called in NVDA's keyboard hook thread for every key."""
         focus = winUser.getGUIThreadInfo(0).hwndFocus
         # A key held in the editor repeats while the add-on moves it, with the tree focused in between.
         self._key_beside_editor = (

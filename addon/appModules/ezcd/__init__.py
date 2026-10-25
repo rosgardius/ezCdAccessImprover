@@ -220,7 +220,11 @@ class AppModule(appModuleHandler.AppModule):
         return self._passed_toolbar[1]
 
     def _note_gesture(self, gesture) -> bool:
-        # Called in NVDA's keyboard hook thread for every gesture, in any application.
+        """Notes a gesture about to be executed and lets it execute.
+
+        Called in NVDA's keyboard hook thread for every gesture, in any application, and in the main thread
+        for the keys the page switcher held back.
+        """
         self._tab_key = 0
         self._passing = 0
         self._skipped_tree = 0
