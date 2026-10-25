@@ -18,7 +18,7 @@ summary = "EZ CD Audio Converter Access Improver"
 
 # Translators: Long description to be shown for this add-on
 # in add-on information from the add-on store.
-description = """Improves accessibility of EZ CD Audio Converter with NVDA."""
+description = """Improves accessibility of EZ CD Audio Converter with NVDA. The code of this add-on was written entirely by AI and tested by the author with NVDA. If you don't trust software made by AI or don't want to use it, please don't install this add-on, or remove it."""
 
 # Version of this add-on. The add-on store requires major.minor.patch integers.
 # `nvaddon release patch` sets this for you.
@@ -81,7 +81,7 @@ extraSources = []
 [docs]
 # Python-Markdown extensions used when rendering documentation. Most add-ons
 # need none; add "tables" if your readme uses Markdown tables.
-markdownExtensions = []
+markdownExtensions = ["tables", "toc"]
 
 # Custom braille translation tables, speech symbol dictionaries and speech
 # (pronunciation) dictionaries. Most add-ons ship none of these; delete the

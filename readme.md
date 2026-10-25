@@ -1,5 +1,8 @@
 # EZ CD Audio Converter Access Improver
 
+**The code of this add-on was written entirely by AI**, and tested by the author with NVDA. If you don't
+trust software made by AI or don't want to use it, please don't install this add-on, or remove it.
+
 Improves accessibility of EZ CD Audio Converter with NVDA.
 
 * Author: Rosgardius
@@ -8,370 +11,226 @@ Improves accessibility of EZ CD Audio Converter with NVDA.
 
 ## Features
 
-The names and words this add-on gives to the application's controls, such as Path, Browse or Encoder
-information, are said in the language of the application, not in NVDA's, where the add-on has a
-translation for that language; otherwise in English.
+* [Top buttons](#top-buttons): the large buttons of every tab are one toolbar, with arrows between the
+  buttons and menus opened from the keyboard.
+* [Toolbars and the CD player](#toolbars-and-the-cd-player): the small toolbars of the file explorer and
+  the drive tray, and the player of the CD Ripper, are reachable with Tab.
+* [File explorer](#file-explorer): a path can be typed into the path bar; going to a folder reports it
+  and the number of its items.
+* [Disc Burner pages](#disc-burner-pages): Audio CD, MP3 disc and Data disc switch from the keyboard.
+* [Lists of files](#lists-of-files): files are selected with the keys of other Windows lists.
+* [Editing metadata in the list](#editing-metadata-in-the-list): metadata are edited cell by cell right in
+  the list of files.
+* [Cover art and rating](#cover-art-and-rating): the cover art has a menu, and the rating is a slider.
+* [Names of controls](#names-of-controls): fields and buttons without names get them, in the language of
+  EZ CD.
+* [Buttons without windows](#buttons-without-windows): buttons and links that EZ CD only draws can be
+  pressed through object navigation.
+* [Filename preview](#filename-preview): tags are inserted into the template from the keyboard.
+* [Settings](#settings): metadata services are reordered with Alt+Up and Alt+Down Arrow.
+* [Conversion window](#conversion-window): NVDA+End reports the state of the conversion; the number of
+  converters changes with the arrows.
+* [Dialogs and menus](#dialogs-and-menus): Tab follows the screen in Options and DSP, and menus open with
+  the first item selected.
 
-### Top buttons of the main window's tabs
+### Top buttons
 
-The large buttons at the top of the Audio Converter, Audio CD Ripper and Disc Burner tabs (Convert,
-Rip CD, Burn Disc, Settings, View and the others) are read as buttons of a toolbar, including whether
-they are unavailable. Convert and Rip CD report their shortcut, F8.
+The large buttons at the top of the Audio Converter, Audio CD Ripper and Disc Burner tabs (Convert, Rip
+CD, Burn Disc, Settings, View and the others) are a toolbar.
 
-* The panel is one stop in the Tab order: Tab from the last control of the tab, or Shift+Tab from
-  the tab labels, moves to it. Focus comes to the button that had it last, or to the first button
-  (Audio Converter, CD Ripper, Disc Burner) the first time after the application starts.
+* It is one Tab stop: Tab from the last control of the tab, or Shift+Tab from the tab labels. Focus comes
+  back to the button that had it last.
 * Left and Right Arrow move between the buttons, Home and End to the first and the last one.
-* Enter, Numpad Enter and Space press the focused button.
-* The buttons that open a menu (Audio Converter, CD Ripper, Disc Burner, Disc, Metadata, View and
-  Help) are reported as menu buttons. Enter, Space or Down Arrow opens the menu; Escape closes it and
-  returns to the button.
-* The menu of the first button switches the tab. After choosing a tab there, focus goes to the first
-  button of that tab.
-* Save metadata has a menu of its own, as with a right click: Applications or Shift+F10 opens it, with
-  Save modified files and Save all files.
-* To press a button without focusing it, move the navigator object to it and press NVDA+Numpad Enter.
+* Enter or Space presses the button. On a menu button, such as Disc, Metadata, View or Help, Enter, Space
+  or Down Arrow opens the menu.
+* The tab labels do not switch the tab. Use the menu of the first button (Audio Converter, CD Ripper or
+  Disc Burner); after it, focus is on the first button of the new tab.
+* On Save metadata, Applications or Shift+F10 opens its menu: Save modified files and Save all files.
+* Convert and Rip CD report their shortcut, F8.
 
-### Toolbars of the file explorer
+### Toolbars and the CD player
 
-The two toolbars above the file explorer of the Audio Converter and Disc Burner tabs are stops in the
-Tab order, each right before the control right of it on the screen: the navigation toolbar before the
-path bar, the view toolbar before the filter of file types. Their buttons are named by the
-application's own hints, in its language: View Explorer, Add files, Add folder, Go to Computer, Go to
-Music, back and forward in history, Go up, and View. View, alone in its toolbar, is read as a menu button
-without the toolbar. View Explorer is a toggle button, pressed while the explorer is shown. Where the
-application hides the filter of file types, as on the MP3 disc and Data disc pages of the Disc Burner tab,
-the view toolbar is a stop at the end of the tab instead, right before the top buttons.
+These toolbars are Tab stops, and their buttons are named by EZ CD's own hints:
 
-While the explorer is hidden, its place is taken by one toolbar: View Explorer, Add files, Add folder and,
-on the Audio Converter tab, Select all, Remove all and Create M3U playlist. It is a stop in the Tab order
-right before the list of files of the Audio Converter tab and before the page tabs of the Disc Burner
-tab. Pressing View Explorer moves focus to View Explorer in the other place, so pressing it again
-undoes it; as with any toggle button, only the new state is reported: pressed or not pressed.
+* The navigation toolbar of the file explorer (View Explorer, Add files, Add folder, Go to Computer, Go to
+  Music, Back, Forward, Go up), right before the path bar.
+* View of the file explorer, right before the filter of file types, or at the end of the tab on the MP3
+  disc and Data disc pages. Enter, Space or Down Arrow opens its menu: List, Details, Icons, Large icons.
+* With the explorer hidden, the toolbar in its place (View Explorer, Add files, Add folder and, on the
+  Audio Converter tab, Select all, Remove all, Create M3U playlist), right before the list of files.
+* The drive tray of the Audio CD Ripper and Disc Burner tabs (Open tray, Close tray, Drive settings),
+  right after the speed.
+* The player of the Audio CD Ripper tab (Previous track, Rewind, Play, Forward, Next track, Stop, Pause),
+  right before Options, followed by Volume and Position, read in percent.
 
-* Focus comes to the button that had it last in that toolbar, or to the first one.
-* Left and Right Arrow move between the buttons, Home and End to the first and the last one.
-* Enter, Numpad Enter and Space press the focused button. On View, they or Down Arrow open the menu of
-  the list's view (List, Details, Icons, Large icons).
+The keys are those of the top buttons. View Explorer is a toggle: it moves focus to View Explorer in the
+other toolbar, so pressing it again brings the explorer back. After Open tray, focus moves to Close tray
+once EZ CD shows it, and the other way round.
 
 ### File explorer
 
-The tree of folders, the list of the folder and the filter of file types are named: Folders, Folder
-contents and File types. On entering the list without a current item, the number of its items is
-reported. When the list goes to another folder (Enter on a folder, Backspace), the folder and the number
-of its items are reported. The breadcrumb bar is reported as the button Path, with the current folder:
-Enter or Space shows a field in which a path can be typed. Enter goes to that folder, Escape cancels;
-either way focus comes back to Path. For a path that does not exist, focus stays in the field and the
-current folder is reported. Up and Down Arrow in the field go through the address history of Windows'
-File Explorer, as in the application itself, replacing the typed path; Escape brings back the current
-folder. The list of folders that a mouse click on the arrow after a crumb opens is read as a list, with
-its first folder selected; Enter goes to the folder, Escape closes the list, and focus comes back to
-Path.
+* Going to another folder (Enter on a folder, Backspace) reports the folder and the number of its items.
+* The path bar is the button Path, read with the current folder. Enter or Space opens a field for typing
+  a path; Enter goes there, Escape cancels. Up and Down Arrow in the field go through the address history
+  of Windows' File Explorer. For a path that does not exist, focus stays in the field.
+* The list of folders that a click on the arrow after a folder of the path opens is an ordinary list:
+  Enter goes to the folder, Escape closes the list.
 
-### Pages of the Disc Burner tab
+### Disc Burner pages
 
-The Disc Burner tab has three pages, Audio CD, MP3 disc and Data disc, which the application switches
-only with buttons for the mouse. The stop in the Tab order right before the list of files is read as
-the tab of the current page, such as "MP3 disc, tab, 2 of 3".
+EZ CD switches the pages of the Disc Burner tab (Audio CD, MP3 disc, Data disc) only with the mouse.
 
-* On that tab, Left and Right Arrow show the previous and the next page, Home and End the first and the
-  last one.
-* Control+Tab and Control+Shift+Tab anywhere on the Disc Burner tab show the next and the previous
-  page, going round. From the list of files or another control of a page, focus goes to the list of the
-  new page; elsewhere it stays where it is and the new page is reported.
-
-The application takes a moment to show a page. Tab or Shift+Tab pressed on the page tab meanwhile waits
-until the new page is reported.
-
-### Toolbar of the drive's tray
-
-The toolbar at the end of the drive and speed row of the Audio CD Ripper and Disc Burner tabs is a
-stop in the Tab order right after the speed: before the list of tracks of the Audio CD Ripper tab and
-before Options of the Disc Burner tab. On the MP3 disc and Data disc pages, which have no Options, it is
-a stop at the end of the tab, right before the top buttons (after the view toolbar if that is there too).
-Its buttons are named by the application's own hints: Open tray,
-Close tray and, on the Audio CD Ripper tab, Drive settings. On the Disc Burner tab, with Open tray
-alone, it is read as a button without the toolbar. Without a disc drive the buttons are unavailable.
-Arrows, Home, End, Enter and Space work as in the toolbars of the file explorer. After Open tray or
-Close tray, focus goes on to the other one once the application shows it in its place.
-
-### Player of the Audio CD Ripper tab
-
-The player below the metadata fields of the Audio CD Ripper tab is in the Tab order right before
-Options: its toolbar, then the volume and the position in the track, which the application otherwise
-leaves to the mouse. The buttons are named by the application's own hints: Previous track, Rewind,
-Play, Forward, Next track, Stop and Pause; arrows, Home, End, Enter and Space work as in the other
-toolbars. The volume is named Volume Control by the application's own string, the position Position;
-both are read in percent of their range. Without a disc the buttons are unavailable.
-
-The player and the tray's Open tray and Close tray have not been tried with a disc drive; please report
-what does not work.
-
-### Conversion window
-
-Only the total progress of the conversion is reported, as NVDA's progress bar settings say; the
-progress bars of the individual converters are silent. The total progress bar is named "Total
-progress".
-
-NVDA+End (NVDA+Shift+End in the laptop layout), NVDA's command that reads the status bar, reports the
-state of the conversion: the total percentage, the number of converted files, the remaining time and
-the speed, averaged over the last 5 seconds while the window is in the foreground. Errors and skipped
-files are reported when there are any. A paused conversion starts with "Paused" and has no speed; a
-finished one starts with "Finished" and gives the elapsed time instead of the remaining one. As
-elsewhere, pressing the command twice spells the text and three times copies it to the clipboard.
-
-The number of converters is a spin box, named by the caption next to it. Up and Down Arrow add and
-remove a converter and report the new number, also while the conversion runs; at the limit the number
-is reported unchanged. While converting, the application may take a moment to answer. In object
-navigation, the "-" and "+" buttons of the application are the Decrease and Increase buttons on either
-side of the spin box; NVDA+Numpad Enter presses them.
+* The Tab stop right before the list of files is a page tab, such as "MP3 disc, tab, 2 of 3". Left and
+  Right Arrow, Home and End switch the page.
+* Control+Tab and Control+Shift+Tab switch the page from anywhere on the tab. From the list of files,
+  focus moves to the list of the new page.
 
 ### Lists of files
 
-In the lists of files of the main window and of the conversion window, each file is read once, with
-all its columns, and the first arrow key after entering a list reports the file it moves to. When no
-file of a list has focus, focus stays on the list itself. The lists are named in the language of the
-application instead of by internal English names: Files on the Audio Converter tab and in the
-conversion window, Tracklist on the Audio CD Ripper tab and the Audio CD page of the Disc Burner tab,
-Filelist on the MP3 disc and Data disc pages. The top item of the last two, the disc itself, is read as
-"Disc" before its label, as in "Disc 20261023".
+In the list of files of the main window, a file that is not selected is reported as "not selected".
 
-In the list of files of the main window, files are selected as in other Windows lists, and a file
-that is not selected is reported as "not selected":
+* Arrows, Home, End, Page Up and Page Down select only the file they move to; with Shift they extend the
+  selection. Control with Up Arrow, Down Arrow, Home or End moves without changing it.
+* Right Arrow expands a folder or moves to its first file; Left Arrow collapses a folder or moves from
+  a file to its folder.
+* Space selects only the focused file, Control+Space adds it to the selection or removes it. On a folder,
+  both act on all its files.
+* Control+A selects all files, Escape none. With no file selected, the metadata fields below the list
+  are unavailable.
 
-* Up and Down Arrow, Home, End, Page Up and Page Down move to a file and select only it; with Shift
-  they extend the selection.
-* Control with Up or Down Arrow, Home or End moves to a file without changing the selection.
-* Right Arrow expands a folder, and on an expanded folder moves to its first file. Left Arrow collapses
-  a folder, and on a file in a folder moves to the folder.
-* Control+Space selects or unselects the file, Space selects only it. On the row of a folder, both act
-  on the folder together with all its files.
-* Control+A selects all files, Escape unselects all.
+On the Disc Burner tab, the first item of the list is the disc itself, read as "Disc" and its label.
 
-These commands report the new state of the file and are silent when they change nothing.
+### Editing metadata in the list
 
-The metadata of the files can be edited right in the list of files of the main window, as in a table
-whose columns are Track artist, Title, Album and the others:
+The list of files of the main window is a table whose columns (Track artist, Title, Album, …) can be
+edited in place.
 
-* F2 opens the field of the focused file in the column it was last open in and reports the column and
-  the value. The whole value is selected, so typing replaces it.
-* Tab and Shift+Tab move to the next and the previous column that can be edited, keeping what was
-  typed, and report the column and the value. Columns that cannot be edited in the list, such as the
-  file name, Rating or the file's properties, are skipped. At the first and the last column, the column
-  and the value are reported again. Held down, they report only the column they stop at.
-* Alt+Home and Alt+End move to the first and the last column that can be edited, the last being the
-  one before Lyrics, and report it. With many columns this takes about a second; any key stops it.
-* Up and Down Arrow move to the same column of the previous and the next file and report the file name
-  and the value. As in the application, they wrap around at the first and the last file. Held down,
-  they report only the file they stop at.
-* Tab or Shift+Tab to the Lyrics column opens the application's Lyrics dialog. When the dialog closes,
-  focus returns to the field of the column it was opened from.
-* Enter keeps the change and returns to the list, Escape discards it. F2 then opens the same column
-  again.
-* In the list, Left and Right Arrow do not open the field of another column, as the application would.
-  F2 on a folder does nothing: a folder has no fields.
-* NVDA+Tab, NVDA's command that reports the focus, says which column the field is in, the file name
-  (if NVDA reports object descriptions) and the value.
+* F2 opens the field of the focused file in the column last used and reports the column and the value.
+  The value is selected, so typing replaces it.
+* Tab and Shift+Tab move to the next and the previous column, keeping what was typed. Columns that
+  cannot be edited are skipped; at the first and the last one, the same column is reported again.
+* Alt+Home and Alt+End move to the first and the last column; the last is the one before Lyrics.
+* Up and Down Arrow move to the same column of the previous and the next file, going round at the ends.
+* Tab to the Lyrics column opens the Lyrics dialog; when it closes, focus is back in the field.
+* Enter keeps the change, Escape discards it.
+* NVDA+Tab reports the column, the file name and the value.
 
-The application has its own keys for the field, which are reported the same way: Alt+Left and
-Alt+Right Arrow move to the previous and the next column that can be edited, and Alt+Up and Alt+Down
-Arrow to the previous and the next file. Unlike Tab, Alt+Left and Alt+Right go round within the file:
-from the last column to the first one and back, so you do not hear where the row ends. They also pass
-the Lyrics column by without opening its dialog. Use Tab and Shift+Tab to go through the columns of
-a file one by one and know when you have reached its first or last column, or to open the lyrics; use
-Alt+Left from the first column to get to the last one at once, or Alt+Home and Alt+End to get to either
-end from anywhere in the row.
-
-Moving the field takes the application a moment, and this cannot be made faster: for every move it
-closes the field, keeping what was typed, and opens a new one in the next cell. You may notice it:
-
-* Up and Down Arrow, and Alt with the arrow keys, take about a fifth of a second for each file. Held
-  down, Up and Down Arrow move fewer files than the key repeats, as the application skips the repeats
-  that come while it is still moving; Alt+Up and Alt+Down keep moving for a moment after the key is
-  released.
-* Tab and Shift+Tab take a little longer when they pass columns that cannot be edited or when the list
-  has to scroll sideways.
-* Alt+Home and Alt+End take up to about a second with many columns shown. The application has no
-  command to go to the first or the last column, so the field is moved there column by column.
-* The Lyrics dialog takes a moment to open, and NVDA is silent meanwhile.
-
-### Metadata fields
-
-The metadata fields below the list of files (Album artist, Title, Compilation and the others), the same
-fields of the Audio CD Ripper tab, and the CD-Text fields of the Disc Burner tab are named by their
-captions on the screen, in the language of the application. The fields right of the track and disc
-numbers are named by the application's own words for the totals, such as Total Tracks.
+EZ CD's own keys work too: Alt+Up and Alt+Down Arrow as Up and Down Arrow; Alt+Left and Alt+Right Arrow
+as Shift+Tab and Tab, but going round within the file and passing Lyrics without opening it. So Alt+Left
+from the first column goes straight to the last one.
 
 ### Cover art and rating
 
-The cover art left of the metadata fields of the Audio Converter and Audio CD Ripper tabs is a stop in
-the Tab order right before the first field. It is read as Cover Art with the format and size of the
-picture, such as "JPEG | 250x250 | 49.95 kB". Applications or Shift+F10 there opens its menu, which the
-application otherwise opens only with the mouse: View, Load, Download, Save as, Resize, Cut, Copy,
-Paste and Clear. In the window that View opens, Applications or Shift+F10 opens the same menu, and
-Escape closes the window.
+* The cover art left of the metadata fields is a Tab stop right before the first field, read with the
+  format and size of the picture, such as "Cover Art, JPEG | 250x250 | 49.95 kB". Applications or
+  Shift+F10 opens its menu: View, Load, Download, Save as, Resize, Cut, Copy, Paste, Clear. The same keys
+  work in the window that View opens; Escape closes it.
+* When the mouse pointer rests on the cover art, EZ CD shows a panel of buttons over it, which keeps
+  coming back. Escape closes it and moves the pointer away.
+* The rating is a slider right before the field below it, such as "Rating, slider, 3 of 5". Right and Up
+  Arrow add a star, Left and Down Arrow take one away, Home sets none and End all five.
 
-The panel with Load, Download, Save, Resize and View that the application shows while the mouse pointer
-rests on the cover art cannot be left from the keyboard otherwise: Escape closes it and moves the mouse
-pointer onto the title bar of the main window, so that the panel does not show again.
+### Names of controls
 
-The rating, five stars that the application lets you set only with the mouse, is a stop in the Tab
-order right before the field below it, read as a slider: "Rating, slider, 3 of 5". Right and Up Arrow
-add a star, Left and Down Arrow take one away, Home sets none and End all five.
+Fields, lists, sliders and buttons that EZ CD leaves without a name get one, in all its windows. The
+names are in the language of EZ CD where this add-on has a translation for it, otherwise in English.
 
-### Names of fields in all windows
-
-Fields, lists, combo boxes and sliders that the application leaves without a name, in the main window
-and in its dialogs (Settings, Options, DSP and the others), are named by their captions on the screen,
-in the language of the application: the text left of the field, or the check box left of or above it,
-or the text above it. A unit right of the field is added after a comma, as in "Threshold, dB FS [ -80
-... -20 ]". A slider and the field right next to it showing its value have one name, and the slider
-says the value as the field shows it, on every arrow key, Page Up, Page Down, Home and End: "Fade In,
-s, slider, 3.00" rather than a percentage of its range. A caption that is a single character,
-as in the replacements of characters not allowed in file names, is read by NVDA's name for it, such as
-"colon".
-
-A combo box where a value can be typed, as the file name template on the output panels or the file name
-of the cover art in Options, is read as one editable combo box with its name and text, as in "File name,
-combo box, editable, Folder.jpg", also by NVDA+Tab; the text is read and edited as in any field.
-
-A field or list without any caption on the screen is named by the application's own word for it, in
-its language, where it has one: Profile on the output panels of the Audio Converter and Audio CD
-Ripper tabs and in Edit profiles; Source drive and Read speed on the Audio CD Ripper tab and in Drive
-settings, Disc writer and Write speed on the Disc Burner tab; Files, Metadata, Name, Value and Cover Art
-in the metadata editor; the file name template and the preview in Filename preview; Tracklist in the
-results of Search for CD metadata. Otherwise it gets a name of this add-on: Categories for the pages of
-Settings, Templates for the template history, Picture type in the metadata editor, Release code and
-Results in the manual search of metadata and in Download Cover Art. Fields not named in either way stay
-without a name.
-
-In DSP, the list of effects is named Effect, a name of this add-on. The slider and the fields of the
-chosen effect, which show only scales and units, are named by the effect in the language of the
-application, before their unit, as "Gain, dB"; so is the choice between sample peak and true peak of
-peak normalization.
-
-The format and the codec's parameters on the output panels get short names of this add-on, all of
-them, whichever format is chosen: Format, Extension, and for each parameter by what it offers, Rate
-(sample rate), Bitrate, Channels, Bits (bit depth), Mode (VBR, CBR) and Level for any other, such as
-the compression level of FLAC.
-
-### Buttons
-
-Buttons that show only an image are named: Browse next to the output folder and next to the sound file
-in Settings, Filename preview next to the file name template, Move up and Move down in Edit profiles.
-The tag buttons in Filename preview that insert a space or a separator (`\`, `.`, `-`, `<`, `>`) are
-named by NVDA's words for them, such as "backslash", which NVDA would not say at its default punctuation
-level. The check box without a caption in DSP is named by the mode chosen right of it, such as Gain.
-
-Buttons and check boxes whose caption repeats in the window get the caption of their row after a
-comma: "Search, Barcode" in the manual search of metadata, "Keep aspect ratio, Resize embedded Cover
-Art" in Options, "Add, Name" and "Delete, 6 metadata fields" in the metadata editor, and the Cancel
-button of each service with what the service is doing while metadata is downloaded. The buttons of
-Options that show the size of the cover art are named the same way: "500x500, Resize embedded Cover
-Art".
+* Most are named by their captions on the screen, with the unit after a comma: "Threshold, dB FS [ -80
+  ... -20 ]". The rest get EZ CD's own word for them, or a name of this add-on.
+* A slider and the field next to it showing its value are one control, and the slider says the value as
+  the field shows it: "Fade In, s, slider, 3.00".
+* Buttons with only an image are named: Browse, Filename preview, Move up, Move down.
+* Buttons whose caption repeats in the window get the caption of their row: "Search, Barcode".
+* The format and the codec's settings on the output panels have short names: Format, Extension, Rate,
+  Bitrate, Channels, Bits, Mode, Level.
+* A caption of one sign is read by name, such as "colon" or "backslash".
 
 ### Buttons without windows
 
-The application draws some buttons and links without windows of their own, so NVDA does not find
-them. In object navigation they are among the other controls of their panel, all in the order they
-appear on screen, and NVDA+Numpad Enter presses them. They are not in the Tab order; those that need
-the keyboard have keys of their own, described in their sections.
+Some buttons and links EZ CD only draws, so NVDA would not find them. In object navigation they are among
+the other controls of their panel, in screen order, and NVDA+Numpad Enter presses them. They are not Tab
+stops; most of them have keys of their own, described above.
 
-* Encoder information, right of the format on the output panels of the Audio Converter and Audio CD
-  Ripper tabs.
-* The links of About: the home page of the application and Fraunhofer's page, which open in the
-  browser.
-* The page buttons of the Disc Burner tab, Move up and Move down right of the metadata services in
-  Settings, the Filename generation gear in Filename preview, and the Decrease and Increase buttons of
-  the counters, which report the new number.
-* The picture of the panel that the mouse brings up over the cover art.
-* On the Audio CD Ripper tab, the captions of the metadata fields that the application lets you click,
-  and the pictures Quiet and Loud on both sides of the player's volume. They have not been tried with a
-  disc.
-
-### Lists in dialogs
-
-When a list such as the template history in Filename preview, the metadata services in Settings or the
-cover art in the metadata editor gets focus, its item is read once, not twice.
-
-### Options
-
-In Options of the Audio Converter and Audio CD Ripper tabs, Tab and Shift+Tab move through the controls
-in the order of the screen, section by section, from left to right on each row, with OK last; the
-application's own order jumps between the sections. The section (Files, Metadata, Cover Art, …) is
-reported as a grouping when focus enters it, as a group box in other dialogs.
-
-### DSP
-
-Tab and Shift+Tab in DSP move through the controls in the order of the screen too, round: the effect,
-its slider and fields, the peak limit, then the silence and fade settings row by row, and Close last. A
-field showing a slider's value comes right after the slider.
+* Encoder information, right of the format on the output panels.
+* The links of About: the home pages of EZ CD and of Fraunhofer.
+* Move up and Move down of the metadata services in Settings.
+* The Decrease and Increase buttons of the number fields.
+* The page buttons of the Disc Burner tab and the Filename generation gear of Filename preview.
+* On the Audio CD Ripper tab, the captions of the metadata fields that can be clicked, and Quiet and Loud
+  of the player's volume.
 
 ### Filename preview
 
-Tab and Shift+Tab in Filename preview move through the controls in the order of the screen, round: the
-file name template, Add, Filename generation, the tags, the template history, the preview and Close.
-
-* Filename generation is the gear button right of Add, which the application lets you press only with
-  the mouse. It opens Settings at the Filename generation page.
-* The 27 tag buttons, which the application leaves out of the Tab order but for Number and Sequence,
-  are one stop. Focus comes to the tag that had it last. Left and Right Arrow move along a row, Up and
-  Down Arrow to the row above and below, Home and End to the first and the last tag of the row.
-* Enter or Space inserts the tag into the template at its cursor, replacing the selected text, and
-  reads the new template. Focus stays on the tag, so the template can be put together tag by tag.
-* Alt+Down Arrow on a tag with variants (Year, Disc Number, Total Discs, Total Tracks, Number and
-  Sequence) opens their menu, such as Number ## for a number of two digits. Choosing a variant inserts it
-  and reads the template.
-
-The application keeps a changed template even when the window is closed with Escape or its close button.
+* Tab goes round in screen order: template, Add, Filename generation, the tags, template history,
+  preview, Close.
+* Filename generation, the gear right of Add, opens Settings at the Filename generation page.
+* All 27 tags are one Tab stop. Left and Right Arrow move along a row, Up and Down Arrow between rows,
+  Home and End to the ends of the row.
+* Enter or Space inserts the tag at the cursor of the template and reads the new template. Focus stays
+  on the tag, so a template can be put together tag by tag.
+* Alt+Down Arrow on Year, Disc Number, Total Discs, Total Tracks, Number or Sequence opens its variants,
+  such as Number ## for two digits.
+* EZ CD keeps a changed template even when the window is closed with Escape.
 
 ### Settings
 
-The numbers of parallel converters and scanners on the Audio Converter page and the limit of metadata
-results per service on the Internet disc database page are spin boxes, as the number of converters in
-the conversion window: Up and Down Arrow change the number and report it.
+* The numbers of parallel converters and scanners and the limit of metadata results per service are
+  spin boxes: Up and Down Arrow change the number and report it.
+* In the list of metadata services, Space checks or unchecks a service, and Alt+Up and Alt+Down Arrow
+  move it up and down, reporting its new position.
 
-In the list of metadata services, each service is reported as checked or not checked, and Space reports
-its new state. Alt+Up and Alt+Down Arrow move the service up and down in the list, as the arrow buttons
-right of the list do, and report its new position; at the top or the bottom nothing is reported.
+### Conversion window
 
-### Text of dialogs
+* Only the total progress is reported, as NVDA's progress bar settings say.
+* NVDA+End (NVDA+Shift+End in the laptop layout) reports the state: the total percentage, the converted
+  files, the remaining time and the speed, and errors and skipped files if any. A paused or finished
+  conversion starts with "Paused" or "Finished".
+* The number of converters is a spin box: Up and Down Arrow add and remove a converter, also while
+  converting.
 
-The windows of the application other than the main window and the conversion window are reported as
-dialogs. When one opens, NVDA reads its text from the screen, as in other Windows dialogs: in About,
-the version, the home page and the copyright; in Encoder information, the encoder and its module.
-NVDA+B reads it again. Captions of fields, headings of sections, the numbers of slider scales and a
-line repeating the title are not part of the text, so Settings, Options, DSP and Edit profiles open with their name alone.
+### Dialogs and menus
 
-Encoder information and the results of Search for CD metadata, which the application does not close
-with Escape, close with Escape as with their close button.
+* In Options of the Audio Converter and Audio CD Ripper tabs and in DSP, Tab and Shift+Tab go in screen
+  order, row by row from left to right, instead of jumping between sections. In Options, the section
+  (Files, Metadata, Cover Art, …) is reported on entering it.
+* Encoder information and the results of Search for CD metadata close with Escape.
+* Menus opened by a button, by Applications or by Alt+Down Arrow open with the first item selected, so
+  Enter chooses it at once.
 
-### Menus
+## Known limitations
 
-A menu opened by a button, by Applications on the cover art or on Save metadata, or by Alt+Down on a
-tag of Filename preview opens with its first item selected, as menus opened from the keyboard do, so
-Enter chooses it at once.
-Items are numbered without the separators, items with a submenu too, such as "Manual search, submenu,
-3 of 4"; the number is said whenever NVDA reports the position of objects. A key that would choose an
-item but is a sign rather than a letter, such as "<" before every variant of a tag, is not reported.
+* The tray buttons and the player have not been tried with a disc drive; please report what does not
+  work.
+* Moving the field of the list takes EZ CD about a fifth of a second per file, and up to a second for
+  Alt+Home and Alt+End with many columns. Held Up or Down Arrow move fewer files than the key repeats.
+  NVDA is silent while the Lyrics dialog opens.
 
-### Focus after dialogs and menus
+## Keys
 
-When a dialog or the conversion window closes, focus goes back to the control it was on before the
-window opened, such as DSP » or Options », and NVDA says the name of the main window and that control.
-When a menu closes with Escape, NVDA says only the control it returns to, also after a submenu and in a
-dialog. Switching to the application
-with Alt+Tab also reports the main window and the focused control, without the panels around it. The
-manual search of metadata opens with focus in its first field.
-
-The tab labels of the main window, the Tab stop between the top buttons and the first control of the
-tab, are reported with the name of the active tab, such as Convert audio files. They do not switch the
-tab: the menu of the first top button does.
-
-## Commands
-
-Commands of this add-on are listed in NVDA's Input Gestures dialog, under the
-"EZ CD Audio Converter" category, and can be reassigned there.
+| Where | Keys | Does |
+|---|---|---|
+| Top buttons and toolbars | Left and Right Arrow, Home, End | Move between the buttons |
+| Menu button, View | Enter, Space, Down Arrow | Open the menu |
+| Save metadata, cover art | Applications, Shift+F10 | Open its menu |
+| Panel over the cover art | Escape | Close it |
+| Path | Enter, Space | Open the field for a path |
+| Field of Path | Up and Down Arrow | Go through the address history |
+| Disc Burner tab | Control+Tab, Control+Shift+Tab | Next and previous page |
+| Page tab of Disc Burner | Left and Right Arrow, Home, End | Switch the page |
+| List of files | Space; Control+Space | Select only this file; add it to the selection or remove it |
+| List of files | Control with Up Arrow, Down Arrow, Home, End | Move without changing the selection |
+| List of files | F2 | Edit the file's metadata |
+| Field of the list | Tab, Shift+Tab | Next and previous column |
+| Field of the list | Alt+Home, Alt+End | First and last column |
+| Field of the list | Up and Down Arrow | Same column of the previous and the next file |
+| Field of the list | Alt+Left and Alt+Right Arrow | Previous and next column, going round |
+| Rating | Arrows, Home, End | Add or take away stars |
+| Tags of Filename preview | Enter, Space | Insert the tag |
+| Tags of Filename preview | Alt+Down Arrow | Open the tag's variants |
+| Metadata services in Settings | Alt+Up and Alt+Down Arrow | Move the service |
+| Number fields | Up and Down Arrow | Change the number |
+| Conversion window | NVDA+End | Report the state of the conversion |
+| Encoder information, results of Search for CD metadata | Escape | Close the window |
 
 ## Licence
 
